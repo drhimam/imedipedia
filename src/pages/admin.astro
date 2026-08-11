@@ -261,7 +261,7 @@ if (Astro.request) {
 
   /* Theme Options */
   .theme-options { display: flex; gap: 0.5rem; }
-  .theme-opt { flex: 1; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.15s; }
+  .theme-opt { font-family: inherit; flex: 1; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.15s; }
   .theme-opt:hover { border-color: var(--accent); }
   .theme-opt.active { background: var(--accent); color: white; border-color: var(--accent); }
 
@@ -272,7 +272,7 @@ if (Astro.request) {
   .alert-info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; }
 
   /* Tab Navigation */
-  .tab-nav-btn {
+  .tab-nav-btn { cursor: pointer; font-family: inherit;
     background: transparent;
     border: none;
     padding: 0.75rem 1.25rem;
@@ -287,7 +287,7 @@ if (Astro.request) {
   .tab-nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
-  .filter-chip {
+  .filter-chip { font-family: inherit;
     padding: 0.4rem 0.8rem;
     border-radius: 20px;
     border: 1px solid var(--border);
@@ -309,7 +309,7 @@ if (Astro.request) {
   .badge-approved { background: rgba(16,185,129,0.15); color: #10b981; }
   .badge-rejected { background: rgba(239,68,68,0.15); color: #ef4444; }
   .badge-published { background: rgba(99,102,241,0.15); color: #6366f1; }
-  .action-btn { padding: 0.35rem 0.75rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; margin: 0 0.15rem; transition: all 0.15s; }
+  .action-btn { font-family: inherit; padding: 0.35rem 0.75rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; margin: 0 0.15rem; transition: all 0.15s; }
   .action-btn:hover { transform: translateY(-1px); }
   .btn-approve { background: #10b981; color: white; }
   .btn-reject { background: #ef4444; color: white; }
@@ -318,13 +318,9 @@ if (Astro.request) {
   .btn-delete { background: var(--border); color: var(--text); }
   .copy-tooltip { position: relative; }
   .img-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
-  .alert { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem; margin-bottom: 1rem; }
-  .alert-info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; }
-  .alert-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
-  .alert-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #10b981; }
 </style>
 
-<script>
+<script is:inline>
   // ========== ADMIN TOP BAR & SETTINGS ==========
 
   let currentProfile = null;
