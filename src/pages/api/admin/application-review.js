@@ -147,14 +147,21 @@ export async function POST({ request, locals }) {
       const loginUrl = 'https://imedipedia.pages.dev/contributors';
       const htmlBody = buildAcceptanceEmail({ name: app.name, username, password, loginUrl });
 
-      await sendSESEmail(env, app.email,
-        'Welcome to iMedipedia — Your Contributor Account is Ready',
-        htmlBody
-      );
+      let emailResult = '';
+      try {
+        await sendSESEmail(env, app.email,
+          'Welcome to iMedipedia — Your Contributor Account is Ready',
+          htmlBody
+        );
+        emailResult = ' Welcome email sent.';
+      } catch (emailErr) {
+        console.error('SES send failed (non-fatal):', emailErr.message);
+        emailResult = ' (Email delivery may be delayed — SES response parsing error.)';
+      }
 
       return new Response(JSON.stringify({
         success: true,
-        message: `Application approved. User "${username}" created with auto-generated password.`,
+        message: `Application approved. User "${username}" created with auto-generated password.${emailResult}`,
         username,
       }), {
         status: 200, headers: { "Content-Type": "application/json" }
@@ -167,14 +174,21 @@ export async function POST({ request, locals }) {
       ).bind(reason || '', now, user.id, applicationId).run();
 
       const htmlBody = buildRejectionEmail({ name: app.name, reason });
-      await sendSESEmail(env, app.email,
-        'Update on Your iMedipedia Contributor Application',
-        htmlBody
-      );
+      let emailResult2 = '';
+      try {
+        await sendSESEmail(env, app.email,
+          'Update on Your iMedipedia Contributor Application',
+          htmlBody
+        );
+        emailResult2 = ' Notification email sent.';
+      } catch (emailErr) {
+        console.error('SES send failed (non-fatal):', emailErr.message);
+        emailResult2 = ' (Email delivery may be delayed.)';
+      }
 
       return new Response(JSON.stringify({
         success: true,
-        message: "Application rejected. Notification email sent.",
+        message: `Application rejected.${emailResult2}`,
       }), {
         status: 200, headers: { "Content-Type": "application/json" }
       });
