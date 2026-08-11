@@ -1,0 +1,205 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  return posts.map(post => {
+    const cleanSlug = post.id.replace(/\.md$/, '');
+    return {
+      params: { slug: cleanSlug },
+      props: { post },
+    };
+  });
+}
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+
+// Dynamic Navigation details
+const allPosts = await getCollection('blog');
+const categories = Array.from(new Set(allPosts.map(p => p.data.tag).filter(Boolean)));
+const years = Array.from(new Set(allPosts.map(p => new Date(p.data.pubDate).getFullYear())));
+---
+
+<BaseLayout
+  title={`${post.data.title} - iMedipedia Medical Research`}
+  description={post.data.description}
+>
+  <slot name="head">
+    <style>
+      .layout {
+        max-width: 1200px;
+        margin: 3rem auto;
+        padding: 0 1.5rem;
+        display: grid;
+        grid-template-columns: 3fr 1fr;
+        gap: 3rem;
+      }
+
+      .container {
+        min-width: 0;
+      }
+
+      /* Sidebar Navigation Links */
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 2.5rem;
+      }
+
+      .widget {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+      }
+
+      .widget-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin-top: 0;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.5rem;
+      }
+
+      .link-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .link-item {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.95rem;
+        transition: color 0.2s;
+      }
+
+      .link-item:hover {
+        color: var(--accent);
+      }
+
+      header.article-header {
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 1.5rem;
+      }
+
+      h1 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 2.5rem;
+        color: var(--text);
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+        line-height: 1.2;
+      }
+
+      .meta {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .description-box {
+        background: var(--card-bg);
+        border-left: 4px solid var(--accent);
+        padding: 1rem 1.25rem;
+        border-radius: 4px;
+        margin: 1.5rem 0;
+        font-style: italic;
+      }
+
+      .content {
+        font-size: 1.1rem;
+      }
+
+      .content h2 {
+        font-family: 'Outfit', sans-serif;
+        color: var(--text);
+        margin-top: 2rem;
+      }
+
+      .comments-section {
+        margin-top: 4rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border);
+      }
+
+      .comments-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.5rem;
+        color: var(--text);
+        margin-bottom: 1.5rem;
+      }
+
+      @media (max-width: 992px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </slot>
+
+  <div class="layout">
+    <!-- Article Content Column -->
+    <article class="container">
+      <header class="article-header">
+        <div class="meta">Published on {post.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} by {post.data.author}</div>
+        <h1>{post.data.title}</h1>
+      </header>
+
+      {post.data.image && (
+        <div class="cover-image-container" style="border-radius: 12px; overflow: hidden; margin-bottom: 2rem; border: 1px solid var(--border); background:#090d16; max-height: 400px;">
+          <img src={post.data.image} alt={post.data.title} style="width: 100%; height: auto; display: block;" />
+        </div>
+      )}
+
+      <div class="description-box">
+        <strong>TL;DR Summary:</strong> {post.data.description}
+      </div>
+
+      <div class="content">
+        <Content />
+      </div>
+
+      <!-- Cusdis Commenting System -->
+      <section class="comments-section">
+        <h2 class="comments-title">Discussion &amp; Comments</h2>
+        <div
+          id="cusdis_thread"
+          data-host="https://cusdis.com"
+          data-app-id="cusdis-widget-default-app-id"
+          data-page-id={post.id}
+          data-page-url={Astro.url.pathname}
+          data-page-title={post.data.title}
+        ></div>
+        <script is:inline async defer src="https://cusdis.com/js/cusdis.es.js"></script>
+      </section>
+    </article>
+
+    <!-- Sidebar Navigation Column -->
+    <aside class="sidebar">
+      <div class="widget">
+        <h3 class="widget-title">Specialties</h3>
+        <nav class="link-list">
+          {categories.map(cat => (
+            <a href={`/?search=${cat.toLowerCase()}`} class="link-item"># {cat}</a>
+          ))}
+        </nav>
+      </div>
+
+      <div class="widget">
+        <h3 class="widget-title">Archive Years</h3>
+        <nav class="link-list">
+          {years.map(yr => (
+            <a href={`/?search=${yr}`} class="link-item">📅 {yr}</a>
+          ))}
+        </nav>
+      </div>
+    </aside>
+  </div>
+</BaseLayout>

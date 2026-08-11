@@ -1,0 +1,207 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const posts = await getCollection('blog');
+const sortedPosts = posts.sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+const tags = Array.from(new Set(posts.map(p => p.data.tag).filter(Boolean)));
+---
+
+<BaseLayout
+  title="iMedipedia - Advanced Medical News & Scientific Research Compilation"
+  currentPage="home"
+>
+  <slot name="head">
+    <style>
+      .hero {
+        text-align: center;
+        max-width: 800px;
+        margin: 4rem auto 2rem auto;
+        padding: 0 1.5rem;
+      }
+      .hero h1 {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 800;
+        font-size: 3.5rem;
+        line-height: 1.1;
+        margin-bottom: 1rem;
+        letter-spacing: -1px;
+      }
+      .controls {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .search-box {
+        flex-grow: 1;
+        max-width: 400px;
+        position: relative;
+      }
+      .search-input {
+        width: 100%;
+        padding: 0.75rem 1.25rem;
+        border-radius: 30px;
+        border: 1px solid var(--border);
+        background: var(--card-bg);
+        color: var(--text);
+        box-sizing: border-box;
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+      }
+      .search-input:focus { outline: none; border-color: var(--accent); }
+      .filters-group { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+      .filter-chip {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+      }
+      .filter-chip.active, .filter-chip:hover { background: var(--accent); color: white; border-color: var(--accent); }
+      .grid {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1.5rem 8rem 1.5rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 2.5rem;
+      }
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+      }
+      .card:hover { transform: translateY(-8px); border-color: var(--accent); box-shadow: 0 12px 40px var(--accent-glow); }
+      .card-img-container { height: 220px; position: relative; overflow: hidden; background: #090d16; }
+      .card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+      .card:hover .card-img { transform: scale(1.05); }
+      .card-content { padding: 2rem; display: flex; flex-direction: column; flex-grow: 1; }
+      .card-tag {
+        align-self: flex-start;
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--accent);
+        padding: 0.25rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border-radius: 20px;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+      }
+      .card-title { font-family: 'Outfit', sans-serif; font-size: 1.5rem; margin: 0 0 0.75rem 0; line-height: 1.3; }
+      .card-title a { color: var(--text); text-decoration: none; transition: color 0.2s; }
+      .card-title a:hover { color: #38bdf8; }
+      .card-desc { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; flex-grow: 1; }
+      .card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 1.25rem; font-size: 0.85rem; color: var(--muted); }
+      .author { font-weight: 500; }
+      @media (max-width: 768px) { .hero h1 { font-size: 2.5rem; } .grid { grid-template-columns: 1fr; } }
+    </style>
+  </slot>
+
+  <header class="hero">
+    <h1>Medical News & Clinical Research</h1>
+    <p>A production-ready platform compiling scientific breakthroughs and critical healthcare studies with zero friction.</p>
+  </header>
+
+  <section class="controls">
+    <div class="search-box">
+      <input type="text" id="searchInput" class="search-input" placeholder="Search articles or authors..." />
+    </div>
+    <div class="filters-group">
+      <button class="filter-chip active" data-tag="all">All Specialties</button>
+      {tags.map(tag => <button class="filter-chip" data-tag={tag}>{tag}</button>)}
+      <button class="filter-chip" id="sortOrderBtn" data-order="desc">📅 Newest First</button>
+    </div>
+  </section>
+
+  <main class="grid" id="articlesGrid">
+    {sortedPosts.map(post => (
+      <article class="card" data-title={post.data.title.toLowerCase()} data-author={post.data.author.toLowerCase()} data-desc={post.data.description.toLowerCase()} data-tag={post.data.tag || ''} data-date={post.data.pubDate.getTime()}>
+        <div class="card-img-container">
+          {post.data.image ? (
+            <img src={post.data.image} class="card-img" alt={post.data.title} />
+          ) : (
+            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#64748b; font-weight:bold; font-size:1.2rem;">IMEDIPEDIA RESEARCH</div>
+          )}
+        </div>
+        <div class="card-content">
+          {post.data.tag && <span class="card-tag">{post.data.tag}</span>}
+          <h2 class="card-title"><a href={`/blog/${post.id.replace(/\.md$/, '')}`}>{post.data.title}</a></h2>
+          <p class="card-desc">{post.data.description}</p>
+          <div class="card-footer">
+            <span>By <span class="author">{post.data.author}</span></span>
+            <span>{post.data.pubDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+          </div>
+        </div>
+      </article>
+    ))}
+  </main>
+
+  <slot name="scripts">
+    <script is:inline>
+      var searchInput = document.getElementById('searchInput');
+      var filterChips = document.querySelectorAll('.filter-chip[data-tag]');
+      var sortOrderBtn = document.getElementById('sortOrderBtn');
+      var articlesGrid = document.getElementById('articlesGrid');
+      var cards = Array.from(document.querySelectorAll('.card'));
+      var urlParams = new URLSearchParams(window.location.search);
+      var searchQuery = (urlParams.get('search') || '').toLowerCase();
+      var activeTag = 'all';
+      if (searchQuery) { searchInput.value = searchQuery; }
+
+      function filterArticles() {
+        cards.forEach(function(card) {
+          var title = card.getAttribute('data-title');
+          var author = card.getAttribute('data-author');
+          var desc = card.getAttribute('data-desc');
+          var tag = card.getAttribute('data-tag').toLowerCase();
+          var dateStr = card.getAttribute('data-date');
+          var year = new Date(parseInt(dateStr)).getFullYear().toString();
+          var matchesSearch = title.includes(searchQuery) || author.includes(searchQuery) || desc.includes(searchQuery) || tag.includes(searchQuery) || year.includes(searchQuery);
+          var matchesTag = activeTag === 'all' || tag === activeTag.toLowerCase();
+          card.style.display = (matchesSearch && matchesTag) ? 'flex' : 'none';
+        });
+      }
+      filterArticles();
+
+      searchInput.addEventListener('input', function(e) {
+        searchQuery = e.target.value.toLowerCase();
+        filterArticles();
+      });
+
+      filterChips.forEach(function(chip) {
+        chip.addEventListener('click', function() {
+          filterChips.forEach(function(c) { c.classList.remove('active'); });
+          chip.classList.add('active');
+          activeTag = chip.getAttribute('data-tag');
+          filterArticles();
+        });
+      });
+
+      sortOrderBtn.addEventListener('click', function() {
+        var currentOrder = sortOrderBtn.getAttribute('data-order');
+        var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+        sortOrderBtn.setAttribute('data-order', nextOrder);
+        sortOrderBtn.textContent = nextOrder === 'desc' ? '📅 Newest First' : '📅 Oldest First';
+        var sorted = cards.sort(function(a, b) {
+          var dateA = parseInt(a.getAttribute('data-date'));
+          var dateB = parseInt(b.getAttribute('data-date'));
+          return nextOrder === 'desc' ? dateB - dateA : dateA - dateB;
+        });
+        sorted.forEach(function(card) { articlesGrid.appendChild(card); });
+      });
+    </script>
+  </slot>
+</BaseLayout>

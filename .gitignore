@@ -1,0 +1,28 @@
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TinaCMS
+.tina/__generated__/
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

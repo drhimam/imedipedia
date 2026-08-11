@@ -1,0 +1,337 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  const contributors = [
+    {
+      id: 'eleanor-vance',
+      name: 'Dr. Eleanor Vance',
+      specialty: 'Genomics & Oncology',
+      affiliation: 'iMedipedia Institute of Clinical Genetics',
+      image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=600',
+      bio: 'Dr. Eleanor Vance is a leading researcher in clinical genetics and cancer immunotherapies. She leads the genomic sequencing division at the iMedipedia Institute, focusing on CRISPR therapeutics and personalized vaccines.',
+      education: 'MD, Harvard Medical School; PhD in Genetics, MIT',
+      interests: ['CRISPR-Cas9 Gene Editing', 'mRNA Cancer Vaccines', 'Targeted Immunotherapies'],
+    },
+    {
+      id: 'marcus-thorne',
+      name: 'Dr. Marcus Thorne',
+      specialty: 'Neurology & Neurotechnology',
+      affiliation: 'Brain-Computer Interface Research Center',
+      image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=600',
+      bio: 'Dr. Marcus Thorne is an Associate Professor of neuroengineering, focused on BCI clinical translation. He specializes in designing high-density neural interfaces to restore agency and mobility to paralyzed patients.',
+      education: 'MD, Johns Hopkins University School of Medicine; MS in Neural Engineering, Stanford',
+      interests: ['High-density neural interfaces', 'Neural signal processing', 'Motor rehabilitation'],
+    },
+    {
+      id: 'sarah-jenkins',
+      name: 'Dr. Sarah Jenkins',
+      specialty: 'Cardiology',
+      affiliation: 'Metropolitan Heart & Vascular Center',
+      image: 'https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&q=80&w=600',
+      bio: 'Dr. Sarah Jenkins is a clinical cardiologist researching genetic markers for heart disease. She runs trials investigating early predictive assays for cardiovascular health and is an advisor on genomic risk profiling.',
+      education: 'MD, Columbia University Vagelos College of Physicians and Surgeons',
+      interests: ['Cardiovascular genetics', 'Early predictive diagnostics', 'Myocardial therapeutics'],
+    }
+  ];
+
+  return contributors.map(contributor => ({
+    params: { id: contributor.id },
+    props: { contributor },
+  }));
+}
+
+const { contributor } = Astro.props;
+
+// Fetch articles written by this contributor
+const allPosts = await getCollection('blog');
+const contributorPosts = allPosts.filter(
+  post => post.data.author.toLowerCase() === contributor.name.toLowerCase()
+);
+---
+
+<BaseLayout
+  title={`${contributor.name} - iMedipedia Contributor Profile`}
+  currentPage="contributors"
+>
+  <slot name="head">
+    <style>
+      /* main container */
+      .main-container {
+        max-width: 1200px;
+        margin: 4rem auto;
+        padding: 0 1.5rem;
+        width: 100%;
+        box-sizing: border-box;
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 4rem;
+      }
+
+      @media (max-width: 900px) {
+        .main-container {
+          grid-template-columns: 1fr;
+          gap: 2.5rem;
+          margin: 2rem auto;
+        }
+      }
+
+      /* Profile Sidebar */
+      .profile-sidebar {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .profile-image-container {
+        width: 240px;
+        height: 240px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 3px solid var(--accent);
+        box-shadow: 0 8px 32px var(--accent-glow);
+        margin-bottom: 2rem;
+      }
+
+      .profile-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .profile-specialty-badge {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--accent);
+        padding: 0.35rem 1rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 1.5rem;
+        border: 1px solid rgba(99, 102, 241, 0.2);
+      }
+
+      .profile-meta-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        width: 100%;
+        padding: 1.5rem;
+        box-sizing: border-box;
+        text-align: left;
+        margin-bottom: 1.5rem;
+      }
+
+      .meta-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: var(--muted);
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+      }
+
+      .meta-val {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 1.25rem;
+        line-height: 1.4;
+      }
+
+      .meta-val:last-child {
+        margin-bottom: 0;
+      }
+
+      /* Main Profile Content */
+      .profile-main h1 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 2.8rem;
+        font-weight: 800;
+        letter-spacing: -1px;
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+      }
+
+      .profile-affiliation {
+        color: var(--muted);
+        font-size: 1.2rem;
+        font-weight: 500;
+        margin-bottom: 2rem;
+      }
+
+      .profile-section-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.5rem;
+      }
+
+      .profile-bio {
+        font-size: 1.1rem;
+        color: var(--text);
+        line-height: 1.8;
+      }
+
+      .tag-cloud {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+      }
+
+      .interest-tag {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 0.5rem 1rem;
+        border-radius: 30px;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
+      /* Articles Grid Section */
+      .articles-section {
+        margin-top: 3.5rem;
+      }
+
+      .articles-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-top: 1.5rem;
+      }
+
+      @media (max-width: 600px) {
+        .articles-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .article-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition: transform 0.2s, border-color 0.2s;
+        text-decoration: none;
+        color: inherit;
+      }
+
+      .article-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--accent);
+        box-shadow: 0 8px 24px var(--accent-glow);
+      }
+
+      .article-tag {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--accent);
+        align-self: flex-start;
+        background: rgba(99, 102, 241, 0.1);
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        margin-bottom: 0.75rem;
+      }
+
+      .article-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+        line-height: 1.3;
+        transition: color 0.2s;
+      }
+
+      .article-card:hover .article-title {
+        color: var(--accent);
+      }
+
+      .article-desc {
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.5;
+        margin-bottom: 1.25rem;
+        flex-grow: 1;
+      }
+
+      .article-date {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      .no-articles {
+        color: var(--muted);
+        font-style: italic;
+      }
+    </style>
+  </slot>
+
+  <main class="main-container">
+    <!-- Profile Column 1 (Sidebar) -->
+    <aside class="profile-sidebar">
+      <div class="profile-image-container">
+        <img src={contributor.image} alt={contributor.name} class="profile-image" />
+      </div>
+      <span class="profile-specialty-badge">{contributor.specialty}</span>
+
+      <div class="profile-meta-card">
+        <div class="meta-label">Affiliation</div>
+        <div class="meta-val">{contributor.affiliation}</div>
+
+        <div class="meta-label">Education</div>
+        <div class="meta-val">{contributor.education}</div>
+      </div>
+    </aside>
+
+    <!-- Profile Column 2 (Main Details) -->
+    <section class="profile-main">
+      <h1>{contributor.name}</h1>
+      <div class="profile-affiliation">{contributor.affiliation}</div>
+
+      <h2 class="profile-section-title">Biography</h2>
+      <p class="profile-bio">{contributor.bio}</p>
+
+      <h2 class="profile-section-title">Research Interests</h2>
+      <div class="tag-cloud">
+        {contributor.interests.map(interest => (
+          <span class="interest-tag">{interest}</span>
+        ))}
+      </div>
+
+      <!-- Authored Articles section -->
+      <div class="articles-section">
+        <h2 class="profile-section-title">Published Articles</h2>
+        {contributorPosts.length > 0 ? (
+          <div class="articles-grid">
+            {contributorPosts.map(post => (
+              <a href={`/blog/${post.id.replace(/\.md$/, '')}`} class="article-card">
+                <div>
+                  {post.data.tag && <span class="article-tag">{post.data.tag}</span>}
+                  <h3 class="article-title">{post.data.title}</h3>
+                  <p class="article-desc">{post.data.description}</p>
+                </div>
+                <span class="article-date">
+                  {post.data.pubDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p class="no-articles">No published articles yet.</p>
+        )}
+      </div>
+    </section>
+  </main>
+</BaseLayout>

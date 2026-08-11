@@ -1,0 +1,13 @@
+fragment BlogParts on Blog {
+  __typename
+  title
+  pubDate
+  description
+  author
+  tag
+  type
+  subject
+  topic
+  exams
+  body
+}

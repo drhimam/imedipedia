@@ -1,0 +1,663 @@
+---
+export interface Props {
+  title: string;
+  description?: string;
+  /** Which nav link is active: 'home' | 'general' | 'update' | 'cases' | 'education' | 'contributors' */
+  currentPage?: string;
+}
+
+const { title, description, currentPage } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+
+    <!-- Preconnect to Google Fonts (eliminates @import render-blocking) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;700&display=swap"
+    />
+
+    <!--
+      THEME-BLOCKING SCRIPT: runs synchronously before any CSS or body content,
+      so the correct data-theme attribute is on <html> before the first paint.
+      No more black flash on page navigation.
+    -->
+    <script is:inline>
+      (function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+    </script>
+
+    <style>
+      /* ============================================================
+         GLOBAL DESIGN TOKENS & SHARED CHROME
+         ============================================================
+         :global() punches through Astro's scoping so these target
+         the real <html>, <body>, and DOM elements.
+      */
+
+      /* ---- Dark theme (default) ---- */
+      :global(:root) {
+        --bg: #030712;
+        --card-bg: rgba(17, 24, 39, 0.7);
+        --accent: #0d9488;
+        --accent-glow: rgba(13, 148, 136, 0.15);
+        --text: #f3f4f6;
+        --muted: #9ca3af;
+        --border: rgba(255, 255, 255, 0.08);
+        --success: #10b981;
+        --warning: #f59e0b;
+        --success-glow: rgba(16, 185, 129, 0.1);
+        --warning-glow: rgba(245, 158, 11, 0.1);
+        --navbar-bg: rgba(3, 7, 18, 0.75);
+        --hero-bg: rgba(3, 7, 18, 0.6);
+        --footer-bg: rgba(15, 23, 42, 0.4);
+        --footer-input-bg: rgba(255, 255, 255, 0.05);
+      }
+
+      /* ---- Light theme ---- */
+      :global([data-theme="light"]) {
+        --bg: #f0f4f8;
+        --card-bg: rgba(255, 255, 255, 1);
+        --accent: #0d9488;
+        --accent-glow: rgba(13, 148, 136, 0.12);
+        --text: #0f172a;
+        --muted: #374151;
+        --border: rgba(0, 0, 0, 0.12);
+        --success: #059669;
+        --warning: #d97706;
+        --success-glow: rgba(5, 150, 105, 0.1);
+        --warning-glow: rgba(217, 119, 6, 0.1);
+        --navbar-bg: rgba(255, 255, 255, 0.92);
+        --hero-bg: rgba(240, 244, 248, 0.8);
+        --footer-bg: #e2e8f0;
+        --footer-input-bg: rgba(255, 255, 255, 0.1);
+      }
+
+      /* ---- <html> background: prevents any flash of wrong color ---- */
+      :global(html) {
+        background-color: var(--bg);
+      }
+
+      /* ---- Body ---- */
+      :global(body) {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        margin: 0;
+        padding: 0;
+        line-height: 1.6;
+        transition: background-color 0.3s, color 0.3s;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ============================================================
+         NAVBAR
+         ============================================================ */
+      :global(.navbar) {
+        border-bottom: 1px solid var(--border);
+        backdrop-filter: blur(16px);
+        background: var(--navbar-bg);
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        padding: 0.75rem 2rem;
+      }
+
+      :global(.nav-container) {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      :global(.logo-link:any-link) {
+        text-decoration: none;
+      }
+
+      :global(.logo) {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 800;
+        font-size: 1.6rem;
+        background: linear-gradient(135deg, #0ea5e9, #0d9488);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.5px;
+      }
+
+      :global(.nav-links) {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+      }
+
+      /* :any-link bumps specificity to beat browser's a:link / a:visited defaults */
+      :global(.nav-link:any-link) {
+        color: var(--text);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        position: relative;
+      }
+
+      :global(.nav-link:hover) {
+        color: #0d9488;
+      }
+
+      :global(.nav-link.active) {
+        background: rgba(13, 148, 136, 0.1);
+        color: #0d9488 !important;
+      }
+
+      :global(.nav-link.active::after) {
+        content: '';
+        position: absolute;
+        bottom: 0px;
+        left: 25%;
+        width: 50%;
+        height: 2.5px;
+        background: #0d9488;
+        border-radius: 2px;
+      }
+
+      :global(.btn-contributors:any-link) {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 0.5rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-decoration: none;
+        transition: all 0.2s ease;
+      }
+
+      :global(.btn-contributors:hover) {
+        background: rgba(13, 148, 136, 0.05);
+        border-color: #0d9488;
+        color: #0d9488;
+      }
+
+      :global(.btn-contributors.active) {
+        background: rgba(13, 148, 136, 0.1);
+        color: #0d9488 !important;
+        border-color: #0d9488;
+      }
+
+      /* ---- Contact Button ---- */
+      :global(.btn-contact) {
+        background: #0d9488;
+        color: #ffffff !important;
+        border: none;
+        padding: 0.5rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+      }
+
+      :global(.btn-contact:hover) {
+        background: #0f766e;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
+      }
+
+      /* ---- Theme Toggle ---- */
+      :global(.theme-btn) {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        transition: all 0.2s;
+        padding: 0;
+      }
+
+      :global(.theme-btn:hover) {
+        border-color: #0d9488;
+        color: #0d9488;
+      }
+
+      /* ============================================================
+         CONTACT MODAL
+         ============================================================ */
+      :global(.contact-modal) {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(3, 7, 18, 0.6);
+        backdrop-filter: blur(8px);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      :global(.contact-modal.active) {
+        display: flex;
+        opacity: 1;
+      }
+
+      :global(.contact-modal-content) {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        max-width: 500px;
+        width: 90%;
+        padding: 2.5rem;
+        position: relative;
+        transform: scale(0.9);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        text-align: left;
+      }
+
+      :global(.contact-modal.active .contact-modal-content) {
+        transform: scale(1);
+      }
+
+      :global(.contact-modal-close) {
+        position: absolute;
+        top: 1.25rem;
+        right: 1.25rem;
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: color 0.2s;
+        line-height: 1;
+      }
+
+      :global(.contact-modal-close:hover) {
+        color: var(--text);
+      }
+
+      /* ============================================================
+         FOOTER
+         ============================================================ */
+      :global(.footer) {
+        background: var(--footer-bg);
+        border-top: 1px solid var(--border);
+        padding: 5rem 2rem 2rem 2rem;
+        margin-top: 6rem;
+        font-size: 0.9rem;
+        color: var(--text);
+        opacity: 0.8;
+      }
+
+      :global(.footer-container) {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1.5fr;
+        gap: 4rem;
+        margin-bottom: 4rem;
+      }
+
+      :global(.footer-brand-section) {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        text-align: left;
+      }
+
+      :global(.footer-logo) {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 800;
+        font-size: 1.5rem;
+        background: linear-gradient(135deg, #0ea5e9, #0d9488);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.5px;
+      }
+
+      :global(.footer-text) {
+        line-height: 1.6;
+        color: var(--muted);
+        text-align: left;
+      }
+
+      :global(.footer-disclaimer) {
+        font-size: 0.78rem;
+        line-height: 1.5;
+        color: var(--muted);
+        opacity: 0.85;
+        border-left: 2px solid var(--accent);
+        padding-left: 1rem;
+        text-align: left;
+      }
+
+      :global(.footer-heading) {
+        font-family: 'Outfit', sans-serif;
+        color: var(--text);
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        text-align: left;
+      }
+
+      :global(.footer-links) {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        text-align: left;
+      }
+
+      :global(.footer-link:any-link) {
+        color: var(--muted);
+        text-decoration: none;
+        transition: color 0.2s, transform 0.2s;
+        display: inline-block;
+      }
+
+      :global(.footer-link:hover) {
+        color: var(--accent);
+        transform: translateX(2px);
+      }
+
+      :global(.footer-subscribe-form) {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+      }
+
+      :global(.footer-input) {
+        background: var(--footer-input-bg);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        color: #e2e8f0;
+        font-size: 0.88rem;
+        flex-grow: 1;
+        outline: none;
+      }
+
+      :global(.footer-input:focus) {
+        border-color: var(--accent);
+      }
+
+      :global(.footer-btn) {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 0.6rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.88rem;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      :global(.footer-btn:hover) {
+        background: #0f766e;
+      }
+
+      :global(.footer-bottom) {
+        max-width: 1200px;
+        margin: 0 auto;
+        border-top: 1px solid var(--border);
+        padding-top: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+      }
+
+      :global(.footer-badge-list) {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+      }
+
+      :global(.footer-badge) {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        border: 1px solid var(--border);
+        padding: 0.25rem 0.6rem;
+        border-radius: 4px;
+        color: var(--muted);
+      }
+
+      @media (max-width: 900px) {
+        :global(.footer-container) {
+          grid-template-columns: 1fr 1fr;
+          gap: 2.5rem;
+        }
+      }
+
+      @media (max-width: 600px) {
+        :global(.footer-container) {
+          grid-template-columns: 1fr;
+        }
+        :global(.footer-bottom) {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+
+    <!-- Page-specific head content (extra meta tags, page-level styles) -->
+    <slot name="head" />
+  </head>
+  <body>
+    <!-- ============================================================
+    NAVBAR
+    ============================================================ -->
+    <nav class="navbar">
+      <div class="nav-container">
+        <a href="/" class="logo-link"><div class="logo">iMedipedia</div></a>
+        <div class="nav-links">
+          <a href="/" class:list={["nav-link", { active: currentPage === 'home' }]}>Home</a>
+          <a href="/general" class:list={["nav-link", { active: currentPage === 'general' }]}>Research Digest</a>
+          <a href="/update" class:list={["nav-link", { active: currentPage === 'update' }]}>Advances</a>
+          <a href="/cases" class:list={["nav-link", { active: currentPage === 'cases' }]}>Case Reports</a>
+          <a href="/education" class:list={["nav-link", { active: currentPage === 'education' }]}>CME &amp; Learning</a>
+          <a href="/contributors" class:list={["btn-contributors", { active: currentPage === 'contributors' }]}>Contributors</a>
+          <button class="btn-contact" id="contactNavBtn">Contact</button>
+          <button id="themeToggle" class="theme-btn">☀️</button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ============================================================
+    PAGE CONTENT
+    ============================================================ -->
+    <slot />
+
+    <!-- ============================================================
+    CONTACT MODAL
+    ============================================================ -->
+    <div id="contactModal" class="contact-modal">
+      <div class="contact-modal-content">
+        <button id="closeContactModal" class="contact-modal-close" aria-label="Close">&times;</button>
+
+        <div id="contactFormContainer">
+          <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 700; margin-top: 0; margin-bottom: 0.5rem;">Contact iMedipedia</h2>
+          <p style="color: var(--muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Have questions, feedback, or a submission inquiry? Reach out and our team will get back to you.</p>
+
+          <form id="contactForm" style="display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+              <label for="contactName" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--muted);">Full Name</label>
+              <input type="text" id="contactName" required style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.1); color: var(--text); font-size: 0.95rem;" />
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+              <label for="contactEmail" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--muted);">Email Address</label>
+              <input type="email" id="contactEmail" required style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.1); color: var(--text); font-size: 0.95rem;" />
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+              <label for="contactSubject" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--muted);">Subject</label>
+              <input type="text" id="contactSubject" required style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.1); color: var(--text); font-size: 0.95rem;" />
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+              <label for="contactMessage" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--muted);">Message</label>
+              <textarea id="contactMessage" required style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.1); color: var(--text); font-size: 0.95rem; min-height: 100px; resize: vertical; font-family: inherit;"></textarea>
+            </div>
+            <button type="submit" style="background: #0d9488; color: white; border: none; padding: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem;">Send Message &rarr;</button>
+          </form>
+        </div>
+
+        <div id="contactSuccessState" style="display: none; flex-direction: column; align-items: center; text-align: center; padding: 2rem 0;">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1.5rem; border: 2px solid #10b981;">&#10003;</div>
+          <h3 style="font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 700; margin-bottom: 0.75rem;">Message Sent</h3>
+          <p style="color: var(--muted); font-size: 1rem; line-height: 1.6; max-width: 400px;">Thank you for contacting iMedipedia. Our editorial board or support team will respond to your inquiry shortly.</p>
+          <button id="contactSuccessCloseBtn" style="background: transparent; border: 1px solid var(--border); color: var(--text); padding: 0.6rem 1.5rem; font-weight: 600; border-radius: 8px; cursor: pointer; margin-top: 1.5rem;">Close Window</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+    FOOTER
+    ============================================================ -->
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-brand-section">
+          <div class="footer-logo">iMedipedia</div>
+          <p class="footer-text">An open-access, peer-reviewed medical and scientific research platform. Providing evidence-based summaries, clinical updates, and board review insights for practitioners globally.</p>
+          <div class="footer-disclaimer">
+            <strong>Disclaimer:</strong> The contents of iMedipedia are for educational and informational purposes only. This platform does not provide professional medical advice, diagnosis, or treatment.
+          </div>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Research Digests</h4>
+          <div class="footer-links">
+            <a href="/general" class="footer-link">Clinical &amp; Research Digest</a>
+            <a href="/update" class="footer-link">Clinical Advances</a>
+            <a href="/cases" class="footer-link">Case Reports Database</a>
+            <a href="/education" class="footer-link">Board Prep &amp; CME</a>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Contributors</h4>
+          <div class="footer-links">
+            <a href="/contributors" class="footer-link">Our Medical Authors</a>
+            <a href="/contributors" class="footer-link">Join as Contributor</a>
+            <a href="/contributors/dashboard" class="footer-link">Author Dashboard</a>
+            <a href="/contributors" class="footer-link">Editorial Board</a>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Subscribe to Digest</h4>
+          <p class="footer-text" style="font-size: 0.85rem;">Get weekly clinical summaries and board questions straight to your inbox.</p>
+          <form class="footer-subscribe-form" onsubmit="event.preventDefault(); alert('Subscribed successfully!'); this.reset();">
+            <input type="email" placeholder="professional@email.com" class="footer-input" required style="outline: none;" />
+            <button type="submit" class="footer-btn">Join</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div class="footer-text" style="font-size: 0.85rem; margin: 0;">
+          &copy; {new Date().getFullYear()} iMedipedia. All rights reserved.
+        </div>
+        <div class="footer-badge-list">
+          <span class="footer-badge">Evidence-Based</span>
+          <span class="footer-badge">Peer-Reviewed</span>
+          <span class="footer-badge">HONcode Compliant</span>
+        </div>
+      </div>
+    </footer>
+
+    <!-- ============================================================
+    COMMON SCRIPTS: theme toggle + contact modal
+    ============================================================ -->
+    <script is:inline>
+      // Update the theme toggle icon to match what the blocking script set
+      (function(){
+        var tt = document.getElementById('themeToggle');
+        if (tt) {
+          tt.textContent = (localStorage.getItem('theme') || 'dark') === 'dark' ? '☀️' : '🌙';
+        }
+      })();
+
+      // Theme Toggle
+      var themeToggle = document.getElementById('themeToggle');
+      if (themeToggle) {
+        themeToggle.addEventListener('click', function () {
+          var current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', current);
+          localStorage.setItem('theme', current);
+          themeToggle.textContent = current === 'dark' ? '☀️' : '🌙';
+        });
+      }
+
+      // Contact Modal
+      (function(){
+        var contactNavBtn = document.getElementById('contactNavBtn');
+        var contactModal = document.getElementById('contactModal');
+        var closeContactModal = document.getElementById('closeContactModal');
+        var contactForm = document.getElementById('contactForm');
+        var contactFormContainer = document.getElementById('contactFormContainer');
+        var contactSuccessState = document.getElementById('contactSuccessState');
+        var contactSuccessCloseBtn = document.getElementById('contactSuccessCloseBtn');
+
+        if (contactNavBtn && contactModal) {
+          contactNavBtn.addEventListener('click', function () {
+            contactModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+          });
+
+          var closeDialog = function () {
+            contactModal.classList.remove('active');
+            document.body.style.overflow = '';
+            setTimeout(function () {
+              if (contactForm) contactForm.reset();
+              if (contactFormContainer) contactFormContainer.style.display = 'block';
+              if (contactSuccessState) contactSuccessState.style.display = 'none';
+            }, 300);
+          };
+
+          if (closeContactModal) closeContactModal.addEventListener('click', closeDialog);
+          if (contactSuccessCloseBtn) contactSuccessCloseBtn.addEventListener('click', closeDialog);
+
+          contactModal.addEventListener('click', function (e) {
+            if (e.target === contactModal) closeDialog();
+          });
+
+          if (contactForm) {
+            contactForm.addEventListener('submit', function (e) {
+              e.preventDefault();
+              if (contactFormContainer) contactFormContainer.style.display = 'none';
+              if (contactSuccessState) contactSuccessState.style.display = 'flex';
+            });
+          }
+        }
+      })();
+    </script>
+
+    <!-- Page-specific scripts -->
+    <slot name="scripts" />
+  </body>
+</html>

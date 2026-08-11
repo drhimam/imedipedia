@@ -1,0 +1,28 @@
+{
+  "name": "medblog",
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "tina:dev": "tinacms dev -c \"astro dev\"",
+    "tina:build": "tinacms build"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^11.2.0",
+    "@aws-sdk/client-ses": "^3.600.0",
+    "@cloudflare/workerd-windows-64": "^1.20260809.1",
+    "@esbuild/win32-x64": "^0.21.5",
+    "@rollup/rollup-win32-x64-msvc": "4.62.4",
+    "astro": "^4.15.0",
+    "esbuild": "0.21.5",
+    "tinacms": "^2.2.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@tinacms/cli": "^1.6.0"
+  }
+}

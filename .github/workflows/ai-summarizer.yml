@@ -1,0 +1,76 @@
+name: Clinical Words Rewriter AI
+on:
+  push:
+    paths:
+      - 'src/content/blog/**/*.md'
+
+jobs:
+  simplify-clinical-text:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            src/content/blog/**/*.md
+
+      - name: Process clinical language
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          AI_API_BASE_URL: ${{ secrets.AI_API_BASE_URL }}
+          AI_MODEL_NAME: ${{ secrets.AI_MODEL_NAME }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo "Processing file: $file"
+            
+            # Read article content
+            CONTENT=$(cat "$file")
+            
+            # Request AI rewrites of hyper-complex clinical words into plain English
+            RESPONSE=$(curl -s -X POST "${AI_API_BASE_URL}/chat/completions" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${AI_API_KEY}" \
+              -d @- <<EOF
+          {
+            "model": "${AI_MODEL_NAME}",
+            "messages": [
+              {
+                "role": "system",
+                "content": "You are a medical copyeditor. Rewrite the article body so that hyper-complex clinical jargon (e.g. 'glioblastoma multiforme recurrence trajectory immunotherapy') is described in plain, accessible English, while maintaining scientific accuracy. Keep the frontmatter exactly intact."
+              },
+              {
+                "role": "user",
+                "content": $(jq -Rs . <<< "$CONTENT")
+              }
+            ],
+            "temperature": 0.2
+          }
+          EOF
+          )
+            
+            # Extract rewritten text
+            REWRITTEN_CONTENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
+            
+            if [ "$REWRITTEN_CONTENT" != "null" ] && [ -n "$REWRITTEN_CONTENT" ]; then
+              echo "$REWRITTEN_CONTENT" > "$file"
+              echo "Successfully simplified $file"
+            else
+              echo "AI Rewrite failed or returned empty content for $file"
+              exit 1
+            fi
+          done
+
+      - name: Commit and Push simplified changes
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          git config --global user.name "clinical-rewriter-bot"
+          git config --global user.email "bot@medicalblog.org"
+          git add src/content/blog/**/*.md
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore(ai): simplify clinical jargon to plain English" && git push)

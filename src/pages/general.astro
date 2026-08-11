@@ -1,0 +1,260 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+export const prerender = false;
+
+const posts = await getCollection('blog');
+const generalPosts = posts.filter(p => p.data.type === 'general' || !p.data.type);
+
+const { searchParams } = Astro.url;
+const subject = searchParams.get('subject');
+const topic = searchParams.get('topic');
+const articleSlug = searchParams.get('article');
+const pageStr = searchParams.get('page');
+const page = pageStr ? parseInt(pageStr, 10) : 1;
+const pageSize = 10;
+
+let selectedPost = null;
+let Content = null;
+if (articleSlug) {
+  selectedPost = generalPosts.find(p => p.id.replace(/\.md$/, '') === articleSlug);
+  if (selectedPost) {
+    const rendered = await selectedPost.render();
+    Content = rendered.Content;
+  }
+}
+
+let filteredPosts = generalPosts;
+if (subject) filteredPosts = filteredPosts.filter(p => p.data.subject === subject);
+if (topic) filteredPosts = filteredPosts.filter(p => p.data.topic === topic);
+filteredPosts = filteredPosts.sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+
+const totalArticles = filteredPosts.length;
+const totalPages = Math.ceil(totalArticles / pageSize);
+const paginatedPosts = filteredPosts.slice((page - 1) * pageSize, page * pageSize);
+
+const subjects = Array.from(new Set(generalPosts.map(p => p.data.subject).filter(Boolean))).sort();
+const activeSubject = subject || (selectedPost && selectedPost.data.subject) || null;
+const activeTopic = topic || (selectedPost && selectedPost.data.topic) || null;
+
+let topics: string[] = [];
+if (activeSubject) {
+  topics = Array.from(new Set(generalPosts.filter(p => p.data.subject === activeSubject).map(p => p.data.topic).filter(Boolean))).sort();
+}
+
+let topicArticles: any[] = [];
+if (activeSubject && activeTopic) {
+  topicArticles = generalPosts.filter(p => p.data.subject === activeSubject && p.data.topic === activeTopic);
+}
+---
+
+<BaseLayout
+  title={selectedPost ? `${selectedPost.data.title} - iMedipedia Research Digest` : 'Research Digest - iMedipedia Medical Research'}
+  description={selectedPost?.data.description}
+  currentPage="general"
+>
+  <slot name="head">
+    <style>
+      .breadcrumbs {
+        max-width: 1200px;
+        margin: 2rem auto 0 auto;
+        padding: 0 1.5rem;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      .breadcrumbs a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+      .breadcrumbs a:hover { color: var(--accent); }
+
+      .layout {
+        max-width: 1200px;
+        margin: 2rem auto 4rem auto;
+        padding: 0 1.5rem;
+        display: grid;
+        grid-template-columns: 2.5fr 1fr;
+        gap: 2.5rem;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .left-panel { min-width: 0; }
+      .right-panel { display: flex; flex-direction: column; gap: 2rem; }
+      .sidebar-widget { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+      .widget-title { font-family: 'Outfit', sans-serif; font-size: 1.2rem; font-weight: 600; margin-top: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; color: var(--text); }
+      .sidebar-links { display: flex; flex-direction: column; gap: 0.5rem; }
+      .sidebar-link { color: var(--muted); text-decoration: none; font-size: 0.95rem; padding: 0.5rem; border-radius: 6px; transition: all 0.2s; display: block; }
+      .sidebar-link:hover, .sidebar-link.active { color: var(--accent); background: rgba(99, 102, 241, 0.05); }
+      .nested-articles { margin-left: 1rem; border-left: 1px solid var(--border); padding-left: 0.75rem; margin-top: 0.25rem; display: flex; flex-direction: column; gap: 0.25rem; }
+      .nested-article-link { font-size: 0.85rem; color: var(--muted); text-decoration: none; padding: 0.25rem 0.5rem; display: block; border-radius: 4px; }
+      .nested-article-link:hover, .nested-article-link.active { color: var(--accent); background: rgba(99, 102, 241, 0.05); }
+
+      .articles-list { display: flex; flex-direction: column; gap: 1.5rem; }
+      .article-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; display: flex; gap: 1.5rem; padding: 1.25rem; transition: transform 0.2s, border-color 0.2s; }
+      .article-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+      .thumb-container { width: 180px; height: 120px; border-radius: 8px; overflow: hidden; background: #090d16; flex-shrink: 0; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+      .thumb-img { width: 100%; height: 100%; object-fit: cover; }
+      .placeholder-thumb { color: #64748b; font-weight: bold; font-size: 0.9rem; }
+      .card-info { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; flex-grow: 1; }
+      .card-title-link { text-decoration: none; color: var(--text); }
+      .card-title { font-family: 'Outfit', sans-serif; font-size: 1.3rem; margin: 0 0 0.5rem 0; line-height: 1.3; transition: color 0.2s; }
+      .card-title:hover { color: var(--accent); }
+      .card-desc { color: var(--muted); font-size: 0.95rem; margin: 0 0 1rem 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .card-meta { font-size: 0.8rem; color: var(--muted); display: flex; gap: 1rem; }
+
+      .pagination { display: flex; justify-content: center; gap: 0.5rem; margin-top: 3rem; }
+      .page-btn { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.2s; }
+      .page-btn:hover, .page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+      .article-view { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; }
+      .article-header { border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+      .article-title { font-family: 'Outfit', sans-serif; font-size: 2.5rem; margin: 0.5rem 0; line-height: 1.2; }
+      .article-meta { color: var(--muted); font-size: 0.95rem; display: flex; gap: 1.5rem; }
+      .article-image-container { border-radius: 12px; overflow: hidden; margin-bottom: 2rem; border: 1px solid var(--border); background: #090d16; max-height: 450px; }
+      .article-image { width: 100%; height: auto; display: block; }
+      .tldr-box { background: rgba(99, 102, 241, 0.05); border-left: 4px solid var(--accent); padding: 1.25rem; border-radius: 4px; margin-bottom: 2rem; font-style: italic; }
+      .article-body { font-size: 1.1rem; line-height: 1.7; }
+      .article-body h2 { font-family: 'Outfit', sans-serif; color: var(--text); margin-top: 2rem; }
+      .article-body p { margin-bottom: 1.5rem; }
+
+      .search-box { margin-bottom: 2rem; position: relative; }
+      .search-input { width: 100%; padding: 0.75rem 1.25rem; border-radius: 30px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 0.95rem; transition: border-color 0.2s; box-sizing: border-box; }
+      .search-input:focus { outline: none; border-color: var(--accent); }
+
+      @media (max-width: 900px) {
+        .layout { grid-template-columns: 1fr; }
+        .article-card { flex-direction: column; }
+        .thumb-container { width: 100%; height: 200px; }
+      }
+    </style>
+  </slot>
+
+  <div class="breadcrumbs">
+    <a href="/">Home</a>
+    <span>&gt;</span>
+    {
+      selectedPost ? (<>
+        <a href="/general">Research Digest</a>
+        {selectedPost.data.subject && (<><span>&gt;</span><a href={`/general?subject=${encodeURIComponent(selectedPost.data.subject)}`}>{selectedPost.data.subject}</a></>)}
+        <span>&gt;</span><span style="color: var(--text); font-weight: 500;">{selectedPost.data.title}</span>
+      </>) : subject ? (<>
+        <a href="/general">Research Digest</a><span>&gt;</span>
+        {topic ? (<><a href={`/general?subject=${encodeURIComponent(subject)}`}>{subject}</a><span>&gt;</span><span style="color: var(--text); font-weight: 500;">{topic}</span></>) : <span style="color: var(--text); font-weight: 500;">{subject}</span>}
+      </>) : <span style="color: var(--text); font-weight: 500;">Research Digest</span>
+    }
+  </div>
+
+  <div class="layout">
+    <main class="left-panel">
+      {selectedPost && Content ? (
+        <article class="article-view">
+          <header class="article-header">
+            <div class="article-meta"><span>Published {selectedPost.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span><span>By {selectedPost.data.author}</span></div>
+            <h1 class="article-title">{selectedPost.data.title}</h1>
+          </header>
+          {selectedPost.data.image && <div class="article-image-container"><img src={selectedPost.data.image} class="article-image" alt={selectedPost.data.title} /></div>}
+          <div class="tldr-box"><strong>TL;DR Summary:</strong> {selectedPost.data.description}</div>
+          <div class="article-body"><Content /></div>
+        </article>
+      ) : (<>
+        <div class="search-box">
+          <input type="text" id="searchInput" class="search-input" placeholder="Search articles, subjects, or authors..." />
+        </div>
+        <div class="articles-list">
+          {paginatedPosts.length > 0 ? paginatedPosts.map(post => {
+            const postSlug = post.id.replace(/\.md$/, '');
+            return (
+              <article class="article-card" data-title={post.data.title.toLowerCase()} data-author={post.data.author.toLowerCase()} data-desc={post.data.description.toLowerCase()} data-subject={post.data.subject ? post.data.subject.toLowerCase() : ''}>
+                <div class="thumb-container">{post.data.image ? <img src={post.data.image} class="thumb-img" alt={post.data.title} /> : <div class="placeholder-thumb">iMedipedia</div>}</div>
+                <div class="card-info">
+                  <div>
+                    <a href={`/general?article=${postSlug}`} class="card-title-link"><h2 class="card-title">{post.data.title}</h2></a>
+                    <p class="card-desc">{post.data.description}</p>
+                  </div>
+                  <div class="card-meta">
+                    <span>By {post.data.author}</span>
+                    <span>{post.data.pubDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    {post.data.subject && <span style="color: var(--accent); font-weight: 500;">{post.data.subject}</span>}
+                  </div>
+                </div>
+              </article>
+            );
+          }) : (
+            <div style="text-align: center; padding: 4rem; color: var(--muted); background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);">
+              <h3>No articles found</h3><p>Try clearing your filters to see more results.</p>
+              <a href="/general" class="theme-btn" style="display: inline-block; margin-top: 1rem; text-decoration: none;">Show All Articles</a>
+            </div>
+          )}
+        </div>
+        {totalPages > 1 && (
+          <div class="pagination">
+            {Array.from({ length: totalPages }).map((_, idx) => {
+              const pageNum = idx + 1;
+              const url = new URL(Astro.url);
+              url.searchParams.set('page', pageNum.toString());
+              return <a href={url.search} class={`page-btn ${pageNum === page ? 'active' : ''}`}>{pageNum}</a>;
+            })}
+          </div>
+        )}
+      </>)}
+    </main>
+
+    <aside class="right-panel">
+      {selectedPost ? (
+        <div class="sidebar-widget">
+          <h3 class="widget-title">{activeSubject ? `${activeSubject} Topics` : 'Topics'}</h3>
+          <nav class="sidebar-links">
+            {topics.map(t => {
+              const isActiveTopic = t === activeTopic;
+              return (
+                <div>
+                  <a href={`/general?subject=${encodeURIComponent(activeSubject)}&topic=${encodeURIComponent(t)}`} class={`sidebar-link ${isActiveTopic ? 'active' : ''}`}>📁 {t}</a>
+                  {isActiveTopic && topicArticles.length > 0 && (
+                    <div class="nested-articles">
+                      {topicArticles.map(p => {
+                        const pSlug = p.id.replace(/\.md$/, '');
+                        return <a href={`/general?article=${pSlug}`} class={`nested-article-link ${pSlug === articleSlug ? 'active' : ''}`}>📄 {p.data.title}</a>;
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </div>
+      ) : activeSubject ? (
+        <div class="sidebar-widget">
+          <h3 class="widget-title">{activeSubject} Topics</h3>
+          <nav class="sidebar-links">
+            {topics.map(t => <a href={`/general?subject=${encodeURIComponent(activeSubject)}&topic=${encodeURIComponent(t)}`} class={`sidebar-link ${t === activeTopic ? 'active' : ''}`}>📁 {t}</a>)}
+            <a href="/general" class="sidebar-link" style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 0.75rem; text-align: center; color: var(--accent);">&larr; Back to Subjects</a>
+          </nav>
+        </div>
+      ) : (
+        <div class="sidebar-widget">
+          <h3 class="widget-title">Subjects</h3>
+          <nav class="sidebar-links">
+            {subjects.map(s => <a href={`/general?subject=${encodeURIComponent(s)}`} class="sidebar-link">🏷️ {s}</a>)}
+          </nav>
+        </div>
+      )}
+    </aside>
+  </div>
+
+  <slot name="scripts">
+    <script is:inline>
+      var searchInput = document.getElementById('searchInput');
+      var articleCards = document.querySelectorAll('.article-card');
+      if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+          var query = e.target.value.toLowerCase();
+          articleCards.forEach(function(card) {
+            var title = card.getAttribute('data-title') || '';
+            var author = card.getAttribute('data-author') || '';
+            var desc = card.getAttribute('data-desc') || '';
+            var subject = card.getAttribute('data-subject') || '';
+            card.style.display = (title.includes(query) || author.includes(query) || desc.includes(query) || subject.includes(query)) ? 'flex' : 'none';
+          });
+        });
+      }
+    </script>
+  </slot>
+</BaseLayout>
