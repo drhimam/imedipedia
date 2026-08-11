@@ -40,8 +40,104 @@ if (Astro.request) {
 ---
 
 <BaseLayout title={SITE_TITLE}>
-  <main class="main-content" style="max-width:1200px;margin:3rem auto;padding:0 1.5rem;">
-    <header class="portal-header" style="text-align:center;margin-bottom:3rem;">
+  <!-- Admin Top Bar -->
+  <header class="admin-topbar" id="adminTopbar">
+    <div class="topbar-left">
+      <span class="topbar-logo">⚕️ iMedipedia</span>
+      <span class="topbar-badge">Admin</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-user" id="topbarUserName">Loading...</span>
+      <button class="topbar-btn" onclick="openSettings()" title="Settings">⚙️</button>
+      <button class="topbar-btn topbar-logout" onclick="doLogout()" title="Logout">↪️</button>
+    </div>
+  </header>
+
+  <!-- Settings Drawer Overlay -->
+  <div class="drawer-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
+  <div class="settings-drawer" id="settingsDrawer">
+    <div class="drawer-header">
+      <h2>⚙️ Settings</h2>
+      <button class="drawer-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="drawer-body">
+      <!-- Profile Section -->
+      <section class="drawer-section">
+        <h3 class="drawer-section-title">Profile</h3>
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input class="form-input" type="text" id="settingsFullName" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" type="email" id="settingsEmail" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Affiliation</label>
+          <input class="form-input" type="text" id="settingsAffiliation" placeholder="Hospital / Institution">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Specialty</label>
+          <input class="form-input" type="text" id="settingsSpecialty" placeholder="e.g. Cardiology">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bio</label>
+          <textarea class="form-input form-textarea" id="settingsBio" placeholder="Short bio..." rows="3"></textarea>
+        </div>
+        <button class="btn btn-sm" onclick="saveProfile()">Save Profile</button>
+        <div id="profileMsg" class="alert" style="display:none;margin-top:0.75rem;"></div>
+      </section>
+
+      <!-- Password Change -->
+      <section class="drawer-section">
+        <h3 class="drawer-section-title">Change Password</h3>
+        <div class="form-group">
+          <label class="form-label">Current Password</label>
+          <input class="form-input" type="password" id="settingsCurPwd" placeholder="Current password">
+        </div>
+        <div class="form-group">
+          <label class="form-label">New Password (min 8 chars)</label>
+          <input class="form-input" type="password" id="settingsNewPwd" placeholder="New password">
+        </div>
+        <button class="btn btn-sm" onclick="changePassword()">Update Password</button>
+        <div id="pwdMsg" class="alert" style="display:none;margin-top:0.75rem;"></div>
+      </section>
+
+      <!-- MFA -->
+      <section class="drawer-section">
+        <h3 class="drawer-section-title">Two-Factor Authentication</h3>
+        <p id="mfaStatusText" style="color:var(--muted);font-size:0.9rem;margin:0 0 0.5rem;">Checking...</p>
+        <div id="mfaDisabled" style="display:none;">
+          <button class="btn btn-sm btn-secondary" onclick="setupMFA()">Set Up MFA</button>
+        </div>
+        <div id="mfaSetupArea" style="display:none;">
+          <p style="color:var(--muted);font-size:0.85rem;margin:0 0 0.5rem;">Enter this key in your authenticator app:</p>
+          <div id="mfaSecretDisplay" style="background:rgba(0,0,0,0.1);padding:0.75rem;border-radius:8px;font-family:monospace;font-size:1rem;text-align:center;word-break:break-all;margin-bottom:0.75rem;"></div>
+          <div class="form-group">
+            <label class="form-label">Verification Code</label>
+            <div style="display:flex;gap:0.5rem;">
+              <input class="form-input" type="text" id="mfaCode" placeholder="6-digit code" maxlength="6" style="flex:1;">
+              <button class="btn btn-sm" onclick="verifyMFA()">Verify</button>
+            </div>
+          </div>
+        </div>
+        <div id="mfaMsg" class="alert" style="display:none;margin-top:0.75rem;"></div>
+      </section>
+
+      <!-- Theme -->
+      <section class="drawer-section">
+        <h3 class="drawer-section-title">Appearance</h3>
+        <div class="theme-options" id="themeOptions">
+          <button class="theme-opt" data-theme="dark" onclick="setTheme('dark')">🌙 Dark</button>
+          <button class="theme-opt" data-theme="light" onclick="setTheme('light')">☀️ Light</button>
+          <button class="theme-opt" data-theme="system" onclick="setTheme('system')">💻 System</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <main class="main-content" style="max-width:1200px;margin:2rem auto;padding:0 1.5rem;">
+    <header class="portal-header" style="text-align:center;margin-bottom:2rem;">
       <h1 style="font-family:'Outfit',sans-serif;font-size:2.5rem;font-weight:800;margin-bottom:0.5rem;">Admin Dashboard</h1>
       <p style="color:var(--muted);font-size:1.1rem;">Manage applications, submissions, articles, and images</p>
     </header>
@@ -96,6 +192,62 @@ if (Astro.request) {
 </BaseLayout>
 
 <style>
+  /* Admin Top Bar */
+  .admin-topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.75rem 1.5rem; background: var(--card-bg);
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(10px);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 0.75rem; }
+  .topbar-logo { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.1rem; }
+  .topbar-badge { background: var(--accent); color: white; padding: 0.15rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .topbar-right { display: flex; align-items: center; gap: 0.5rem; }
+  .topbar-user { font-size: 0.85rem; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-btn { background: transparent; border: 1px solid var(--border); color: var(--text); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .topbar-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+  .topbar-logout:hover { background: #ef4444; border-color: #ef4444; }
+
+  /* Settings Drawer */
+  .drawer-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 90; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  .drawer-overlay.open { opacity: 1; pointer-events: auto; }
+  .settings-drawer { position: fixed; top: 0; right: 0; width: 420px; max-width: 90vw; height: 100%; background: var(--card-bg); z-index: 100; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); overflow-y: auto; box-shadow: -4px 0 30px rgba(0,0,0,0.2); }
+  .settings-drawer.open { transform: translateX(0); }
+  .drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--card-bg); z-index: 1; }
+  .drawer-header h2 { font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 700; margin: 0; }
+  .drawer-close { background: transparent; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .drawer-close:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+  .drawer-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+  .drawer-section { border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+  .drawer-section-title { font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 700; margin: 0 0 1rem; }
+
+  /* Forms */
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }
+  .form-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .form-input { padding: 0.6rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: rgba(0,0,0,0.08); color: var(--text); font-size: 0.9rem; width: 100%; box-sizing: border-box; }
+  :global([data-theme="light"]) .form-input { background: rgba(255,255,255,0.8); }
+  .form-input:focus { outline: none; border-color: var(--accent); }
+  .form-textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+  .btn { background: var(--accent); color: #fff; border: none; padding: 0.7rem 1.25rem; font-size: 0.9rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.9; }
+  .btn-sm { padding: 0.5rem 1rem; font-size: 0.85rem; }
+  .btn-secondary { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+  .btn-secondary:hover { background: var(--accent); color: white; opacity: 1; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Theme Options */
+  .theme-options { display: flex; gap: 0.5rem; }
+  .theme-opt { flex: 1; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.15s; }
+  .theme-opt:hover { border-color: var(--accent); }
+  .theme-opt.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* Alert */
+  .alert { padding: 0.6rem 0.75rem; border-radius: 6px; font-size: 0.8rem; }
+  .alert-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #10b981; }
+  .alert-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+  .alert-info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; }
+
+  /* Tab Navigation */
   .tab-nav-btn {
     background: transparent;
     border: none;
@@ -149,7 +301,164 @@ if (Astro.request) {
 </style>
 
 <script>
-  // --- Tab Switching ---
+  // ========== ADMIN TOP BAR & SETTINGS ==========
+
+  let currentProfile = null;
+
+  async function loadUserInfo() {
+    try {
+      const resp = await fetch('/api/profile/get');
+      const data = await resp.json();
+      if (data.profile) {
+        currentProfile = data.profile;
+        document.getElementById('topbarUserName').textContent = data.profile.full_name || data.profile.username;
+        // Pre-fill settings form
+        document.getElementById('settingsFullName').value = data.profile.full_name || '';
+        document.getElementById('settingsEmail').value = data.profile.email || '';
+        document.getElementById('settingsAffiliation').value = data.profile.affiliation || '';
+        document.getElementById('settingsSpecialty').value = data.profile.specialty || '';
+        document.getElementById('settingsBio').value = data.profile.bio || '';
+        // MFA status
+        const mfaEnabled = data.profile.mfa_enabled;
+        document.getElementById('mfaStatusText').textContent = mfaEnabled ? '✅ MFA is enabled' : '⚠️ MFA is not set up';
+        document.getElementById('mfaDisabled').style.display = mfaEnabled ? 'none' : 'block';
+      }
+    } catch (e) {
+      document.getElementById('topbarUserName').textContent = 'Admin';
+    }
+    highlightActiveTheme();
+  }
+
+  // Settings Drawer
+  function openSettings() {
+    document.getElementById('settingsDrawer').classList.add('open');
+    document.getElementById('settingsOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSettings() {
+    document.getElementById('settingsDrawer').classList.remove('open');
+    document.getElementById('settingsOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  // Logout
+  function doLogout() {
+    if (confirm('Are you sure you want to log out?')) {
+      document.cookie = 'session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      sessionStorage.clear();
+      window.location.href = '/admin/login';
+    }
+  }
+
+  // Save Profile
+  async function saveProfile() {
+    const msg = document.getElementById('profileMsg');
+    try {
+      const resp = await fetch('/api/profile/update', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          full_name: document.getElementById('settingsFullName').value,
+          email: document.getElementById('settingsEmail').value,
+          affiliation: document.getElementById('settingsAffiliation').value,
+          specialty: document.getElementById('settingsSpecialty').value,
+          bio: document.getElementById('settingsBio').value,
+        })
+      });
+      const data = await resp.json();
+      msg.textContent = data.message || data.error;
+      msg.className = data.success ? 'alert alert-success' : 'alert alert-error';
+      msg.style.display = 'block';
+      if (data.success) loadUserInfo();
+    } catch (e) {
+      msg.textContent = 'Network error';
+      msg.className = 'alert alert-error';
+      msg.style.display = 'block';
+    }
+  }
+
+  // Change Password
+  async function changePassword() {
+    const msg = document.getElementById('pwdMsg');
+    const cur = document.getElementById('settingsCurPwd').value;
+    const neu = document.getElementById('settingsNewPwd').value;
+    if (!cur || !neu) { msg.textContent = 'Both fields required.'; msg.className = 'alert alert-error'; msg.style.display = 'block'; return; }
+    if (neu.length < 8) { msg.textContent = 'New password must be at least 8 characters.'; msg.className = 'alert alert-error'; msg.style.display = 'block'; return; }
+    try {
+      const resp = await fetch('/api/auth/change-password', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ currentPassword: cur, newPassword: neu })
+      });
+      const data = await resp.json();
+      msg.textContent = data.message || data.error;
+      msg.className = data.success ? 'alert alert-success' : 'alert alert-error';
+      msg.style.display = 'block';
+      if (data.success) { document.getElementById('settingsCurPwd').value = ''; document.getElementById('settingsNewPwd').value = ''; }
+    } catch (e) {
+      msg.textContent = 'Network error';
+      msg.className = 'alert alert-error';
+      msg.style.display = 'block';
+    }
+  }
+
+  // MFA Setup
+  async function setupMFA() {
+    try {
+      const resp = await fetch('/api/auth/setup-totp', { method: 'POST' });
+      const data = await resp.json();
+      if (data.success) {
+        document.getElementById('mfaSecretDisplay').textContent = data.secret;
+        document.getElementById('mfaSetupArea').style.display = 'block';
+        document.getElementById('mfaDisabled').style.display = 'none';
+      }
+    } catch (e) { console.error(e); }
+  }
+  async function verifyMFA() {
+    const code = document.getElementById('mfaCode').value;
+    const msg = document.getElementById('mfaMsg');
+    try {
+      const resp = await fetch('/api/auth/verify-totp', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ code })
+      });
+      const data = await resp.json();
+      if (data.success) {
+        msg.textContent = 'MFA enabled!';
+        msg.className = 'alert alert-success';
+        document.getElementById('mfaSetupArea').style.display = 'none';
+        document.getElementById('mfaStatusText').textContent = '✅ MFA is enabled';
+        document.getElementById('mfaDisabled').style.display = 'none';
+      } else {
+        msg.textContent = data.error || 'Invalid code';
+        msg.className = 'alert alert-error';
+      }
+      msg.style.display = 'block';
+    } catch (e) {
+      msg.textContent = 'Error verifying';
+      msg.className = 'alert alert-error';
+      msg.style.display = 'block';
+    }
+  }
+
+  // Theme
+  function setTheme(theme) {
+    if (theme === 'system') {
+      localStorage.removeItem('theme');
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    } else {
+      localStorage.setItem('theme', theme);
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    highlightActiveTheme();
+  }
+  function highlightActiveTheme() {
+    const current = localStorage.getItem('theme') || 'system';
+    document.querySelectorAll('.theme-opt').forEach(b => {
+      b.classList.toggle('active', b.dataset.theme === current);
+    });
+  }
+
+  // ========== TAB SWITCHING ==========
   document.querySelectorAll('.tab-nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-nav-btn').forEach(b => b.classList.remove('active'));
@@ -442,6 +751,7 @@ if (Astro.request) {
     return (bytes/1048576).toFixed(1) + ' MB';
   }
 
-  // Load applications on page load
+  // Load on page load
+  loadUserInfo();
   loadApplications();
 </script>
