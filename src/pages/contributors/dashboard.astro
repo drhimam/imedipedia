@@ -15,8 +15,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       .profile-name { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.1rem; margin: 0 0 0.25rem 0; }
       .profile-role { font-size: 0.75rem; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
       .tab-menu { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
-      .tab-btn { background: transparent; border: none; color: var(--text); text-align: left; padding: 0.75rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem; transition: all 0.2s ease; }
-      .tab-btn:hover { background: rgba(99, 102, 241, 0.08); color: var(--accent); }
+      .tab-btn { background: transparent; border: none; color: var(--text); text-align: left; padding: 0.75rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem; transition: all 0.2s ease; font-family: inherit; }
+      .tab-btn:hover { background: rgba(99, 102, 241, 0.08); color: var(--accent); } .tab-btn:active { transform: scale(0.98); }
       .tab-btn.active { background: var(--accent); color: #ffffff; }
       .main-content { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 2.5rem; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03); min-height: 500px; }
       .tab-panel { display: none; }
@@ -55,7 +55,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       .image-slot-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
       .image-slot-title { font-weight: 700; font-size: 0.9rem; }
       .image-slot-remove { background: transparent; border: 1px solid rgba(239,68,68,0.3); color: #ef4444; padding: 0.25rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
-      .image-slot-add { background: transparent; border: 1px dashed var(--border); color: var(--accent); padding: 0.75rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; width: 100%; text-align: center; margin-top: 0.5rem; }
+      .image-slot-add { background: transparent; cursor: pointer; font-family: inherit; border: 1px dashed var(--border); color: var(--accent); padding: 0.75rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; width: 100%; text-align: center; margin-top: 0.5rem; }
       .image-preview-container { display: none; flex-direction: column; align-items: center; position: relative; margin-top: 0.75rem; }
       .image-preview { max-width: 100%; max-height: 150px; border-radius: 8px; border: 1px solid var(--border); object-fit: cover; }
       .clear-img-btn { position: absolute; top: 0.25rem; right: 0.25rem; background: rgba(3, 7, 18, 0.8); border: none; color: white; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; }
@@ -66,7 +66,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
       .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
       .btn-secondary:hover { background: rgba(99, 102, 241, 0.08); }
-      .btn-logout { background: transparent; border: 1px solid rgba(239,68,68,0.3); color: #ef4444; font-size: 0.85rem; padding: 0.5rem 1rem; }
+      .btn-logout { background: transparent; border: 1px solid rgba(239,68,68,0.3); color: #ef4444; font-size: 0.85rem; padding: 0.5rem 1rem; cursor: pointer; font-family: inherit; }
       .btn-logout:hover { background: rgba(239,68,68,0.1); }
       .table-container { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
       .submissions-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem; }
@@ -255,12 +255,12 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       var tabBtns = document.querySelectorAll('.tab-btn');
       var tabPanels = document.querySelectorAll('.tab-panel');
       tabBtns.forEach(function(btn) {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function(e) { var tab = btn.getAttribute('data-tab'); if (!tab) return; e.preventDefault();
           tabBtns.forEach(function(b) { b.classList.remove('active'); });
           tabPanels.forEach(function(p) { p.classList.remove('active'); });
           btn.classList.add('active');
           var panelId = btn.getAttribute('data-tab') + 'Panel';
-          document.getElementById(panelId).classList.add('active');
+          var panel = document.getElementById(panelId); if (panel) panel.classList.add('active');
           if (btn.getAttribute('data-tab') === 'overview' || btn.getAttribute('data-tab') === 'submissions') {
             loadSubmissions();
           }
