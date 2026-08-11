@@ -1,7 +1,42 @@
 ---
 // Admin Dashboard — Applications, Submissions, Articles, Images
+// SSR-only: verifies admin session on every request
+export const prerender = false;
+
 import BaseLayout from '../layouts/BaseLayout.astro';
 const SITE_TITLE = "Admin Dashboard";
+
+// Server-side auth check
+if (Astro.request) {
+  const cookieHeader = Astro.request.headers.get("cookie") || "";
+  const match = cookieHeader.match(/session_id=([^;]+)/);
+  const sessionId = match ? match[1] : null;
+
+  if (!sessionId) {
+    return Astro.redirect("/admin/login");
+  }
+
+  try {
+    const db = Astro.locals?.runtime?.env?.D1_DB || Astro.locals?.runtime?.env?.DB;
+    if (db) {
+      const now = Math.floor(Date.now() / 1000);
+      const session = await db.prepare("SELECT * FROM sessions WHERE id = ? AND expires_at > ?")
+        .bind(sessionId, now).first();
+
+      if (!session) {
+        return Astro.redirect("/admin/login");
+      }
+
+      const user = await db.prepare("SELECT * FROM users WHERE id = ?").bind(session.user_id).first();
+      if (!user || (user.role !== 'admin' && user.role !== 'co-admin')) {
+        return Astro.redirect("/admin/login");
+      }
+    }
+  } catch (err) {
+    console.error("Admin auth error:", err.message);
+    return Astro.redirect("/admin/login");
+  }
+}
 ---
 
 <BaseLayout title={SITE_TITLE}>
