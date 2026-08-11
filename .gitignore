@@ -22,6 +22,12 @@ Thumbs.db
 # TinaCMS
 .tina/__generated__/
 
+# Wrangler / Cloudflare
+.wrangler/
+
+# Astro generated
+.astro/
+
 # Debug
 npm-debug.log*
 yarn-debug.log*
