@@ -218,6 +218,13 @@ declare module 'astro:content' {
   collection: "blog";
   data: any
 } & { render(): Render[".md"] };
+"2026/08/sound-wave-basics-detailed-study-notes-echocardiography.md": {
+	id: "2026/08/sound-wave-basics-detailed-study-notes-echocardiography.md";
+  slug: "2026/08/sound-wave-basics-detailed-study-notes-echocardiography";
+  body: string;
+  collection: "blog";
+  data: any
+} & { render(): Render[".md"] };
 "2026/08/successful-management-refractory-status-epilepticus.md": {
 	id: "2026/08/successful-management-refractory-status-epilepticus.md";
   slug: "2026/08/successful-management-refractory-status-epilepticus";

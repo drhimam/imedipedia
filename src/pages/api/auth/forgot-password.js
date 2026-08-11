@@ -1,4 +1,5 @@
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { buildPasswordResetEmail } from "../_email-template.js";
 
 export const prerender = false;
 
@@ -25,19 +26,25 @@ export async function POST({ request, locals }) {
     });
   }
 
-  const { username } = body;
-  if (!username) {
-    return new Response(JSON.stringify({ error: "Username/Email is required." }), {
+  const { username, identifier } = body;
+  const lookupValue = username || identifier;
+  if (!lookupValue) {
+    return new Response(JSON.stringify({ error: "Username or Email is required." }), {
       status: 400,
       headers: { "Content-Type": "application/json" }
     });
   }
 
   try {
-    const user = await db.prepare("SELECT * FROM users WHERE username = ?").bind(username).first();
+    // Look up user by username OR email (supports both)
+    let user = await db.prepare("SELECT * FROM users WHERE username = ?").bind(lookupValue).first();
+    if (!user) {
+      user = await db.prepare("SELECT * FROM users WHERE email = ?").bind(lookupValue).first();
+    }
+
     if (!user) {
       // Return 200 to prevent user enumeration attacks
-      return new Response(JSON.stringify({ success: true, message: "If this email is registered, a reset link will be sent." }), {
+      return new Response(JSON.stringify({ success: true, message: "If this account exists, a reset link will be sent." }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
       });
@@ -55,7 +62,7 @@ export async function POST({ request, locals }) {
       .run();
 
     // AWS SES Configurations from environment bindings or Cloudflare env
-    const awsRegion = locals.runtime?.env?.AWS_REGION || import.meta.env.AWS_REGION || "us-east-1";
+    const awsRegion = locals.runtime?.env?.AWS_REGION || import.meta.env.AWS_REGION || "ca-central-1";
     const accessKeyId = locals.runtime?.env?.AWS_ACCESS_KEY_ID || import.meta.env.AWS_ACCESS_KEY_ID;
     const secretAccessKey = locals.runtime?.env?.AWS_SECRET_ACCESS_KEY || import.meta.env.AWS_SECRET_ACCESS_KEY;
     const fromEmail = locals.runtime?.env?.SES_FROM_EMAIL || import.meta.env.SES_FROM_EMAIL;
@@ -76,22 +83,30 @@ export async function POST({ request, locals }) {
       },
     });
 
-    const resetLink = `${new URL(request.url).origin}/auth/reset-password?token=${token}`;
+    // Build reset link using the request origin for correct domain
+    const requestUrl = new URL(request.url);
+    const resetLink = `${requestUrl.origin}/contributors/reset-password?token=${token}`;
+
+    // Build branded HTML email
+    const htmlBody = buildPasswordResetEmail({
+      name: user.full_name || user.username,
+      resetLink,
+    });
 
     const sendEmailCommand = new SendEmailCommand({
       Source: fromEmail,
       Destination: {
-        ToAddresses: [username],
+        ToAddresses: [user.email || user.username],
       },
       Message: {
         Subject: {
           Charset: "UTF-8",
-          Data: "Reset Your Medical Blog Volunteer Password",
+          Data: "Reset Your iMedipedia Password",
         },
         Body: {
           Html: {
             Charset: "UTF-8",
-            Data: `<p>Hello,</p><p>A password reset request was initiated for your Volunteer account. Please click the link below to set a new password. This link is valid for 15 minutes:</p><p><a href="${resetLink}">${resetLink}</a></p><p>If you did not request this, you can ignore this email.</p>`,
+            Data: htmlBody,
           },
         },
       },
@@ -99,7 +114,7 @@ export async function POST({ request, locals }) {
 
     await sesClient.send(sendEmailCommand);
 
-    return new Response(JSON.stringify({ success: true, message: "If this email is registered, a reset link will be sent." }), {
+    return new Response(JSON.stringify({ success: true, message: "If this account exists, a reset link will be sent." }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });

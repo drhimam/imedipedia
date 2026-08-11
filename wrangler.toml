@@ -1,0 +1,26 @@
+name = "imedipedia"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database — create with: npx wrangler d1 create imedipedia-db
+# Then paste the database_id below and run: npx wrangler d1 execute imedipedia-db --file=schema.sql
+[[d1_databases]]
+binding = "DB"
+database_name = "imedipedia-db"
+database_id = "8aeee120-4b92-44e1-b9d2-5f8b1566a52b"
+
+# R2 Object Storage — create with: npx wrangler r2 bucket create imedipedia-images
+# Then enable Public Access in Cloudflare Dashboard → R2 → bucket → Settings
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "imedipedia-images"
+
+# Environment variables (values in .dev.vars for local dev, set via Cloudflare dashboard for production)
+[vars]
+AI_API_BASE_URL = ""
+AI_MODEL_NAME = ""
+AWS_REGION = "ca-central-1"
+SES_FROM_EMAIL = ""
+GITHUB_REPO = "drhimam/imedipedia"
+R2_PUBLIC_URL = "https://pub-de453f39846f4eaaad0901e220a5894f.r2.dev"
+R2_ACCOUNT_ID = "81d2ff7d82745af438ec32fd05c824d8"

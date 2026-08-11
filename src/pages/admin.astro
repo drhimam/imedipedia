@@ -1,0 +1,412 @@
+---
+// Admin Dashboard — Applications, Submissions, Articles, Images
+import BaseLayout from '../layouts/BaseLayout.astro';
+const SITE_TITLE = "Admin Dashboard";
+---
+
+<BaseLayout title={SITE_TITLE}>
+  <main class="main-content" style="max-width:1200px;margin:3rem auto;padding:0 1.5rem;">
+    <header class="portal-header" style="text-align:center;margin-bottom:3rem;">
+      <h1 style="font-family:'Outfit',sans-serif;font-size:2.5rem;font-weight:800;margin-bottom:0.5rem;">Admin Dashboard</h1>
+      <p style="color:var(--muted);font-size:1.1rem;">Manage applications, submissions, articles, and images</p>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav" style="display:flex;gap:0.25rem;border-bottom:1px solid var(--border);margin-bottom:2rem;overflow-x:auto;">
+      <button class="tab-nav-btn active" data-main-tab="applications">Applications</button>
+      <button class="tab-nav-btn" data-main-tab="submissions">Submissions</button>
+      <button class="tab-nav-btn" data-main-tab="articles">Articles</button>
+      <button class="tab-nav-btn" data-main-tab="images">Images</button>
+    </nav>
+
+    <!-- Applications Tab -->
+    <div class="tab-panel active" id="tab-applications">
+      <div id="applicationsStatus" class="alert alert-info" style="margin-bottom:1rem;display:none;"></div>
+      <div id="applicationsTable" style="overflow-x:auto;"></div>
+    </div>
+
+    <!-- Submissions Tab -->
+    <div class="tab-panel" id="tab-submissions">
+      <div id="submissionsStatus" class="alert alert-info" style="margin-bottom:1rem;display:none;"></div>
+      <div id="submissionsTable" style="overflow-x:auto;"></div>
+    </div>
+
+    <!-- Articles Tab -->
+    <div class="tab-panel" id="tab-articles">
+      <div id="articlesStatus" class="alert alert-info" style="margin-bottom:1rem;display:none;"></div>
+      <div id="articlesTable" style="overflow-x:auto;"></div>
+    </div>
+
+    <!-- Images Tab -->
+    <div class="tab-panel" id="tab-images">
+      <div id="imagesStatus" class="alert alert-info" style="margin-bottom:1rem;display:none;"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.5rem;">
+        <button class="filter-chip active" data-folder="all" onclick="filterImages('all')">All</button>
+        <button class="filter-chip" data-folder="covers" onclick="filterImages('covers')">Covers</button>
+        <button class="filter-chip" data-folder="inline" onclick="filterImages('inline')">Inline</button>
+        <button class="filter-chip" data-folder="uploads" onclick="filterImages('uploads')">Uploads</button>
+      </div>
+      <details style="margin-bottom:1.5rem;border:1px solid var(--border);border-radius:8px;padding:1rem;">
+        <summary style="cursor:pointer;font-weight:600;">Admin Image Upload</summary>
+        <div style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:flex-end;">
+          <div><label style="font-size:0.8rem;display:block;margin-bottom:0.25rem;">Name</label><input type="text" id="adminImageName" placeholder="Image name" style="padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);min-width:150px;"></div>
+          <div><label style="font-size:0.8rem;display:block;margin-bottom:0.25rem;">Folder</label><select id="adminImageFolder" style="padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);"><option value="uploads">Uploads</option><option value="covers">Covers</option><option value="inline">Inline</option></select></div>
+          <div><label style="font-size:0.8rem;display:block;margin-bottom:0.25rem;">File (max 1MB)</label><input type="file" id="adminImageFile" accept="image/*" style="padding:0.5rem;"></div>
+          <button class="btn" onclick="uploadAdminImage()" style="padding:0.5rem 1rem;font-size:0.9rem;">Upload</button>
+        </div>
+      </details>
+      <div id="imagesTable" style="overflow-x:auto;"></div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .tab-nav-btn {
+    background: transparent;
+    border: none;
+    padding: 0.75rem 1.25rem;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-nav-btn:hover { color: var(--text); }
+  .tab-nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .filter-chip {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .data-table th { text-align: left; padding: 0.75rem; background: rgba(99,102,241,0.08); border-bottom: 1px solid var(--border); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .data-table td { padding: 0.75rem; border-bottom: 1px solid var(--border); }
+  .data-table tr:hover td { background: rgba(99,102,241,0.03); }
+  .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+  .badge-pending { background: rgba(251,191,36,0.15); color: #f59e0b; }
+  .badge-approved { background: rgba(16,185,129,0.15); color: #10b981; }
+  .badge-rejected { background: rgba(239,68,68,0.15); color: #ef4444; }
+  .badge-published { background: rgba(99,102,241,0.15); color: #6366f1; }
+  .action-btn { padding: 0.35rem 0.75rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; margin: 0 0.15rem; transition: all 0.15s; }
+  .action-btn:hover { transform: translateY(-1px); }
+  .btn-approve { background: #10b981; color: white; }
+  .btn-reject { background: #ef4444; color: white; }
+  .btn-publish { background: #6366f1; color: white; }
+  .btn-copy { background: var(--accent); color: white; }
+  .btn-delete { background: var(--border); color: var(--text); }
+  .copy-tooltip { position: relative; }
+  .img-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+  .alert { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem; margin-bottom: 1rem; }
+  .alert-info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; }
+  .alert-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+  .alert-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #10b981; }
+</style>
+
+<script>
+  // --- Tab Switching ---
+  document.querySelectorAll('.tab-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.mainTab;
+      document.getElementById(`tab-${tab}`).classList.add('active');
+      if (tab === 'applications') loadApplications();
+      else if (tab === 'submissions') loadSubmissions();
+      else if (tab === 'articles') loadArticles();
+      else if (tab === 'images') loadImages();
+    });
+  });
+
+  // --- Applications ---
+  async function loadApplications() {
+    const container = document.getElementById('applicationsTable');
+    const status = document.getElementById('applicationsStatus');
+    container.innerHTML = '<p style="color:var(--muted);">Loading...</p>';
+    try {
+      const resp = await fetch('/api/admin/applications');
+      const data = await resp.json();
+      if (!data.applications?.length) {
+        container.innerHTML = '<p style="color:var(--muted);">No applications found.</p>';
+        return;
+      }
+      container.innerHTML = `<table class="data-table"><thead><tr>
+        <th>Name</th><th>Email</th><th>Experience</th><th>Status</th><th>Date</th><th>Actions</th>
+      </tr></thead><tbody>${data.applications.map(a => `
+        <tr>
+          <td><strong>${esc(a.name)}</strong></td>
+          <td>${esc(a.email)}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.writing_experience || '')}</td>
+          <td><span class="badge badge-${a.status}">${a.status}</span></td>
+          <td>${new Date(a.created_at*1000).toLocaleDateString()}</td>
+          <td>${a.status==='pending' ? `
+            <button class="action-btn btn-approve" onclick="reviewApp(${a.id},'accept')">Accept</button>
+            <button class="action-btn btn-reject" onclick="reviewApp(${a.id},'reject')">Reject</button>
+          ` : `<button class="action-btn" disabled style="opacity:0.5;">Reviewed</button>`}</td>
+        </tr>
+      `).join('')}</tbody></table>`;
+      status.style.display = 'none';
+    } catch (e) {
+      status.textContent = 'Failed to load applications: ' + e.message;
+      status.className = 'alert alert-error';
+      status.style.display = 'block';
+    }
+  }
+
+  async function reviewApp(id, action) {
+    const reason = action === 'reject' ? (prompt('Reason for rejection (optional):') || '') : '';
+    try {
+      const resp = await fetch('/api/admin/application-review', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ applicationId: id, action, reason })
+      });
+      const data = await resp.json();
+      alert(data.message || data.error);
+      loadApplications();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  // --- Submissions ---
+  async function loadSubmissions() {
+    const container = document.getElementById('submissionsTable');
+    container.innerHTML = '<p style="color:var(--muted);">Loading...</p>';
+    try {
+      const resp = await fetch('/api/admin/submissions');
+      const data = await resp.json();
+      if (!data.submissions?.length) {
+        container.innerHTML = '<p style="color:var(--muted);">No submissions found.</p>';
+        return;
+      }
+      container.innerHTML = `<table class="data-table"><thead><tr>
+        <th>Title</th><th>Author</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th>
+      </tr></thead><tbody>${data.submissions.map(s => `
+        <tr>
+          <td><strong>${esc(s.title)}</strong></td>
+          <td>${esc(s.author || s.author_name || '')}</td>
+          <td>${esc(s.type || 'general')}</td>
+          <td><span class="badge badge-${s.status === 'published' ? 'approved' : s.status}">${s.status}</span></td>
+          <td>${new Date(s.created_at*1000).toLocaleDateString()}</td>
+          <td>${s.status==='pending' ? `
+            <button class="action-btn btn-approve" onclick="reviewSub(${s.id},'approve')">Approve</button>
+            <button class="action-btn btn-reject" onclick="reviewSub(${s.id},'reject')">Reject</button>
+          ` : s.status==='approved' ? `
+            <button class="action-btn btn-publish" onclick="publishArticle(${s.id})">Publish</button>
+          ` : ''}</td>
+        </tr>
+      `).join('')}</tbody></table>`;
+    } catch (e) {
+      container.innerHTML = `<p class="alert alert-error">Error: ${esc(e.message)}</p>`;
+    }
+  }
+
+  async function reviewSub(id, action) {
+    const notes = action === 'reject' ? (prompt('Review notes (optional):') || '') : '';
+    try {
+      const resp = await fetch('/api/admin/review', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ submissionId: id, action, notes })
+      });
+      const data = await resp.json();
+      alert(data.message || data.error);
+      loadSubmissions();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  async function publishArticle(id) {
+    if (!confirm('Publish this article? This will push to GitHub.')) return;
+    try {
+      const resp = await fetch('/api/admin/publish', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ submissionId: id })
+      });
+      const data = await resp.json();
+      alert(data.message || data.error);
+      loadSubmissions();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  // --- Articles ---
+  async function loadArticles() {
+    const container = document.getElementById('articlesTable');
+    container.innerHTML = '<p style="color:var(--muted);">Loading...</p>';
+    try {
+      const resp = await fetch('/api/admin/articles');
+      const data = await resp.json();
+      if (!data.articles?.length) {
+        container.innerHTML = '<p style="color:var(--muted);">No published articles found.</p>';
+        return;
+      }
+      container.innerHTML = `<table class="data-table"><thead><tr>
+        <th>File</th><th>Path</th><th>Actions</th>
+      </tr></thead><tbody>${data.articles.map(a => `
+        <tr>
+          <td><strong>${esc(a.name)}</strong></td>
+          <td style="font-family:monospace;font-size:0.85rem;">${esc(a.path)}</td>
+          <td><a href="${esc(a.url)}" target="_blank" class="action-btn btn-publish" style="text-decoration:none;">View on GitHub</a></td>
+        </tr>
+      `).join('')}</tbody></table>`;
+      if (data.message) container.innerHTML += `<p style="color:var(--muted);margin-top:0.5rem;">${esc(data.message)}</p>`;
+    } catch (e) {
+      container.innerHTML = `<p class="alert alert-error">Error: ${esc(e.message)}</p>`;
+    }
+  }
+
+  // --- Images ---
+  let currentImageFolder = 'all';
+
+  async function loadImages(folder = currentImageFolder) {
+    const container = document.getElementById('imagesTable');
+    const status = document.getElementById('imagesStatus');
+    container.innerHTML = '<p style="color:var(--muted);">Loading...</p>';
+    try {
+      const params = new URLSearchParams();
+      if (folder && folder !== 'all') params.set('folder', folder);
+      const resp = await fetch(`/api/admin/images?${params}`);
+      const data = await resp.json();
+      if (!data.images?.length) {
+        container.innerHTML = '<p style="color:var(--muted);">No images found.</p>';
+        return;
+      }
+      container.innerHTML = `<table class="data-table"><thead><tr>
+        <th></th><th>Name</th><th>Key</th><th>Folder</th><th>Size</th><th>Date</th><th>Actions</th>
+      </tr></thead><tbody>${data.images.map(img => `
+        <tr>
+          <td><img src="${esc(img.url)}" class="img-thumb" alt="" loading="lazy" onerror="this.style.display='none'"></td>
+          <td><strong>${esc(img.name)}</strong></td>
+          <td style="font-family:monospace;font-size:0.8rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(img.key)}</td>
+          <td><span class="badge badge-pending">${esc(img.folder)}</span></td>
+          <td>${formatSize(img.size_bytes)}</td>
+          <td>${new Date(img.created_at*1000).toLocaleDateString()}</td>
+          <td>
+            <button class="action-btn btn-copy" onclick="copyImageUrl('${esc(img.url).replace(/'/g, "\\'")}')">Copy URL</button>
+            <button class="action-btn btn-delete" onclick="deleteImage(${img.id},'${esc(img.key).replace(/'/g, "\\'")}')">Delete</button>
+          </td>
+        </tr>
+      `).join('')}</tbody></table>`;
+    } catch (e) {
+      container.innerHTML = `<p class="alert alert-error">Error: ${esc(e.message)}</p>`;
+    }
+  }
+
+  function filterImages(folder) {
+    currentImageFolder = folder;
+    document.querySelectorAll('#tab-images .filter-chip').forEach(c => c.classList.remove('active'));
+    document.querySelector(`#tab-images [data-folder="${folder}"]`)?.classList.add('active');
+    loadImages(folder);
+  }
+
+  function copyImageUrl(url) {
+    navigator.clipboard.writeText(url).then(() => {
+      alert('Image URL copied!');
+    }).catch(() => {
+      prompt('Copy this URL:', url);
+    });
+  }
+
+  async function deleteImage(id, key) {
+    if (!confirm(`Delete image "${key}"? This cannot be undone.`)) return;
+    try {
+      const resp = await fetch('/api/admin/images', {
+        method: 'DELETE', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ id, key })
+      });
+      const data = await resp.json();
+      alert(data.message || data.error);
+      loadImages();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  async function uploadAdminImage() {
+    const fileInput = document.getElementById('adminImageFile');
+    const nameInput = document.getElementById('adminImageName');
+    const folderInput = document.getElementById('adminImageFolder');
+    const status = document.getElementById('imagesStatus');
+
+    if (!fileInput.files[0]) {
+      status.textContent = 'Please select a file.';
+      status.className = 'alert alert-error';
+      status.style.display = 'block';
+      return;
+    }
+
+    const file = fileInput.files[0];
+    if (file.size > 1024 * 1024) {
+      status.textContent = 'File too large. Maximum is 1MB.';
+      status.className = 'alert alert-error';
+      status.style.display = 'block';
+      return;
+    }
+
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+
+    try {
+      const resp = await fetch('/api/images/upload', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          file: base64,
+          name: nameInput.value || file.name,
+          description: '',
+          folder: folderInput.value
+        })
+      });
+      const data = await resp.json();
+      if (data.success) {
+        status.textContent = `Uploaded: ${data.url}`;
+        status.className = 'alert alert-success';
+        fileInput.value = '';
+        nameInput.value = '';
+        loadImages();
+      } else {
+        status.textContent = data.error || 'Upload failed.';
+        status.className = 'alert alert-error';
+      }
+      status.style.display = 'block';
+    } catch (e) {
+      status.textContent = 'Upload error: ' + e.message;
+      status.className = 'alert alert-error';
+      status.style.display = 'block';
+    }
+  }
+
+  // --- Helpers ---
+  function esc(str) {
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = String(str);
+    return d.innerHTML;
+  }
+
+  function formatSize(bytes) {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/1048576).toFixed(1) + ' MB';
+  }
+
+  // Load applications on page load
+  loadApplications();
+</script>

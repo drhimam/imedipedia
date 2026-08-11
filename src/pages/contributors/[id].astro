@@ -1,56 +1,99 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { getCollection } from 'astro:content';
 
-export const prerender = true;
+// Hybrid: prerender the 3 known demo profiles, SSR for dynamic contributors
+export const prerender = false;
 
-export async function getStaticPaths() {
-  const contributors = [
-    {
-      id: 'eleanor-vance',
-      name: 'Dr. Eleanor Vance',
-      specialty: 'Genomics & Oncology',
-      affiliation: 'iMedipedia Institute of Clinical Genetics',
-      image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=600',
-      bio: 'Dr. Eleanor Vance is a leading researcher in clinical genetics and cancer immunotherapies. She leads the genomic sequencing division at the iMedipedia Institute, focusing on CRISPR therapeutics and personalized vaccines.',
-      education: 'MD, Harvard Medical School; PhD in Genetics, MIT',
-      interests: ['CRISPR-Cas9 Gene Editing', 'mRNA Cancer Vaccines', 'Targeted Immunotherapies'],
-    },
-    {
-      id: 'marcus-thorne',
-      name: 'Dr. Marcus Thorne',
-      specialty: 'Neurology & Neurotechnology',
-      affiliation: 'Brain-Computer Interface Research Center',
-      image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=600',
-      bio: 'Dr. Marcus Thorne is an Associate Professor of neuroengineering, focused on BCI clinical translation. He specializes in designing high-density neural interfaces to restore agency and mobility to paralyzed patients.',
-      education: 'MD, Johns Hopkins University School of Medicine; MS in Neural Engineering, Stanford',
-      interests: ['High-density neural interfaces', 'Neural signal processing', 'Motor rehabilitation'],
-    },
-    {
-      id: 'sarah-jenkins',
-      name: 'Dr. Sarah Jenkins',
-      specialty: 'Cardiology',
-      affiliation: 'Metropolitan Heart & Vascular Center',
-      image: 'https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&q=80&w=600',
-      bio: 'Dr. Sarah Jenkins is a clinical cardiologist researching genetic markers for heart disease. She runs trials investigating early predictive assays for cardiovascular health and is an advisor on genomic risk profiling.',
-      education: 'MD, Columbia University Vagelos College of Physicians and Surgeons',
-      interests: ['Cardiovascular genetics', 'Early predictive diagnostics', 'Myocardial therapeutics'],
+// Hardcoded demo profiles (preserved for backward compatibility)
+const DEMO_CONTRIBUTORS = {
+  'eleanor-vance': {
+    name: 'Dr. Eleanor Vance',
+    specialty: 'Genomics & Oncology',
+    affiliation: 'iMedipedia Institute of Clinical Genetics',
+    image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=600',
+    bio: 'Dr. Eleanor Vance is a leading researcher in clinical genetics and cancer immunotherapies. She leads the genomic sequencing division at the iMedipedia Institute, focusing on CRISPR therapeutics and personalized vaccines.',
+    education: 'MD, Harvard Medical School; PhD in Genetics, MIT',
+    interests: ['CRISPR-Cas9 Gene Editing', 'mRNA Cancer Vaccines', 'Targeted Immunotherapies'],
+  },
+  'marcus-thorne': {
+    name: 'Dr. Marcus Thorne',
+    specialty: 'Neurology & Neurotechnology',
+    affiliation: 'Brain-Computer Interface Research Center',
+    image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=600',
+    bio: 'Dr. Marcus Thorne is an Associate Professor of neuroengineering, focused on BCI clinical translation. He specializes in designing high-density neural interfaces to restore agency and mobility to paralyzed patients.',
+    education: 'MD, Johns Hopkins University School of Medicine; MS in Neural Engineering, Stanford',
+    interests: ['High-density neural interfaces', 'Neural signal processing', 'Motor rehabilitation'],
+  },
+  'sarah-jenkins': {
+    name: 'Dr. Sarah Jenkins',
+    specialty: 'Cardiology',
+    affiliation: 'Metropolitan Heart & Vascular Center',
+    image: 'https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&q=80&w=600',
+    bio: 'Dr. Sarah Jenkins is a clinical cardiologist researching genetic markers for heart disease. She runs trials investigating early predictive assays for cardiovascular health and is an advisor on genomic risk profiling.',
+    education: 'MD, Columbia University Vagelos College of Physicians and Surgeons',
+    interests: ['Cardiovascular genetics', 'Early predictive diagnostics', 'Myocardial therapeutics'],
+  },
+};
+
+const { id } = Astro.params;
+
+// Try demo profile first
+let contributor = DEMO_CONTRIBUTORS[id];
+
+// If not a demo profile, look up in database
+if (!contributor) {
+  try {
+    const db = Astro.locals?.runtime?.env?.D1_DB || Astro.locals?.runtime?.env?.DB;
+    if (db) {
+      const user = await db.prepare(
+        "SELECT * FROM users WHERE role = 'contributor' AND full_name != ''"
+      ).all();
+      const users = user.results || [];
+      const match = users.find(u =>
+        u.full_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') === id
+      );
+      if (match) {
+        contributor = {
+          name: match.full_name,
+          specialty: match.specialty || 'Medical Contributor',
+          affiliation: match.affiliation || 'iMedipedia Contributor',
+          image: match.avatar_url || '',
+          bio: match.bio || `${match.full_name} is a medical contributor at iMedipedia, sharing expertise and clinical insights.`,
+          education: '',
+          interests: match.specialty ? [match.specialty] : [],
+          fromDB: true,
+        };
+      }
     }
-  ];
-
-  return contributors.map(contributor => ({
-    params: { id: contributor.id },
-    props: { contributor },
-  }));
+  } catch (e) {
+    // DB lookup failed — fall through to 404 handling
+  }
 }
 
-const { contributor } = Astro.props;
+// 404 if no contributor found
+if (!contributor) {
+  return new Response(null, { status: 404 });
+}
 
-// Fetch articles written by this contributor
-const allPosts = await getCollection('blog');
-const contributorPosts = allPosts.filter(
-  post => post.data.author.toLowerCase() === contributor.name.toLowerCase()
-);
+// Fetch articles by this contributor's name from blog content
+let contributorPosts = [];
+try {
+  const blogModules = import.meta.glob('../../content/blog/**/*.md', { eager: true });
+  for (const [path, mod] of Object.entries(blogModules)) {
+    const fm = mod.frontmatter;
+    if (fm && fm.author && fm.author.toLowerCase() === contributor.name.toLowerCase()) {
+      contributorPosts.push({
+        id: path.split('/').pop().replace(/\.md$/, ''),
+        title: fm.title,
+        description: fm.description,
+        tag: fm.tag,
+        pubDate: fm.pubDate ? new Date(fm.pubDate) : null,
+      });
+    }
+  }
+} catch (e) {
+  // Article lookup failed — show empty
+}
 ---
 
 <BaseLayout
@@ -71,11 +114,18 @@ const contributorPosts = allPosts.filter(
         gap: 4rem;
       }
 
-      @media (max-width: 900px) {
+      @media (max-width: 768px) {
         .main-container {
           grid-template-columns: 1fr;
           gap: 2.5rem;
           margin: 2rem auto;
+        }
+      }
+      @media (max-width: 480px) {
+        .main-container {
+          margin: 1.5rem auto;
+          padding: 0 1rem;
+          gap: 2rem;
         }
       }
 
@@ -95,12 +145,23 @@ const contributorPosts = allPosts.filter(
         border: 3px solid var(--accent);
         box-shadow: 0 8px 32px var(--accent-glow);
         margin-bottom: 2rem;
+        background: linear-gradient(135deg, var(--accent), #818cf8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .profile-image {
         width: 100%;
         height: 100%;
         object-fit: cover;
+      }
+
+      .profile-initial {
+        font-family: 'Outfit', sans-serif;
+        font-size: 6rem;
+        font-weight: 800;
+        color: #ffffff;
       }
 
       .profile-specialty-badge {
@@ -279,10 +340,14 @@ const contributorPosts = allPosts.filter(
   </slot>
 
   <main class="main-container">
-    <!-- Profile Column 1 (Sidebar) -->
+    <!-- Profile Sidebar -->
     <aside class="profile-sidebar">
       <div class="profile-image-container">
-        <img src={contributor.image} alt={contributor.name} class="profile-image" />
+        {contributor.image ? (
+          <img src={contributor.image} alt={contributor.name} class="profile-image" />
+        ) : (
+          <span class="profile-initial">{contributor.name.charAt(0)}</span>
+        )}
       </div>
       <span class="profile-specialty-badge">{contributor.specialty}</span>
 
@@ -290,12 +355,16 @@ const contributorPosts = allPosts.filter(
         <div class="meta-label">Affiliation</div>
         <div class="meta-val">{contributor.affiliation}</div>
 
-        <div class="meta-label">Education</div>
-        <div class="meta-val">{contributor.education}</div>
+        {contributor.education && (
+          <>
+            <div class="meta-label">Education</div>
+            <div class="meta-val">{contributor.education}</div>
+          </>
+        )}
       </div>
     </aside>
 
-    <!-- Profile Column 2 (Main Details) -->
+    <!-- Profile Main Content -->
     <section class="profile-main">
       <h1>{contributor.name}</h1>
       <div class="profile-affiliation">{contributor.affiliation}</div>
@@ -303,28 +372,34 @@ const contributorPosts = allPosts.filter(
       <h2 class="profile-section-title">Biography</h2>
       <p class="profile-bio">{contributor.bio}</p>
 
-      <h2 class="profile-section-title">Research Interests</h2>
-      <div class="tag-cloud">
-        {contributor.interests.map(interest => (
-          <span class="interest-tag">{interest}</span>
-        ))}
-      </div>
+      {contributor.interests.length > 0 && (
+        <>
+          <h2 class="profile-section-title">Research Interests</h2>
+          <div class="tag-cloud">
+            {contributor.interests.map(interest => (
+              <span class="interest-tag">{interest}</span>
+            ))}
+          </div>
+        </>
+      )}
 
-      <!-- Authored Articles section -->
+      <!-- Published Articles -->
       <div class="articles-section">
         <h2 class="profile-section-title">Published Articles</h2>
         {contributorPosts.length > 0 ? (
           <div class="articles-grid">
             {contributorPosts.map(post => (
-              <a href={`/blog/${post.id.replace(/\.md$/, '')}`} class="article-card">
+              <a href={`/blog/${post.id}`} class="article-card">
                 <div>
-                  {post.data.tag && <span class="article-tag">{post.data.tag}</span>}
-                  <h3 class="article-title">{post.data.title}</h3>
-                  <p class="article-desc">{post.data.description}</p>
+                  {post.tag && <span class="article-tag">{post.tag}</span>}
+                  <h3 class="article-title">{post.title}</h3>
+                  <p class="article-desc">{post.description}</p>
                 </div>
-                <span class="article-date">
-                  {post.data.pubDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
+                {post.pubDate && (
+                  <span class="article-date">
+                    {post.pubDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                )}
               </a>
             ))}
           </div>

@@ -12,11 +12,11 @@ export default defineConfig({
   },
   vite: {
     ssr: {
-      external: ['sharp']
+      external: ['sharp', 'node:fs/promises', 'node:path', 'node:fs']
     },
     build: {
       rollupOptions: {
-        external: ['sharp']
+        external: ['sharp', 'node:fs/promises', 'node:path', 'node:fs']
       }
     }
   }

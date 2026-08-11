@@ -88,7 +88,24 @@ if (activeSubject && activeTopic) topicArticles = casePosts.filter(p => p.data.s
       .search-box { margin-bottom: 2rem; position: relative; }
       .search-input { width: 100%; padding: 0.75rem 1.25rem; border-radius: 30px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 0.95rem; transition: border-color 0.2s; box-sizing: border-box; }
       .search-input:focus { outline: none; border-color: var(--accent); }
-      @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .article-card { flex-direction: column; } .thumb-container { width: 100%; height: 200px; } }
+      @media (max-width: 768px) {
+        .layout { grid-template-columns: 1fr; }
+        .article-card { flex-direction: column; }
+        .thumb-container { width: 100%; height: 200px; }
+      }
+      @media (max-width: 480px) {
+        .breadcrumbs { margin: 1rem auto 0 auto; padding: 0 1rem; font-size: 0.8rem; }
+        .layout { margin: 1.5rem auto 2rem auto; padding: 0 1rem; gap: 1.5rem; }
+        .article-card { padding: 1rem; gap: 1rem; }
+        .thumb-container { height: 180px; }
+        .card-title { font-size: 1.15rem; }
+        .card-desc { font-size: 0.9rem; }
+        .article-view { padding: 1.25rem; }
+        .article-title { font-size: 1.8rem; }
+        .search-input { font-size: 16px; }
+        .pagination { gap: 0.35rem; }
+        .page-btn { width: 36px; height: 36px; font-size: 0.85rem; }
+      }
     </style>
   </slot>
 

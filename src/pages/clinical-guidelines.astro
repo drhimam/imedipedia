@@ -1,0 +1,34 @@
+---
+// Clinical Guidelines page
+import BaseLayout from '../layouts/BaseLayout.astro';
+const SITE_TITLE = "Clinical Guidelines";
+---
+
+<BaseLayout title={SITE_TITLE}>
+  <main style="max-width:900px;margin:3rem auto;padding:0 1.5rem;">
+    <header style="text-align:center;margin-bottom:3rem;">
+      <h1 style="font-family:'Outfit',sans-serif;font-size:2.5rem;font-weight:800;margin-bottom:0.5rem;">Clinical Guidelines</h1>
+      <p style="color:var(--muted);font-size:1.1rem;">Evidence-based clinical practice guidelines and protocols</p>
+    </header>
+
+    <section style="border:1px solid var(--border);border-radius:16px;padding:2.5rem;text-align:center;">
+      <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
+      <h2 style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:700;margin-bottom:0.75rem;">Coming Soon</h2>
+      <p style="color:var(--muted);line-height:1.6;max-width:500px;margin:0 auto;">
+        Our clinical guidelines section is being developed.
+        This will feature curated, evidence-based guidelines across major medical specialties,
+        updated regularly to reflect the latest consensus and research.
+      </p>
+    </section>
+
+    <!-- Placeholder categories -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1.5rem;margin-top:2rem;">
+      {['Cardiology', 'Neurology', 'Oncology', 'Pediatrics', 'Infectious Disease', 'Endocrinology'].map(cat => `
+        <div style="border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center;opacity:0.5;">
+          <h3 style="font-family:'Outfit',sans-serif;font-weight:600;font-size:1.1rem;">${cat}</h3>
+          <p style="color:var(--muted);font-size:0.9rem;margin:0;">Guidelines in progress</p>
+        </div>
+      `).join('')}
+    </div>
+  </main>
+</BaseLayout>

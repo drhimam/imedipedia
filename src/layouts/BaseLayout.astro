@@ -2,7 +2,7 @@
 export interface Props {
   title: string;
   description?: string;
-  /** Which nav link is active: 'home' | 'general' | 'update' | 'cases' | 'education' | 'contributors' */
+  /** Which nav link is active: 'general' | 'clinical-guidelines' | 'cases' | 'education' | 'contributors' */
   currentPage?: string;
 }
 
@@ -118,6 +118,7 @@ const { title, description, currentPage } = Astro.props;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        position: relative;
       }
 
       :global(.logo-link:any-link) {
@@ -138,6 +139,88 @@ const { title, description, currentPage } = Astro.props;
         display: flex;
         align-items: center;
         gap: 1.25rem;
+      }
+
+      /* ---- Hamburger menu (hidden on desktop) ---- */
+      :global(.nav-toggle-hidden) {
+        display: none;
+      }
+
+      :global(.hamburger) {
+        display: none;
+        flex-direction: column;
+        gap: 5px;
+        cursor: pointer;
+        padding: 8px;
+        z-index: 51;
+      }
+
+      :global(.hamburger span) {
+        display: block;
+        width: 24px;
+        height: 2.5px;
+        background: var(--text);
+        border-radius: 2px;
+        transition: all 0.3s ease;
+      }
+
+      /* ---- Three-dot overflow menu (desktop) ---- */
+      :global(.overflow-btn) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text);
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        transition: all 0.2s;
+        user-select: none;
+        letter-spacing: 1px;
+        line-height: 1;
+      }
+
+      :global(.overflow-btn:hover) {
+        border-color: #0d9488;
+        color: #0d9488;
+      }
+
+      :global(.nav-overflow) {
+        display: none;
+      }
+
+      :global(#overflow-toggle:checked ~ .nav-overflow) {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: var(--navbar-bg);
+        backdrop-filter: blur(16px);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.75rem;
+        gap: 0.35rem;
+        z-index: 50;
+        min-width: 180px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      :global(#overflow-toggle:checked ~ .nav-overflow .btn-contributors:any-link) {
+        display: block;
+        text-align: center;
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+      }
+
+      :global(#overflow-toggle:checked ~ .nav-overflow .btn-contact),
+      :global(#overflow-toggle:checked ~ .nav-overflow .theme-btn) {
+        align-self: center;
       }
 
       /* :any-link bumps specificity to beat browser's a:link / a:visited defaults */
@@ -236,6 +319,77 @@ const { title, description, currentPage } = Astro.props;
       :global(.theme-btn:hover) {
         border-color: #0d9488;
         color: #0d9488;
+      }
+
+      /* ---- Navbar mobile (≤768px) ---- */
+      @media (max-width: 768px) {
+        :global(.navbar) {
+          padding: 0.6rem 1rem;
+        }
+
+        :global(.logo) {
+          font-size: 1.3rem;
+        }
+
+        :global(.hamburger) {
+          display: flex;
+        }
+
+        :global(.overflow-btn) {
+          display: none;
+        }
+
+        /* Hide all link groups until checkbox is checked */
+        :global(#nav-toggle:not(:checked) ~ .nav-links),
+        :global(#nav-toggle:not(:checked) ~ .nav-overflow) {
+          display: none;
+        }
+
+        /* Dropdown when hamburger is clicked — both groups */
+        :global(#nav-toggle:checked ~ .nav-links),
+        :global(#nav-toggle:checked ~ .nav-overflow) {
+          display: flex;
+          flex-direction: column;
+          background: var(--navbar-bg);
+          backdrop-filter: blur(16px);
+          padding: 0 1.5rem;
+          gap: 0.35rem;
+        }
+
+        :global(#nav-toggle:checked ~ .nav-links) {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          border-bottom: 1px solid var(--border);
+          padding-top: 1rem;
+          padding-bottom: 0.75rem;
+          z-index: 50;
+        }
+
+        :global(#nav-toggle:checked ~ .nav-overflow) {
+          padding-bottom: 1rem;
+          border-bottom: 1px solid var(--border);
+        }
+
+        :global(#nav-toggle:checked ~ .nav-links .nav-link:any-link) {
+          display: block;
+          text-align: center;
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+        }
+
+        :global(#nav-toggle:checked ~ .nav-overflow .btn-contributors:any-link) {
+          display: block;
+          text-align: center;
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+        }
+
+        :global(#nav-toggle:checked ~ .nav-overflow .btn-contact),
+        :global(#nav-toggle:checked ~ .nav-overflow .theme-btn) {
+          align-self: center;
+        }
       }
 
       /* ============================================================
@@ -464,6 +618,25 @@ const { title, description, currentPage } = Astro.props;
           align-items: flex-start;
         }
       }
+
+      @media (max-width: 480px) {
+        :global(.footer) {
+          padding: 3rem 1rem 1.5rem 1rem;
+        }
+        :global(.footer-bottom) {
+          gap: 1rem;
+        }
+        :global(.contact-modal-content) {
+          padding: 1.5rem;
+        }
+        :global(.contact-modal-content) h2 {
+          padding-right: 1.5rem;
+        }
+        :global(.contact-modal-content) input,
+        :global(.contact-modal-content) textarea {
+          font-size: 16px; /* prevents iOS zoom on focus */
+        }
+      }
     </style>
 
     <!-- Page-specific head content (extra meta tags, page-level styles) -->
@@ -476,13 +649,23 @@ const { title, description, currentPage } = Astro.props;
     <nav class="navbar">
       <div class="nav-container">
         <a href="/" class="logo-link"><div class="logo">iMedipedia</div></a>
+        <input type="checkbox" id="nav-toggle" class="nav-toggle-hidden" />
+        <label for="nav-toggle" class="hamburger" aria-label="Toggle navigation">
+          <span></span><span></span><span></span>
+        </label>
         <div class="nav-links">
-          <a href="/" class:list={["nav-link", { active: currentPage === 'home' }]}>Home</a>
           <a href="/general" class:list={["nav-link", { active: currentPage === 'general' }]}>Research Digest</a>
-          <a href="/update" class:list={["nav-link", { active: currentPage === 'update' }]}>Advances</a>
+          <a href="/clinical-guidelines" class:list={["nav-link", { active: currentPage === 'clinical-guidelines' }]}>Clinical Guidelines</a>
           <a href="/cases" class:list={["nav-link", { active: currentPage === 'cases' }]}>Case Reports</a>
           <a href="/education" class:list={["nav-link", { active: currentPage === 'education' }]}>CME &amp; Learning</a>
+        </div>
+
+        <!-- Desktop overflow (three-dot) menu -->
+        <input type="checkbox" id="overflow-toggle" class="nav-toggle-hidden" />
+        <label for="overflow-toggle" class="overflow-btn" aria-label="More options">⋮</label>
+        <div class="nav-overflow">
           <a href="/contributors" class:list={["btn-contributors", { active: currentPage === 'contributors' }]}>Contributors</a>
+          <a href="/admin" class:list={["btn-contributors", { active: currentPage === 'admin' }]} id="adminNavLink" style="display:none;">Admin</a>
           <button class="btn-contact" id="contactNavBtn">Contact</button>
           <button id="themeToggle" class="theme-btn">☀️</button>
         </div>
@@ -552,7 +735,7 @@ const { title, description, currentPage } = Astro.props;
           <h4 class="footer-heading">Research Digests</h4>
           <div class="footer-links">
             <a href="/general" class="footer-link">Clinical &amp; Research Digest</a>
-            <a href="/update" class="footer-link">Clinical Advances</a>
+            <a href="/clinical-guidelines" class="footer-link">Clinical Guidelines</a>
             <a href="/cases" class="footer-link">Case Reports Database</a>
             <a href="/education" class="footer-link">Board Prep &amp; CME</a>
           </div>
@@ -600,6 +783,20 @@ const { title, description, currentPage } = Astro.props;
         if (tt) {
           tt.textContent = (localStorage.getItem('theme') || 'dark') === 'dark' ? '☀️' : '🌙';
         }
+      })();
+
+      // Show admin nav link for admin/co-admin users
+      (function(){
+        try {
+          var userData = sessionStorage.getItem('user');
+          if (userData) {
+            var user = JSON.parse(userData);
+            if (user && (user.role === 'admin' || user.role === 'co-admin')) {
+              var adminLink = document.getElementById('adminNavLink');
+              if (adminLink) adminLink.style.display = '';
+            }
+          }
+        } catch(e) {}
       })();
 
       // Theme Toggle

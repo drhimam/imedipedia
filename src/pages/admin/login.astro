@@ -1,0 +1,73 @@
+---
+// Admin Login Page
+import BaseLayout from '../../layouts/BaseLayout.astro';
+const SITE_TITLE = "Admin Login";
+---
+
+<BaseLayout title={SITE_TITLE}>
+  <main style="max-width:480px;margin:5rem auto;padding:0 1.5rem;">
+    <div style="text-align:center;margin-bottom:2rem;">
+      <h1 style="font-family:'Outfit',sans-serif;font-size:2rem;font-weight:800;">Admin Login</h1>
+      <p style="color:var(--muted);">Sign in to access the admin dashboard</p>
+    </div>
+
+    <div id="alertBox" class="alert" style="display:none;margin-bottom:1rem;"></div>
+
+    <form id="loginForm" style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="form-group">
+        <label class="form-label" for="username">Username or Email</label>
+        <input class="form-input" type="text" id="username" name="username" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input class="form-input" type="password" id="password" name="password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn" style="width:100%;">Sign In</button>
+    </form>
+
+    <p style="text-align:center;margin-top:1rem;font-size:0.85rem;">
+      <a href="/contributors" style="color:var(--accent);text-decoration:none;">← Back to contributors</a>
+    </p>
+  </main>
+</BaseLayout>
+
+<style>
+  .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+  .form-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .form-input { padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.1); color: var(--text); font-size: 0.95rem; }
+  :global([data-theme="light"]) .form-input { background: rgba(255,255,255,0.8); }
+  .form-input:focus { outline: none; border-color: var(--accent); }
+  .btn { background: var(--accent); color: #fff; border: none; padding: 0.9rem 1.5rem; font-size: 1rem; font-weight: 700; border-radius: 8px; cursor: pointer; }
+  .btn:hover { opacity: 0.9; }
+  .alert { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem; }
+  .alert-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+</style>
+
+<script>
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const alertBox = document.getElementById('alertBox');
+
+    try {
+      const resp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        window.location.href = '/admin';
+      } else {
+        alertBox.textContent = data.error || 'Login failed.';
+        alertBox.className = 'alert alert-error';
+        alertBox.style.display = 'block';
+      }
+    } catch (err) {
+      alertBox.textContent = 'Network error. Please try again.';
+      alertBox.className = 'alert alert-error';
+      alertBox.style.display = 'block';
+    }
+  });
+</script>

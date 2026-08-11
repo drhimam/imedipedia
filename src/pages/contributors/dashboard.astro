@@ -33,129 +33,225 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       .form-group { margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
       .form-group.full-width { grid-column: 1 / -1; }
       .form-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
-      .form-input { padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0, 0, 0, 0.15); color: var(--text); font-size: 0.95rem; transition: border-color 0.2s, background-color 0.2s; box-sizing: border-box; width: 100%; }
-      :global([data-theme="light"]) .form-input { background: rgba(255, 255, 255, 0.8); }
-      .form-input:focus { outline: none; border-color: var(--accent); background: rgba(0, 0, 0, 0.25); }
-      :global([data-theme="light"]) .form-input:focus { background: #ffffff; }
-      .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 2.5rem; text-align: center; background: rgba(0, 0, 0, 0.1); cursor: pointer; transition: all 0.2s ease; position: relative; }
+      .form-hint { font-size: 0.75rem; color: var(--muted); margin-top: -0.25rem; }
+      .form-input, .form-select { padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0, 0, 0, 0.15); color: var(--text); font-size: 0.95rem; transition: border-color 0.2s, background-color 0.2s; box-sizing: border-box; width: 100%; }
+      :global([data-theme="light"]) .form-input, :global([data-theme="light"]) .form-select { background: rgba(255, 255, 255, 0.8); }
+      .form-input:focus, .form-select:focus { outline: none; border-color: var(--accent); background: rgba(0, 0, 0, 0.25); }
+      :global([data-theme="light"]) .form-input:focus, :global([data-theme="light"]) .form-select:focus { background: #ffffff; }
+      .form-input:read-only, .form-input[readonly] { opacity: 0.7; cursor: not-allowed; background: rgba(0, 0, 0, 0.05); }
+      :global([data-theme="light"]) .form-input:read-only { background: rgba(0, 0, 0, 0.03); }
+      .form-select { cursor: pointer; }
+      .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 2rem; text-align: center; background: rgba(0, 0, 0, 0.1); cursor: pointer; transition: all 0.2s ease; position: relative; }
       .upload-zone.dragover { border-color: var(--accent); background: var(--accent-glow); }
-      .upload-icon { font-size: 2rem; margin-bottom: 0.75rem; color: var(--muted); display: block; }
-      .upload-label { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; }
-      .upload-sublabel { font-size: 0.8rem; color: var(--muted); }
-      .image-preview-container { display: none; flex-direction: column; align-items: center; position: relative; margin-top: 1rem; }
-      .image-preview { max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid var(--border); object-fit: cover; }
-      .clear-img-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(3, 7, 18, 0.8); border: none; color: white; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: bold; }
-      .progress-container { display: none; width: 100%; background-color: var(--border); border-radius: 4px; margin-top: 1rem; height: 6px; overflow: hidden; }
+      .upload-zone.compact { padding: 1rem; }
+      .upload-icon { font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--muted); display: block; }
+      .upload-label { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; }
+      .upload-sublabel { font-size: 0.75rem; color: var(--muted); }
+      .image-upload-row { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+      .image-upload-row .upload-zone { flex: 1; min-width: 200px; }
+      .image-upload-fields { flex: 2; min-width: 250px; }
+      .image-slot { border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; background: rgba(0, 0, 0, 0.05); }
+      :global([data-theme="light"]) .image-slot { background: rgba(0, 0, 0, 0.02); }
+      .image-slot-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+      .image-slot-title { font-weight: 700; font-size: 0.9rem; }
+      .image-slot-remove { background: transparent; border: 1px solid rgba(239,68,68,0.3); color: #ef4444; padding: 0.25rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+      .image-slot-add { background: transparent; border: 1px dashed var(--border); color: var(--accent); padding: 0.75rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; width: 100%; text-align: center; margin-top: 0.5rem; }
+      .image-preview-container { display: none; flex-direction: column; align-items: center; position: relative; margin-top: 0.75rem; }
+      .image-preview { max-width: 100%; max-height: 150px; border-radius: 8px; border: 1px solid var(--border); object-fit: cover; }
+      .clear-img-btn { position: absolute; top: 0.25rem; right: 0.25rem; background: rgba(3, 7, 18, 0.8); border: none; color: white; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; }
+      .progress-container { display: none; width: 100%; background-color: var(--border); border-radius: 4px; margin-top: 0.75rem; height: 5px; overflow: hidden; }
       .progress-bar { width: 0%; height: 100%; background-color: var(--accent); transition: width 0.1s ease; }
       .btn { background: var(--accent); color: #ffffff; border: none; padding: 0.85rem 1.75rem; font-size: 0.95rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
       .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--accent-glow); }
+      .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
       .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
       .btn-secondary:hover { background: rgba(99, 102, 241, 0.08); }
+      .btn-logout { background: transparent; border: 1px solid rgba(239,68,68,0.3); color: #ef4444; font-size: 0.85rem; padding: 0.5rem 1rem; }
+      .btn-logout:hover { background: rgba(239,68,68,0.1); }
       .table-container { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
       .submissions-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem; }
       .submissions-table th { background: rgba(0, 0, 0, 0.2); padding: 1rem 1.25rem; font-weight: 700; color: var(--muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
       :global([data-theme="light"]) .submissions-table th { background: rgba(0, 0, 0, 0.02); }
       .submissions-table td { padding: 1.25rem; border-bottom: 1px solid var(--border); }
       .submissions-table tr:last-child td { border-bottom: none; }
-      .status-badge { display: inline-flex; align-items: center; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
-      .status-approved { background: var(--success-glow); color: var(--success); }
-      .status-review { background: var(--warning-glow); color: var(--warning); }
+      .badge { display: inline-block; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+      .badge-pending { background: rgba(245,158,11,0.15); color: #f59e0b; }
+      .badge-approved { background: rgba(59,130,246,0.15); color: #3b82f6; }
+      .badge-rejected { background: rgba(239,68,68,0.15); color: #ef4444; }
+      .badge-published { background: rgba(16,185,129,0.15); color: #10b981; }
       .alert { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.95rem; font-weight: 500; border: 1px solid; animation: scaleIn3 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
       .alert-success { background: var(--success-glow); color: var(--success); border-color: rgba(16, 185, 129, 0.2); }
+      .alert-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
       @keyframes scaleIn3 { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-      @media (max-width: 900px) { .dashboard-container { grid-template-columns: 1fr; gap: 1.5rem; } }
-      @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; gap: 1rem; } }
-      @media (max-width: 600px) { .main-content { padding: 1.5rem; } .stats-grid { grid-template-columns: 1fr; gap: 1rem; } }
+      .empty-state { text-align: center; padding: 2rem; color: var(--muted); }
+      .image-guide { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: 10px; padding: 1.25rem; font-size: 0.85rem; line-height: 1.6; color: var(--muted); margin-top: 2rem; }
+      .image-guide strong { color: var(--accent); }
+      .image-guide code { background: rgba(0,0,0,0.1); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.85em; }
+      @media (max-width: 768px) {
+        .dashboard-container { grid-template-columns: 1fr; gap: 1.5rem; }
+        .form-grid { grid-template-columns: 1fr; gap: 1rem; }
+      }
+      @media (max-width: 600px) {
+        .main-content { padding: 1.5rem; }
+        .stats-grid { grid-template-columns: 1fr; gap: 1rem; }
+        .image-upload-row { flex-direction: column; }
+      }
+      @media (max-width: 480px) {
+        .main-content { padding: 1rem; }
+        .panel-title { font-size: 1.5rem; }
+        .tab-btn { padding: 0.6rem 0.75rem; font-size: 0.9rem; }
+        .dashboard-container { margin: 1rem auto; padding: 0 0.75rem; }
+      }
     </style>
   </slot>
 
   <div class="dashboard-container">
     <aside class="sidebar">
       <div class="user-profile-summary">
-        <img id="sideAvatar" src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300" alt="Dr. Eleanor Vance" class="avatar" />
-        <h3 id="sideName" class="profile-name">Dr. Eleanor Vance</h3>
-        <span class="profile-role">Registered Editor</span>
+        <div class="avatar" style="background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 1rem auto;" id="avatarInitial"></div>
+        <h3 id="sideName" class="profile-name">Contributor</h3>
+        <span class="profile-role" id="sideRole">Contributor</span>
       </div>
       <div class="tab-menu">
         <button class="tab-btn active" data-tab="overview">📊 Overview</button>
         <button class="tab-btn" data-tab="submit">✍️ Submit Article</button>
         <button class="tab-btn" data-tab="submissions">🗂️ My Submissions</button>
-        <button class="tab-btn" data-tab="profile">👤 My Profile</button>
+        <a href="/contributors/settings" class="tab-btn" style="text-decoration:none;">⚙️ Settings</a>
       </div>
+      <button class="btn-logout" onclick="sessionStorage.clear();window.location.href='/contributors';" style="width:100%;">Logout</button>
     </aside>
 
     <main class="main-content">
       <div id="alertBox" style="display: none;"></div>
 
+      <!-- Overview Panel -->
       <div id="overviewPanel" class="tab-panel active">
         <h2 class="panel-title">Dashboard Overview</h2>
-        <p class="panel-desc">Welcome back to your clinical publishing hub. Monitor drafts, review comments, and submit new research abstracts.</p>
+        <p class="panel-desc">Welcome back to your clinical publishing hub. Submit new articles and track review status here.</p>
         <div class="stats-grid">
-          <div class="stat-card"><div class="stat-val" id="statTotal">2</div><div class="stat-label">Total Submissions</div></div>
-          <div class="stat-card"><div class="stat-val" id="statApproved">2</div><div class="stat-label">Approved & Live</div></div>
-          <div class="stat-card"><div class="stat-val" id="statReview">0</div><div class="stat-label">In Peer Review</div></div>
+          <div class="stat-card"><div class="stat-val" id="statTotal">—</div><div class="stat-label">Total Submissions</div></div>
+          <div class="stat-card"><div class="stat-val" id="statPending">—</div><div class="stat-label">Pending Review</div></div>
+          <div class="stat-card"><div class="stat-val" id="statPublished">—</div><div class="stat-label">Published</div></div>
         </div>
         <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem;">
-          <h3 style="font-family: 'Outfit', sans-serif; margin-top: 0; margin-bottom: 0.5rem;">Editorial Announcements</h3>
-          <p style="margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.5;">We are currently welcoming papers for the upcoming September Special Issue on RNA therapeutics. Ensure all submissions include validated clinical trial identifiers.</p>
+          <h3 style="font-family: 'Outfit', sans-serif; margin-top: 0; margin-bottom: 0.5rem;">Editorial Guidelines</h3>
+          <p style="margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.5;">All submissions undergo editorial review before publication. Ensure your article follows the content type guidelines, and include proper markdown formatting for headings, lists, and medical terminology.</p>
         </div>
       </div>
 
+      <!-- Submit Panel -->
       <div id="submitPanel" class="tab-panel">
         <h2 class="panel-title">Submit Research Article</h2>
-        <p class="panel-desc">Fill in the clinical details and outline. Upload an associated medical graphic or illustration.</p>
+        <p class="panel-desc">Fill in all required fields. Articles are reviewed by the editorial board before publication.</p>
         <form id="articleForm" class="form-grid">
-          <div class="form-group full-width"><label for="artTitle" class="form-label">Article Title</label><input type="text" id="artTitle" class="form-input" placeholder="e.g., Efficacy of RNA Therapeutics on Glioblastoma Reoccurrence" required /></div>
-          <div class="form-group"><label for="artTag" class="form-label">Specialty Tag</label><input type="text" id="artTag" class="form-input" placeholder="e.g., Oncology, Neurology, Genomics" required /></div>
-          <div class="form-group"><label for="artDesc" class="form-label">Short Description / Abstract Summary</label><input type="text" id="artDesc" class="form-input" placeholder="e.g., A phase I study on vaccine vectors..." required /></div>
+          <div class="form-group full-width"><label for="artTitle" class="form-label">Article Title *</label><input type="text" id="artTitle" class="form-input" placeholder="e.g., Efficacy of RNA Therapeutics on Glioblastoma Reoccurrence" required /></div>
+          <div class="form-group"><label for="artAuthor" class="form-label">Author Name (auto-filled)</label><input type="text" id="artAuthor" class="form-input" readonly /></div>
+          <div class="form-group"><label for="artType" class="form-label">Content Type *</label>
+            <select id="artType" class="form-select" required>
+              <option value="general">Clinical Digest</option>
+              <option value="update">Clinical Guidelines</option>
+              <option value="case">Case Reports</option>
+              <option value="education">Board Review</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="artTag" class="form-label">Tags *</label>
+            <input type="text" id="artTag" class="form-input" placeholder="e.g., Oncology, Neurology, Immunology" required />
+            <span class="form-hint">Comma-separated tags (e.g., "Oncology, CRISPR, Immunotherapy")</span>
+          </div>
+          <div class="form-group"><label for="artSubject" class="form-label">Subject *</label><input type="text" id="artSubject" class="form-input" placeholder="e.g., Oncology" required /></div>
+          <div class="form-group"><label for="artTopic" class="form-label">Topic *</label><input type="text" id="artTopic" class="form-input" placeholder="e.g., Cancer Vaccines" required /></div>
+          <div class="form-group full-width"><label for="artDesc" class="form-label">Short Description / Abstract Summary *</label><input type="text" id="artDesc" class="form-input" placeholder="A concise summary of the article..." required /></div>
           <div class="form-group full-width">
-            <label class="form-label">Article Cover Image</label>
-            <div id="dropZone" class="upload-zone">
-              <span class="upload-icon">📁</span>
-              <div class="upload-label">Drag & drop cover image, or <span style="color: var(--accent); text-decoration: underline;">browse files</span></div>
-              <div class="upload-sublabel">Supports JPEG, PNG, WEBP (Max 5MB)</div>
-              <input type="file" id="fileInput" accept="image/*" style="display: none;" />
-              <div class="progress-container" id="progressContainer"><div class="progress-bar" id="progressBar"></div></div>
-              <div class="image-preview-container" id="previewContainer"><img src="" class="image-preview" id="imagePreview" alt="Upload preview" /><button type="button" class="clear-img-btn" id="clearImgBtn">&times;</button></div>
+            <label for="artExams" class="form-label">Relevant Exams <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(optional)</span></label>
+            <input type="text" id="artExams" class="form-input" placeholder="e.g., USMLE, FRCP, MRCP, PLAB" />
+            <span class="form-hint">Comma-separated exam names (optional)</span>
+          </div>
+
+          <!-- Cover Image Upload -->
+          <div class="form-group full-width">
+            <label class="form-label">Article Cover Image <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(Max 1MB)</span></label>
+            <div class="image-upload-row">
+              <div id="coverDropZone" class="upload-zone compact" style="flex: 1; min-width: 200px;">
+                <span class="upload-icon">🖼️</span>
+                <div class="upload-label">Drop cover image or <span style="color: var(--accent); text-decoration: underline;">browse</span></div>
+                <div class="upload-sublabel">JPEG, PNG, WEBP (Max 1MB)</div>
+                <input type="file" id="coverFileInput" accept="image/jpeg,image/png,image/webp" style="display: none;" />
+                <div class="image-preview-container" id="coverPreviewContainer"><img src="" class="image-preview" id="coverImagePreview" alt="Cover preview" /><button type="button" class="clear-img-btn" id="coverClearBtn">&times;</button></div>
+              </div>
+              <div class="image-upload-fields">
+                <div class="form-group" style="margin-bottom:0.5rem;"><input type="text" id="coverImageName" class="form-input" placeholder="Image name (alt text)" style="padding:0.6rem 0.75rem;font-size:0.85rem;" /></div>
+                <div class="form-group"><input type="text" id="coverImageDesc" class="form-input" placeholder="Image description / caption" style="padding:0.6rem 0.75rem;font-size:0.85rem;" /></div>
+              </div>
             </div>
           </div>
-          <div class="form-group full-width"><label for="artContent" class="form-label">Article Content (Markdown Supported)</label><textarea id="artContent" class="form-input" style="min-height: 220px; resize: vertical; font-family: inherit;" placeholder="Write your full publication content, clinical methods, and results here..." required></textarea></div>
-          <div class="form-group full-width" style="margin-top: 1rem;"><button type="submit" class="btn">Submit Article for Review</button></div>
+
+          <!-- In-text Images (up to 5) -->
+          <div class="form-group full-width" id="intextImagesSection">
+            <label class="form-label">In-text Images <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(Up to 5, Max 1MB each)</span></label>
+            <p class="form-hint" style="margin-bottom:0.75rem;">Upload images to use within your article. Copy the generated URL and paste it into your markdown content.</p>
+            <div id="intextImageSlots"></div>
+            <button type="button" class="image-slot-add" id="addImageSlotBtn">+ Add Image Slot</button>
+          </div>
+
+          <div class="form-group full-width"><label for="artContent" class="form-label">Article Content (Markdown) *</label><textarea id="artContent" class="form-input" style="min-height: 220px; resize: vertical; font-family: inherit;" placeholder="Write your full publication content in markdown..." required></textarea></div>
+
+          <!-- Markdown Image Guide -->
+          <div class="form-group full-width">
+            <div class="image-guide">
+              <strong>📷 Image Guide:</strong> After uploading images, copy the URL shown in the slot and insert into your markdown:<br>
+              <code>![alt text description](IMAGE_URL)</code><br><br>
+              <strong>Example:</strong> <code>![Figure 1: T-cell response graph](https://pub-xxx.r2.dev/inline/2026/08/abc123-graph.png)</code><br><br>
+              <strong>Cover image:</strong> Automatically set as the article's featured image.<br>
+              <strong>In-text images:</strong> Copy URLs from image slots above and paste where needed in your article content.
+            </div>
+          </div>
+
+          <div class="form-group full-width" style="margin-top: 1rem;"><button type="submit" class="btn" id="submitBtn">Submit Article for Review</button></div>
         </form>
       </div>
 
+      <!-- Submissions Panel -->
       <div id="submissionsPanel" class="tab-panel">
         <h2 class="panel-title">My Submitted Articles</h2>
-        <p class="panel-desc">Review and manage status tracking of your clinical article drafts.</p>
+        <p class="panel-desc">Track the review and publication status of your articles.</p>
         <div class="table-container">
           <table class="submissions-table">
-            <thead><tr><th>Article Title</th><th>Specialty</th><th>Submitted Date</th><th>Status</th></tr></thead>
+            <thead><tr><th>Article Title</th><th>Tags</th><th>Submitted Date</th><th>Status</th></tr></thead>
             <tbody id="submissionsTableBody">
-              <tr><td style="font-weight: 600;">CRISPR-Cas9 Gene Therapy Cure for Sickle Cell Disease</td><td>Genomics</td><td>Aug 9, 2026</td><td><span class="status-badge status-approved">Approved</span></td></tr>
-              <tr><td style="font-weight: 600;">Breakthrough Immunotherapy for Glioblastoma</td><td>Oncology</td><td>Aug 9, 2026</td><td><span class="status-badge status-approved">Approved</span></td></tr>
+              <tr><td colspan="4" class="empty-state">Loading submissions...</td></tr>
             </tbody>
           </table>
         </div>
-      </div>
-
-      <div id="profilePanel" class="tab-panel">
-        <h2 class="panel-title">Edit Contributor Profile</h2>
-        <p class="panel-desc">Manage your bio, credentials, specialty, and profile picture displayed in the gallery.</p>
-        <form id="profileForm" class="form-grid">
-          <div class="form-group"><label for="profName" class="form-label">Full Name & Title</label><input type="text" id="profName" class="form-input" value="Dr. Eleanor Vance" required /></div>
-          <div class="form-group"><label for="profAffiliation" class="form-label">Affiliation</label><input type="text" id="profAffiliation" class="form-input" value="iMedipedia Institute of Clinical Genetics" required /></div>
-          <div class="form-group"><label for="profSpecialty" class="form-label">Specialty Field</label><input type="text" id="profSpecialty" class="form-input" value="Genomics & Oncology" required /></div>
-          <div class="form-group"><label for="profAvatar" class="form-label">Avatar Profile URL</label><input type="url" id="profAvatar" class="form-input" value="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300" required /></div>
-          <div class="form-group full-width"><label for="profBio" class="form-label">Professional Biography</label><textarea id="profBio" class="form-input" style="min-height: 100px; resize: vertical; font-family: inherit;" required>Dr. Eleanor Vance is a leading researcher in clinical genetics and cancer immunotherapies. She leads the genomic sequencing division at the iMedipedia Institute, focusing on CRISPR therapeutics and personalized vaccines.</textarea></div>
-          <div class="form-group full-width" style="margin-top: 1rem;"><button type="submit" class="btn">Submit Profile Updates</button></div>
-        </form>
       </div>
     </main>
   </div>
 
   <slot name="scripts">
     <script is:inline>
-      // Tabs switching
+      // --- Auth Gate ---
+      var userData = sessionStorage.getItem('user');
+      if (!userData) { window.location.href = '/contributors'; }
+      var user;
+      try { user = JSON.parse(userData); } catch(e) { window.location.href = '/contributors'; }
+      if (!user) { window.location.href = '/contributors'; }
+
+      // Check force password change
+      if (user.force_password_change) {
+        showAlert('You must change your password before continuing.', 'error');
+        setTimeout(function() { window.location.href = '/contributors/settings'; }, 1500);
+      }
+
+      // Update sidebar
+      document.getElementById('sideName').textContent = user.username;
+      document.getElementById('sideRole').textContent = user.role || 'Contributor';
+      var initial = user.username.charAt(0).toUpperCase();
+      document.getElementById('avatarInitial').textContent = initial;
+
+      // Auto-fill author name from user profile
+      document.getElementById('artAuthor').value = user.full_name || user.username || '';
+
+      // --- Tabs ---
       var tabBtns = document.querySelectorAll('.tab-btn');
       var tabPanels = document.querySelectorAll('.tab-panel');
       tabBtns.forEach(function(btn) {
@@ -163,89 +259,375 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
           tabBtns.forEach(function(b) { b.classList.remove('active'); });
           tabPanels.forEach(function(p) { p.classList.remove('active'); });
           btn.classList.add('active');
-          document.getElementById(btn.getAttribute('data-tab') + 'Panel').classList.add('active');
+          var panelId = btn.getAttribute('data-tab') + 'Panel';
+          document.getElementById(panelId).classList.add('active');
+          if (btn.getAttribute('data-tab') === 'overview' || btn.getAttribute('data-tab') === 'submissions') {
+            loadSubmissions();
+          }
         });
       });
 
-      // Alert helper
+      // --- Alert ---
       var alertBox = document.getElementById('alertBox');
       function showAlert(message, type) {
         type = type || 'success';
-        alertBox.innerHTML = '<div class="alert alert-' + type + '">&#10003; ' + message + '</div>';
+        alertBox.innerHTML = '<div class="alert alert-' + type + '">' + (type === 'success' ? '&#10003; ' : '') + message + '</div>';
         alertBox.style.display = 'block';
         window.scrollTo({ top: 0, behavior: 'smooth' });
         setTimeout(function() { alertBox.style.display = 'none'; }, 5000);
       }
 
-      // Upload Zone
-      var dropZone = document.getElementById('dropZone');
-      var fileInput = document.getElementById('fileInput');
-      var progressContainer = document.getElementById('progressContainer');
-      var progressBar = document.getElementById('progressBar');
-      var previewContainer = document.getElementById('previewContainer');
-      var imagePreview = document.getElementById('imagePreview');
-      var clearImgBtn = document.getElementById('clearImgBtn');
-
-      dropZone.addEventListener('click', function(e) { if (e.target !== clearImgBtn && !previewContainer.contains(e.target)) fileInput.click(); });
-      dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('dragover'); });
-      dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('dragover'); });
-      dropZone.addEventListener('drop', function(e) { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
-      fileInput.addEventListener('change', function() { if (fileInput.files.length) handleFile(fileInput.files[0]); });
-
-      function handleFile(file) {
-        if (!file.type.startsWith('image/')) { alert('Only image files are allowed!'); return; }
-        progressContainer.style.display = 'block';
-        progressBar.style.width = '0%';
-        var width = 0;
-        var interval = setInterval(function() {
-          if (width >= 100) {
-            clearInterval(interval);
-            progressContainer.style.display = 'none';
-            var reader = new FileReader();
-            reader.onload = function(e) { imagePreview.src = e.target.result; previewContainer.style.display = 'flex'; };
-            reader.readAsDataURL(file);
-          } else { width += 20; progressBar.style.width = width + '%'; }
-        }, 100);
+      // --- Load Submissions ---
+      async function loadSubmissions() {
+        try {
+          var res = await fetch('/api/submissions/list');
+          if (res.status === 401) { sessionStorage.clear(); window.location.href = '/contributors'; return; }
+          var data = await res.json();
+          var submissions = data.submissions || [];
+          updateStats(submissions);
+          renderSubmissionsTable(submissions);
+        } catch(err) {
+          console.error('Failed to load submissions:', err);
+        }
       }
-      clearImgBtn.addEventListener('click', function(e) { e.stopPropagation(); fileInput.value = ''; imagePreview.src = ''; previewContainer.style.display = 'none'; });
 
-      // Stats
-      var submissionsCount = 2;
-      var reviewCount = 0;
+      function updateStats(submissions) {
+        var total = submissions.length;
+        var pending = submissions.filter(function(s){return s.status==='pending'}).length;
+        var published = submissions.filter(function(s){return s.status==='published'}).length;
+        document.getElementById('statTotal').textContent = total;
+        document.getElementById('statPending').textContent = pending;
+        document.getElementById('statPublished').textContent = published;
+      }
 
-      // Article Form
+      function renderSubmissionsTable(submissions) {
+        var tbody = document.getElementById('submissionsTableBody');
+        if (submissions.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No submissions yet. Start by submitting your first article!</td></tr>';
+          return;
+        }
+        tbody.innerHTML = submissions.map(function(s) {
+          var date = new Date(s.created_at * 1000);
+          var dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          return '<tr>'+
+            '<td style="font-weight:600;">' + escapeHTML(s.title) + '</td>'+
+            '<td>' + escapeHTML(s.tag || '—') + '</td>'+
+            '<td>' + dateStr + '</td>'+
+            '<td><span class="badge badge-' + s.status + '">' + s.status + '</span>' +
+            (s.status === 'rejected' && s.admin_notes ? '<div style="font-size:0.75rem;color:#ef4444;margin-top:0.25rem;">' + escapeHTML(s.admin_notes) + '</div>' : '') +
+            '</td>'+
+            '</tr>';
+        }).join('');
+      }
+
+      function escapeHTML(str) {
+        var div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
+      }
+
+      // --- In-text Image Slots ---
+      var MAX_INTEXT_IMAGES = 5;
+      var intextSlots = []; // { id, file, name, description, dataUrl }
+
+      function createImageSlot(slotIndex) {
+        var slot = document.createElement('div');
+        slot.className = 'image-slot';
+        slot.id = 'intextSlot' + slotIndex;
+        slot.innerHTML =
+          '<div class="image-slot-header">'+
+            '<span class="image-slot-title">Image ' + (slotIndex + 1) + '</span>'+
+            '<button type="button" class="image-slot-remove" onclick="removeImageSlot(' + slotIndex + ')">Remove</button>'+
+          '</div>'+
+          '<div class="image-upload-row">'+
+            '<div class="upload-zone compact" id="intextDropZone' + slotIndex + '" style="flex:1;min-width:150px;">'+
+              '<span style="font-size:0.85rem;">Drop image or <span style="color:var(--accent);text-decoration:underline;">browse</span></span>'+
+              '<div style="font-size:0.7rem;color:var(--muted);">Max 1MB</div>'+
+              '<input type="file" id="intextFileInput' + slotIndex + '" accept="image/jpeg,image/png,image/webp" style="display:none;" />'+
+              '<div class="image-preview-container" id="intextPreview' + slotIndex + '"><img src="" class="image-preview" id="intextPreviewImg' + slotIndex + '" alt="Preview" /><button type="button" class="clear-img-btn" id="intextClear' + slotIndex + '">&times;</button></div>'+
+            '</div>'+
+            '<div class="image-upload-fields">'+
+              '<div class="form-group" style="margin-bottom:0.5rem;"><input type="text" id="intextName' + slotIndex + '" class="form-input" placeholder="Image name (alt text)" style="padding:0.5rem 0.75rem;font-size:0.85rem;" /></div>'+
+              '<div class="form-group"><input type="text" id="intextDesc' + slotIndex + '" class="form-input" placeholder="Description / caption" style="padding:0.5rem 0.75rem;font-size:0.85rem;" /></div>'+
+            '</div>'+
+          '</div>'+
+          '<div id="intextUrlDisplay' + slotIndex + '" style="display:none;margin-top:0.75rem;padding:0.5rem 0.75rem;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:6px;font-size:0.8rem;word-break:break-all;">'+
+            '<span style="color:#10b981;font-weight:700;">Uploaded URL:</span> <code id="intextUrl' + slotIndex + '" style="color:var(--accent);"></code>'+
+            '<button type="button" style="margin-left:0.5rem;padding:0.15rem 0.5rem;font-size:0.75rem;cursor:pointer;border-radius:4px;border:1px solid var(--accent);background:transparent;color:var(--accent);" onclick="copyIntextUrl(' + slotIndex + ')">Copy</button>'+
+          '</div>';
+
+        document.getElementById('intextImageSlots').appendChild(slot);
+        setupSlotUploadListeners(slotIndex);
+      }
+
+      function removeImageSlot(slotIndex) {
+        var slotEl = document.getElementById('intextSlot' + slotIndex);
+        if (slotEl) slotEl.remove();
+        intextSlots = intextSlots.filter(function(s) { return s.id !== slotIndex; });
+      }
+
+      function copyIntextUrl(slotIndex) {
+        var urlEl = document.getElementById('intextUrl' + slotIndex);
+        if (!urlEl) return;
+        var url = urlEl.textContent;
+        if (!url) return;
+        navigator.clipboard.writeText(url).then(function() {
+          showAlert('URL copied! Paste into your markdown: ![description](' + url + ')', 'success');
+        }).catch(function() {
+          // Fallback: select the text
+          var range = document.createRange();
+          range.selectNodeContents(urlEl);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          showAlert('URL selected. Press Ctrl+C to copy.', 'success');
+        });
+      }
+
+      function setupSlotUploadListeners(slotIndex) {
+        var dropZone = document.getElementById('intextDropZone' + slotIndex);
+        var fileInput = document.getElementById('intextFileInput' + slotIndex);
+        var previewContainer = document.getElementById('intextPreview' + slotIndex);
+        var previewImg = document.getElementById('intextPreviewImg' + slotIndex);
+        var clearBtn = document.getElementById('intextClear' + slotIndex);
+
+        if (!dropZone) return;
+
+        dropZone.addEventListener('click', function(e) {
+          if (!previewContainer.contains(e.target) && e.target !== clearBtn) fileInput.click();
+        });
+        dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('dragover'); });
+        dropZone.addEventListener('drop', function(e) {
+          e.preventDefault();
+          dropZone.classList.remove('dragover');
+          if (e.dataTransfer.files.length) handleIntextFile(slotIndex, e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', function() {
+          if (fileInput.files.length) handleIntextFile(slotIndex, fileInput.files[0]);
+        });
+        clearBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          fileInput.value = '';
+          previewImg.src = '';
+          previewContainer.style.display = 'none';
+          document.getElementById('intextUrlDisplay' + slotIndex).style.display = 'none';
+          // Remove from slots
+          intextSlots = intextSlots.filter(function(s) { return s.id !== slotIndex; });
+        });
+      }
+
+      function handleIntextFile(slotIndex, file) {
+        if (!file.type.startsWith('image/')) { showAlert('Only image files are allowed!', 'error'); return; }
+        if (file.size > 1 * 1024 * 1024) { showAlert('In-text image must be under 1MB.', 'error'); return; }
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('intextPreviewImg' + slotIndex).src = e.target.result;
+          document.getElementById('intextPreview' + slotIndex).style.display = 'flex';
+          // Store for later upload
+          var name = document.getElementById('intextName' + slotIndex).value.trim() || 'image-' + (slotIndex + 1);
+          var desc = document.getElementById('intextDesc' + slotIndex).value.trim() || '';
+          intextSlots = intextSlots.filter(function(s) { return s.id !== slotIndex; });
+          intextSlots.push({ id: slotIndex, file: file, name: name, description: desc, dataUrl: e.target.result });
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // Add initial slot
+      createImageSlot(0);
+
+      document.getElementById('addImageSlotBtn').addEventListener('click', function() {
+        var count = document.querySelectorAll('.image-slot').length;
+        if (count >= MAX_INTEXT_IMAGES) {
+          showAlert('Maximum ' + MAX_INTEXT_IMAGES + ' in-text images allowed.', 'error');
+          return;
+        }
+        createImageSlot(count);
+      });
+
+      // --- Cover Image Upload ---
+      var coverDropZone = document.getElementById('coverDropZone');
+      var coverFileInput = document.getElementById('coverFileInput');
+      var coverPreviewContainer = document.getElementById('coverPreviewContainer');
+      var coverPreview = document.getElementById('coverImagePreview');
+      var coverClearBtn = document.getElementById('coverClearBtn');
+      var coverFileData = null; // { file, dataUrl }
+
+      coverDropZone.addEventListener('click', function(e) {
+        if (e.target !== coverClearBtn && !coverPreviewContainer.contains(e.target)) coverFileInput.click();
+      });
+      coverDropZone.addEventListener('dragover', function(e) { e.preventDefault(); coverDropZone.classList.add('dragover'); });
+      coverDropZone.addEventListener('dragleave', function() { coverDropZone.classList.remove('dragover'); });
+      coverDropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        coverDropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleCoverFile(e.dataTransfer.files[0]);
+      });
+      coverFileInput.addEventListener('change', function() {
+        if (coverFileInput.files.length) handleCoverFile(coverFileInput.files[0]);
+      });
+      coverClearBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        coverFileInput.value = '';
+        coverPreview.src = '';
+        coverPreviewContainer.style.display = 'none';
+        coverFileData = null;
+        document.getElementById('coverImageName').value = '';
+        document.getElementById('coverImageDesc').value = '';
+      });
+
+      function handleCoverFile(file) {
+        if (!file.type.startsWith('image/')) { showAlert('Only image files are allowed!', 'error'); return; }
+        if (file.size > 1 * 1024 * 1024) { showAlert('Cover image must be under 1MB.', 'error'); return; }
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          coverFileData = { file: file, dataUrl: e.target.result };
+          coverPreview.src = e.target.result;
+          coverPreviewContainer.style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // --- Upload helper: sends a base64 file to R2 ---
+      async function uploadImageToR2(dataUrl, name, description, folder) {
+        try {
+          var res = await fetch('/api/images/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              file: dataUrl,
+              name: name || 'image',
+              description: description || '',
+              folder: folder || 'uploads'
+            })
+          });
+          var data = await res.json();
+          if (res.ok && data.success) {
+            return { success: true, url: data.url, key: data.key };
+          } else {
+            return { success: false, error: data.error || 'Upload failed' };
+          }
+        } catch(err) {
+          return { success: false, error: 'Network error during image upload.' };
+        }
+      }
+
+      // --- Article Form Submit ---
       var articleForm = document.getElementById('articleForm');
-      var submissionsTableBody = document.getElementById('submissionsTableBody');
-      var statTotal = document.getElementById('statTotal');
-      var statReview = document.getElementById('statReview');
+      var submitBtn = document.getElementById('submitBtn');
 
-      articleForm.addEventListener('submit', function(e) {
+      articleForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        var title = document.getElementById('artTitle').value;
-        var tag = document.getElementById('artTag').value;
-        var row = document.createElement('tr');
-        row.innerHTML = '<td style="font-weight: 600;">' + title + '</td><td>' + tag + '</td><td>' + new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + '</td><td><span class="status-badge status-review">In Review</span></td>';
-        submissionsTableBody.prepend(row);
-        submissionsCount++; reviewCount++;
-        statTotal.textContent = submissionsCount;
-        statReview.textContent = reviewCount;
-        articleForm.reset();
-        previewContainer.style.display = 'none';
-        imagePreview.src = '';
-        showAlert('Article submitted successfully for peer review!');
-        setTimeout(function() { document.querySelector('[data-tab="submissions"]').click(); }, 1000);
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Uploading images...';
+
+        // Collect tags (comma-separated)
+        var tagsInput = document.getElementById('artTag').value.trim();
+        var tags = tagsInput ? tagsInput.split(',').map(function(t){return t.trim();}).filter(Boolean) : [];
+
+        // Collect exams (comma-separated, optional)
+        var examsInput = document.getElementById('artExams').value.trim();
+        var exams = examsInput ? examsInput.split(',').map(function(t){return t.trim();}).filter(Boolean) : [];
+
+        // Upload cover image to R2
+        var coverUrl = '';
+        if (coverFileData && coverFileData.dataUrl) {
+          var coverName = document.getElementById('coverImageName').value.trim() || 'cover-image';
+          var coverDesc = document.getElementById('coverImageDesc').value.trim() || '';
+          var coverResult = await uploadImageToR2(coverFileData.dataUrl, coverName, coverDesc, 'covers');
+          if (coverResult.success) {
+            coverUrl = coverResult.url;
+          } else {
+            showAlert('Cover image upload failed: ' + coverResult.error, 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Article for Review';
+            return;
+          }
+        }
+
+        // Upload in-text images to R2
+        var intextImages = []; // { url, name, description }
+        for (var i = 0; i < intextSlots.length; i++) {
+          var slot = intextSlots[i];
+          if (slot.dataUrl) {
+            var slotName = document.getElementById('intextName' + slot.id);
+            var slotDesc = document.getElementById('intextDesc' + slot.id);
+            var name = (slotName ? slotName.value.trim() : '') || 'image-' + (slot.id + 1);
+            var desc = (slotDesc ? slotDesc.value.trim() : '') || '';
+            submitBtn.textContent = 'Uploading image ' + (i + 1) + '/' + intextSlots.length + '...';
+            var result = await uploadImageToR2(slot.dataUrl, name, desc, 'inline');
+            if (result.success) {
+              intextImages.push({ url: result.url, name: name, description: desc });
+              // Show URL in the slot
+              var urlDisplay = document.getElementById('intextUrlDisplay' + slot.id);
+              var urlEl = document.getElementById('intextUrl' + slot.id);
+              if (urlDisplay && urlEl) {
+                urlEl.textContent = result.url;
+                urlDisplay.style.display = 'block';
+              }
+            } else {
+              showAlert('In-text image upload failed: ' + result.error, 'error');
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Submit Article for Review';
+              return;
+            }
+          }
+        }
+
+        submitBtn.textContent = 'Submitting article...';
+
+        var payload = {
+          title: document.getElementById('artTitle').value.trim(),
+          author: document.getElementById('artAuthor').value.trim(),
+          type: document.getElementById('artType').value,
+          tag: JSON.stringify(tags),       // Store as JSON array
+          subject: document.getElementById('artSubject').value.trim(),
+          topic: document.getElementById('artTopic').value.trim(),
+          description: document.getElementById('artDesc').value.trim(),
+          exams: exams,
+          image: coverUrl,                 // R2 URL instead of base64
+          intextImages: intextImages,      // Array of {url, name, description}
+          body: document.getElementById('artContent').value.trim()
+        };
+
+        try {
+          var res = await fetch('/api/submissions/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          var data = await res.json();
+
+          if (res.ok && data.success) {
+            articleForm.reset();
+            // Reset cover image
+            coverPreview.src = '';
+            coverPreviewContainer.style.display = 'none';
+            coverFileData = null;
+            document.getElementById('coverImageName').value = '';
+            document.getElementById('coverImageDesc').value = '';
+            // Reset in-text slots
+            document.getElementById('intextImageSlots').innerHTML = '';
+            intextSlots = [];
+            createImageSlot(0);
+            // Re-set author
+            document.getElementById('artAuthor').value = user.full_name || user.username || '';
+
+            showAlert('Article submitted successfully for review!');
+            setTimeout(function() { document.querySelector('[data-tab="submissions"]').click(); }, 1200);
+          } else {
+            showAlert(data.error || 'Submission failed.', 'error');
+          }
+        } catch(err) {
+          showAlert('Network error. Please try again.', 'error');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Article for Review';
+        }
       });
 
-      // Profile Form
-      var profileForm = document.getElementById('profileForm');
-      var sideAvatar = document.getElementById('sideAvatar');
-      var sideName = document.getElementById('sideName');
-      profileForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        sideAvatar.src = document.getElementById('profAvatar').value;
-        sideName.textContent = document.getElementById('profName').value;
-        showAlert('Profile information updated successfully!');
-      });
+      // --- Init ---
+      loadSubmissions();
     </script>
   </slot>
 </BaseLayout>

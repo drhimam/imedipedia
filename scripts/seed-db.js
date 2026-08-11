@@ -1,3 +1,47 @@
+/**
+ * Database Seed Script for iMedipedia
+ *
+ * Usage:
+ *   npx wrangler d1 execute imedipedia-db --local --file=scripts/seed-output.sql
+ *   npx wrangler d1 execute imedipedia-db --remote --file=scripts/seed-output.sql
+ *
+ * This script generates the SQL to drop and recreate all tables,
+ * then seeds with initial data (admin user, demo contributors, etc.).
+ */
+
+import crypto from 'crypto';
+
+function bytesToHex(bytes) {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function generateId() {
+  return bytesToHex(crypto.randomBytes(16));
+}
+
+async function hashPassword(password) {
+  const salt = crypto.randomBytes(16);
+  const hash = crypto.pbkdf2Sync(password, salt, 100000, 32, 'sha256');
+  return `${bytesToHex(salt)}:${bytesToHex(hash)}`;
+}
+
+const now = Math.floor(Date.now() / 1000);
+
+// Generate hashed password for admin
+const adminPasswordHash = await hashPassword('admin123');
+
+const adminId = generateId();
+
+const sql = `
+-- Drop existing tables (order matters for FK constraints)
+DROP TABLE IF EXISTS totp_secrets;
+DROP TABLE IF EXISTS images;
+DROP TABLE IF EXISTS applications;
+DROP TABLE IF EXISTS submissions;
+DROP TABLE IF EXISTS password_reset_tokens;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS users;
+
 -- Users Table (with profile columns)
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
@@ -18,6 +62,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -26,6 +71,8 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -91,3 +138,14 @@ CREATE TABLE IF NOT EXISTS totp_secrets (
     created_at INTEGER NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Seed admin user (password: admin123)
+INSERT INTO users (id, username, password_hash, role, full_name, email)
+VALUES ('${adminId}', 'admin', '${adminPasswordHash}', 'admin', 'Site Administrator', 'admin@imedipedia.org');
+`;
+
+import fs from 'fs';
+fs.writeFileSync('scripts/seed-output.sql', sql, 'utf-8');
+console.log('Seed SQL written to scripts/seed-output.sql');
+console.log('Run with: npx wrangler d1 execute imedipedia-db --local --file=scripts/seed-output.sql');
+console.log('Or remote: npx wrangler d1 execute imedipedia-db --remote --file=scripts/seed-output.sql');

@@ -19,18 +19,24 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       .card-desc { color: var(--muted); font-size: 1rem; margin-bottom: 2rem; line-height: 1.6; }
       .form-group { margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; }
       .form-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-      .form-input { padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0, 0, 0, 0.1); color: var(--text); font-size: 0.95rem; transition: border-color 0.2s, background-color 0.2s; }
-      :global([data-theme="light"]) .form-input { background: rgba(255, 255, 255, 0.8); }
-      .form-input:focus { outline: none; border-color: var(--accent); background: rgba(0, 0, 0, 0.2); }
-      :global([data-theme="light"]) .form-input:focus { background: #ffffff; }
+      .form-input, .form-textarea { padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0, 0, 0, 0.1); color: var(--text); font-size: 0.95rem; transition: border-color 0.2s, background-color 0.2s; }
+      :global([data-theme="light"]) .form-input, :global([data-theme="light"]) .form-textarea { background: rgba(255, 255, 255, 0.8); }
+      .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--accent); background: rgba(0, 0, 0, 0.2); }
+      :global([data-theme="light"]) .form-input:focus, :global([data-theme="light"]) .form-textarea:focus { background: #ffffff; }
+      .form-textarea { resize: vertical; min-height: 80px; font-family: inherit; }
       .btn { background: var(--accent); color: #ffffff; border: none; padding: 0.9rem 1.5rem; font-size: 1rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: transform 0.2s, opacity 0.2s, box-shadow 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
       .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--accent-glow); }
       .btn:active { transform: translateY(0); }
+      .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
       .btn-secondary { background: transparent; border: 1px solid var(--accent); color: var(--text); }
       .btn-secondary:hover { background: var(--accent); color: white; }
+      .alert { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem; margin-bottom: 1rem; display: none; }
+      .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; }
+      .alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; }
+      .alert-info { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6; }
       .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(3, 7, 18, 0.6); backdrop-filter: blur(8px); z-index: 100; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; }
       .modal-overlay.active { display: flex; opacity: 1; }
-      .modal-content { background: var(--bg); border: 1px solid var(--border); border-radius: 24px; max-width: 550px; width: 90%; padding: 2.5rem; position: relative; transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); }
+      .modal-content { background: var(--bg); border: 1px solid var(--border); border-radius: 24px; max-width: 550px; width: 90%; max-height: 85vh; overflow-y: auto; padding: 2.5rem; position: relative; transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); }
       .modal-overlay.active .modal-content { transform: scale(1); }
       .modal-close { position: absolute; top: 1.25rem; right: 1.25rem; background: transparent; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; line-height: 1; }
       .modal-close:hover { color: var(--text); }
@@ -39,6 +45,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       @keyframes scaleIn2 { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
       .success-title { font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 700; margin-bottom: 0.75rem; }
       .success-desc { color: var(--muted); font-size: 1rem; line-height: 1.6; max-width: 400px; }
+      .forgot-pw-link { text-align: center; margin-top: 1rem; font-size: 0.85rem; }
+      .forgot-pw-link a { color: var(--accent); text-decoration: none; }
+      .forgot-pw-link a:hover { text-decoration: underline; }
       .contributors-section { margin-top: 5rem; border-top: 1px solid var(--border); padding-top: 4rem; }
       .contributors-section h2 { font-family: 'Outfit', sans-serif; font-size: 2.2rem; font-weight: 800; text-align: center; margin-bottom: 3rem; letter-spacing: -0.5px; }
       .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem; }
@@ -53,47 +62,71 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       .contributor-name-link:hover .contributor-name { color: var(--accent); }
       .contributor-specialty { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--accent); background: rgba(99, 102, 241, 0.1); padding: 0.25rem 0.75rem; border-radius: 20px; margin-bottom: 1rem; }
       .contributor-bio { color: var(--muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.5rem; flex-grow: 1; }
-      @media (max-width: 768px) { .grid-layout { grid-template-columns: 1fr; gap: 2rem; } .portal-header h1 { font-size: 2.2rem; } }
+      @media (max-width: 768px) {
+        .grid-layout { grid-template-columns: 1fr; gap: 2rem; }
+        .portal-header h1 { font-size: 2.2rem; }
+      }
+      @media (max-width: 480px) {
+        .main-content { margin: 2rem auto; padding: 0 1rem; }
+        .portal-header h1 { font-size: 1.8rem; }
+        .portal-header p { font-size: 0.95rem; }
+        .card { padding: 1.5rem; }
+        .card-title { font-size: 1.4rem; }
+        .gallery-grid { grid-template-columns: 1fr; }
+        .contributors-section { margin-top: 3rem; padding-top: 2.5rem; }
+        .contributors-section h2 { font-size: 1.6rem; margin-bottom: 2rem; }
+        .form-input, .form-textarea { font-size: 16px; }
+        .modal-content { padding: 1.5rem; }
+      }
     </style>
   </slot>
 
   <main class="main-content">
     <header class="portal-header">
       <h1>Contributor Portal</h1>
-      <p>Help shape the future of medical science publication. Share research, edit peers' drafts, or apply to join our expert panel.</p>
+      <p>Help shape the future of medical science publication. Apply to become a contributor and share original research, case reports, and clinical reviews.</p>
     </header>
 
     <div class="grid-layout">
+      <!-- Apply Card -->
       <section class="card">
         <div>
           <h2 class="card-title">Apply to Contribute</h2>
-          <p class="card-desc">Join our distinguished network of medical professionals, researchers, and scientific writers. Contribute original studies, review clinical trials, and share insights with the global community.</p>
+          <p class="card-desc">Join our network of medical professionals, researchers, and scientific writers. Submit your application for editorial board review.</p>
         </div>
-        <button id="applyBtn" class="btn">Apply to be a Contributor &rarr;</button>
+        <button id="applyBtn" class="btn">Apply Now &rarr;</button>
       </section>
 
+      <!-- Login Card -->
       <section class="card">
         <div>
           <h2 class="card-title">Contributor Login</h2>
-          <p class="card-desc">Already registered? Log in to your publisher dashboard to write new articles, edit drafts, or review peer contributions.</p>
-          <form id="loginForm" onsubmit="event.preventDefault(); window.location.href = '/contributors/dashboard';">
+          <p class="card-desc">Already approved? Log in to your publisher dashboard to write new articles, view your submissions, and track publication status.</p>
+          <div id="loginAlert" class="alert alert-error"></div>
+          <form id="loginForm">
             <div class="form-group">
-              <label for="loginEmail" class="form-label">Email Address</label>
-              <input type="email" id="loginEmail" class="form-input" placeholder="dr.smith@institution.edu" required />
+              <label for="loginUsername" class="form-label">Username</label>
+              <input type="text" id="loginUsername" class="form-input" placeholder="dr_smith" required autocomplete="username" />
             </div>
-            <div class="form-group" style="margin-bottom: 2rem;">
+            <div class="form-group" id="passwordGroup">
               <label for="loginPassword" class="form-label">Password</label>
-              <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required />
+              <input type="password" id="loginPassword" class="form-input" placeholder="Password" required autocomplete="current-password" />
             </div>
-            <button type="submit" class="btn btn-secondary" style="width: 100%;">Log In</button>
+            <div class="form-group" id="totpGroup" style="display:none;">
+              <label for="loginTotp" class="form-label">Authenticator Code</label>
+              <input type="text" id="loginTotp" class="form-input" placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" />
+              <span style="font-size:0.75rem;color:var(--muted);">Enter the 6-digit code from your authenticator app</span>
+            </div>
+            <button type="submit" class="btn btn-secondary" style="width: 100%;" id="loginBtn">Log In</button>
           </form>
+          <p class="forgot-pw-link"><a href="#" id="forgotPwLink">Forgot your password?</a></p>
         </div>
       </section>
     </div>
 
     <section class="contributors-section">
       <h2>Our Current Contributors</h2>
-      <div class="gallery-grid">
+      <div class="gallery-grid" id="contributorsGrid">
         <article class="contributor-card">
           <a href="/contributors/eleanor-vance" class="contributor-img-link"><img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300" alt="Dr. Eleanor Vance" class="contributor-img" /></a>
           <a href="/contributors/eleanor-vance" class="contributor-name-link"><h3 class="contributor-name">Dr. Eleanor Vance</h3></a>
@@ -119,47 +152,372 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </section>
   </main>
 
-  <!-- Contributor Application Modal Overlay -->
+  <!-- Application Modal -->
   <div id="applyModal" class="modal-overlay">
     <div class="modal-content">
       <button id="closeModal" class="modal-close" aria-label="Close modal">&times;</button>
       <div id="formContainer">
-        <h2 class="card-title" style="margin-bottom: 0.5rem;">Contributor Application</h2>
-        <p class="card-desc" style="margin-bottom: 1.5rem; font-size: 0.95rem;">Please provide your professional credentials. Our editorial board reviews all applications to maintain peer-reviewed standards.</p>
+        <h2 class="card-title" style="margin-bottom: 0.5rem;">Apply to Contribute</h2>
+        <p class="card-desc" style="margin-bottom: 1.5rem; font-size: 0.95rem;">Tell us about yourself and your writing experience. Our editorial board will review your application.</p>
+        <div id="appAlert" class="alert alert-error"></div>
         <form id="appForm">
-          <div class="form-group"><label for="appName" class="form-label">Full Name & Credentials</label><input type="text" id="appName" class="form-input" placeholder="Sarah Jenkins, MD, PhD" required /></div>
-          <div class="form-group"><label for="appEmail" class="form-label">Professional Email</label><input type="email" id="appEmail" class="form-input" placeholder="s.jenkins@medicalcenter.org" required /></div>
-          <div class="form-group"><label for="appSpecialty" class="form-label">Medical Specialty / Field of Study</label><input type="text" id="appSpecialty" class="form-input" placeholder="Immunology & Gene Editing" required /></div>
-          <div class="form-group"><label for="appStatement" class="form-label">Statement of Purpose</label><textarea id="appStatement" class="form-input" style="min-height: 100px; resize: vertical; font-family: inherit;" placeholder="Briefly describe your current research interests or publication goals..." required></textarea></div>
-          <div class="form-group" style="margin-bottom: 2rem;"><label for="appPortfolio" class="form-label">Portfolio or ORCID iD Link</label><input type="url" id="appPortfolio" class="form-input" placeholder="https://orcid.org/0000-0000-0000-0000" required /></div>
-          <button type="submit" class="btn" style="width: 100%;">Submit Application</button>
+          <div class="form-group">
+            <label for="appName" class="form-label">Full Name *</label>
+            <input type="text" id="appName" class="form-input" placeholder="Dr. Jane Smith" required autocomplete="name" />
+          </div>
+          <div class="form-group">
+            <label for="appEmail" class="form-label">Email Address *</label>
+            <input type="email" id="appEmail" class="form-input" placeholder="jane.smith@hospital.edu" required autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="appAbout" class="form-label">About Me *</label>
+            <textarea id="appAbout" class="form-textarea" placeholder="Brief description of your background, specialty, and interest in medical writing..." required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="appExperience" class="form-label">Writing Experience *</label>
+            <textarea id="appExperience" class="form-textarea" placeholder="Describe your medical or scientific writing experience. Include previous publications, research papers, or blog posts..." required></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 2rem;">
+            <label for="appPortfolio" class="form-label">Portfolio Links <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+            <input type="text" id="appPortfolio" class="form-input" placeholder="https://pubmed.ncbi.nlm.nih.gov/..., https://medium.com/@..." />
+          </div>
+          <button type="submit" class="btn" style="width: 100%;" id="appSubmitBtn">Submit Application</button>
         </form>
       </div>
       <div id="successState" class="success-state">
-        <div class="success-icon">✓</div>
-        <h3 class="success-title">Application Received</h3>
-        <p class="success-desc">Thank you for applying to be a contributor. Our editorial team will review your scientific credentials and contact you within 5–7 business days.</p>
-        <button id="successCloseBtn" class="btn btn-secondary" style="margin-top: 1.5rem;">Close Window</button>
+        <div class="success-icon">&#10003;</div>
+        <h3 class="success-title">Application Submitted!</h3>
+        <p class="success-desc">Thank you for your interest! Our editorial board will review your application and you will hear back via email within a few business days.</p>
+        <button id="successCloseBtn" class="btn" style="margin-top: 1.5rem;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forgot Password Modal -->
+  <div id="forgotPwModal" class="modal-overlay">
+    <div class="modal-content">
+      <button id="closeForgotPw" class="modal-close" aria-label="Close modal">&times;</button>
+      <div id="forgotPwFormContainer">
+        <h2 class="card-title" style="margin-bottom: 0.5rem;">Reset Password</h2>
+        <p class="card-desc" style="margin-bottom: 1.5rem; font-size: 0.95rem;">Enter your username or email. If an account exists, you will receive a password reset link.</p>
+        <div id="forgotPwAlert" class="alert alert-error"></div>
+        <form id="forgotPwForm">
+          <div class="form-group" style="margin-bottom: 2rem;">
+            <label for="forgotIdentifier" class="form-label">Username or Email</label>
+            <input type="text" id="forgotIdentifier" class="form-input" placeholder="dr_smith or jane@hospital.edu" required />
+          </div>
+          <button type="submit" class="btn" style="width: 100%;" id="forgotPwBtn">Send Reset Link</button>
+        </form>
+      </div>
+      <div id="forgotPwSuccess" class="success-state">
+        <div class="success-icon">&#10003;</div>
+        <h3 class="success-title">Check Your Email</h3>
+        <p class="success-desc">If an account with that identifier exists, we've sent a password reset link to the associated email address.</p>
+        <button id="forgotPwCloseBtn" class="btn" style="margin-top: 1.5rem;">Close</button>
       </div>
     </div>
   </div>
 
   <slot name="scripts">
     <script is:inline>
+      // --- Login Form with TOTP MFA ---
+      var loginForm = document.getElementById('loginForm');
+      var loginAlert = document.getElementById('loginAlert');
+      var loginBtn = document.getElementById('loginBtn');
+      var totpGroup = document.getElementById('totpGroup');
+      var passwordGroup = document.getElementById('passwordGroup');
+      var loginTotp = document.getElementById('loginTotp');
+      var pendingLoginData = null; // stored when MFA step is needed
+
+      loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        loginAlert.style.display = 'none';
+        loginBtn.disabled = true;
+
+        var username = document.getElementById('loginUsername').value.trim();
+        var password = document.getElementById('loginPassword').value;
+
+        // If we're in the TOTP step
+        if (pendingLoginData) {
+          loginBtn.textContent = 'Verifying...';
+          var totpCode = loginTotp.value.trim();
+          if (!totpCode || totpCode.length !== 6) {
+            loginAlert.textContent = 'Please enter the 6-digit code from your authenticator app.';
+            loginAlert.className = 'alert alert-error';
+            loginAlert.style.display = 'block';
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Log In';
+            return;
+          }
+
+          try {
+            var res = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ totpCode: totpCode, tempSessionId: pendingLoginData.tempSessionId })
+            });
+            var data = await res.json();
+
+            if (res.ok && data.success) {
+              sessionStorage.setItem('user', JSON.stringify(data.user));
+              window.location.href = '/contributors/dashboard';
+            } else {
+              loginAlert.textContent = data.error || 'Invalid verification code.';
+              loginAlert.className = 'alert alert-error';
+              loginAlert.style.display = 'block';
+            }
+          } catch (err) {
+            loginAlert.textContent = 'Network error. Please check your connection.';
+            loginAlert.className = 'alert alert-error';
+            loginAlert.style.display = 'block';
+          } finally {
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Log In';
+          }
+          return;
+        }
+
+        // Password step
+        loginBtn.textContent = 'Logging in...';
+
+        try {
+          var res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, password: password })
+          });
+          var data = await res.json();
+
+          if (res.ok && data.success) {
+            // Direct login (no MFA required)
+            sessionStorage.setItem('user', JSON.stringify(data.user));
+            window.location.href = '/contributors/dashboard';
+          } else if (data.mfaRequired) {
+            // Switch to TOTP step
+            pendingLoginData = { tempSessionId: data.tempSessionId };
+            passwordGroup.style.display = 'none';
+            totpGroup.style.display = 'flex';
+            loginBtn.textContent = 'Verify & Log In';
+            loginAlert.textContent = 'Enter the 6-digit code from your authenticator app.';
+            loginAlert.className = 'alert alert-info';
+            loginAlert.style.display = 'block';
+          } else {
+            loginAlert.textContent = data.error || 'Login failed. Please try again.';
+            loginAlert.className = 'alert alert-error';
+            loginAlert.style.display = 'block';
+          }
+        } catch (err) {
+          loginAlert.textContent = 'Network error. Please check your connection.';
+          loginAlert.className = 'alert alert-error';
+          loginAlert.style.display = 'block';
+        } finally {
+          loginBtn.disabled = false;
+          if (!pendingLoginData) {
+            loginBtn.textContent = 'Log In';
+          }
+        }
+      });
+
+      // Reset MFA state when user changes username/password
+      document.getElementById('loginUsername').addEventListener('input', resetMfaState);
+      document.getElementById('loginPassword').addEventListener('input', resetMfaState);
+
+      function resetMfaState() {
+        if (pendingLoginData) {
+          pendingLoginData = null;
+          passwordGroup.style.display = 'flex';
+          totpGroup.style.display = 'none';
+          loginBtn.textContent = 'Log In';
+          loginAlert.style.display = 'none';
+        }
+      }
+
+      // --- Forgot Password Modal ---
+      var forgotPwLink = document.getElementById('forgotPwLink');
+      var forgotPwModal = document.getElementById('forgotPwModal');
+      var closeForgotPw = document.getElementById('closeForgotPw');
+      var forgotPwForm = document.getElementById('forgotPwForm');
+      var forgotPwFormContainer = document.getElementById('forgotPwFormContainer');
+      var forgotPwSuccess = document.getElementById('forgotPwSuccess');
+      var forgotPwCloseBtn = document.getElementById('forgotPwCloseBtn');
+      var forgotPwAlert = document.getElementById('forgotPwAlert');
+      var forgotPwBtn = document.getElementById('forgotPwBtn');
+
+      function openForgotPw() {
+        forgotPwModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        forgotPwFormContainer.style.display = 'block';
+        forgotPwSuccess.style.display = 'none';
+        forgotPwAlert.style.display = 'none';
+        forgotPwForm.reset();
+      }
+
+      function closeForgotPwDialog() {
+        forgotPwModal.classList.remove('active');
+        document.body.style.overflow = '';
+        setTimeout(function() {
+          forgotPwFormContainer.style.display = 'block';
+          forgotPwSuccess.style.display = 'none';
+          forgotPwAlert.style.display = 'none';
+          forgotPwForm.reset();
+        }, 300);
+      }
+
+      if (forgotPwLink) forgotPwLink.addEventListener('click', function(e) { e.preventDefault(); openForgotPw(); });
+      if (closeForgotPw) closeForgotPw.addEventListener('click', closeForgotPwDialog);
+      if (forgotPwCloseBtn) forgotPwCloseBtn.addEventListener('click', closeForgotPwDialog);
+      forgotPwModal.addEventListener('click', function(e) { if (e.target === forgotPwModal) closeForgotPwDialog(); });
+
+      forgotPwForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        forgotPwAlert.style.display = 'none';
+        forgotPwBtn.disabled = true;
+        forgotPwBtn.textContent = 'Sending...';
+
+        var identifier = document.getElementById('forgotIdentifier').value.trim();
+
+        try {
+          var res = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier: identifier })
+          });
+          // Always show success for security (don't reveal if account exists)
+          forgotPwFormContainer.style.display = 'none';
+          forgotPwSuccess.style.display = 'flex';
+        } catch (err) {
+          // Still show success for security
+          forgotPwFormContainer.style.display = 'none';
+          forgotPwSuccess.style.display = 'flex';
+        } finally {
+          forgotPwBtn.disabled = false;
+          forgotPwBtn.textContent = 'Send Reset Link';
+        }
+      });
+
+      // --- Application Modal ---
       var applyBtn = document.getElementById('applyBtn');
       var applyModal = document.getElementById('applyModal');
-      var closeModal = document.getElementById('closeModal');
+      var closeModalBtn = document.getElementById('closeModal');
       var appForm = document.getElementById('appForm');
       var formContainer = document.getElementById('formContainer');
       var successState = document.getElementById('successState');
       var successCloseBtn = document.getElementById('successCloseBtn');
-      if (applyBtn && applyModal) {
-        applyBtn.addEventListener('click', function() { applyModal.classList.add('active'); document.body.style.overflow = 'hidden'; });
-        var closeDialog = function() { applyModal.classList.remove('active'); document.body.style.overflow = ''; setTimeout(function() { appForm.reset(); formContainer.style.display = 'block'; successState.style.display = 'none'; }, 300); };
-        closeModal.addEventListener('click', closeDialog);
-        successCloseBtn && successCloseBtn.addEventListener('click', closeDialog);
-        applyModal.addEventListener('click', function(e) { if (e.target === applyModal) closeDialog(); });
-        appForm.addEventListener('submit', function(e) { e.preventDefault(); formContainer.style.display = 'none'; successState.style.display = 'flex'; });
+      var appAlert = document.getElementById('appAlert');
+      var appSubmitBtn = document.getElementById('appSubmitBtn');
+
+      function openModal() {
+        applyModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        formContainer.style.display = 'block';
+        successState.style.display = 'none';
+        appAlert.style.display = 'none';
+        appForm.reset();
+      }
+
+      function closeDialog() {
+        applyModal.classList.remove('active');
+        document.body.style.overflow = '';
+        setTimeout(function() {
+          formContainer.style.display = 'block';
+          successState.style.display = 'none';
+          appAlert.style.display = 'none';
+          appForm.reset();
+        }, 300);
+      }
+
+      if (applyBtn) applyBtn.addEventListener('click', openModal);
+      if (closeModalBtn) closeModalBtn.addEventListener('click', closeDialog);
+      if (successCloseBtn) successCloseBtn.addEventListener('click', closeDialog);
+      applyModal.addEventListener('click', function(e) { if (e.target === applyModal) closeDialog(); });
+
+      appForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        appAlert.style.display = 'none';
+        appSubmitBtn.disabled = true;
+        appSubmitBtn.textContent = 'Submitting Application...';
+
+        var name = document.getElementById('appName').value.trim();
+        var email = document.getElementById('appEmail').value.trim();
+        var aboutMe = document.getElementById('appAbout').value.trim();
+        var writingExperience = document.getElementById('appExperience').value.trim();
+        var portfolioLinks = document.getElementById('appPortfolio').value.trim();
+
+        try {
+          var res = await fetch('/api/applications/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: name,
+              email: email,
+              aboutMe: aboutMe,
+              writingExperience: writingExperience,
+              portfolioLinks: portfolioLinks
+            })
+          });
+          var data = await res.json();
+
+          if (res.ok && data.success) {
+            formContainer.style.display = 'none';
+            successState.style.display = 'flex';
+          } else {
+            appAlert.textContent = data.error || 'Application submission failed. Please try again.';
+            appAlert.className = 'alert alert-error';
+            appAlert.style.display = 'block';
+          }
+        } catch (err) {
+          appAlert.textContent = 'Network error. Please check your connection.';
+          appAlert.className = 'alert alert-error';
+          appAlert.style.display = 'block';
+        } finally {
+          appSubmitBtn.disabled = false;
+          appSubmitBtn.textContent = 'Submit Application';
+        }
+      });
+
+      // --- Dynamic Contributor Loading ---
+      (async function loadContributors() {
+        try {
+          var res = await fetch('/api/contributors/list');
+          if (!res.ok) return;
+          var data = await res.json();
+          var contributors = data.contributors || [];
+          if (contributors.length === 0) return;
+
+          var grid = document.getElementById('contributorsGrid');
+          var existingNames = Array.from(grid.querySelectorAll('.contributor-name')).map(function(el) {
+            return el.textContent.toLowerCase();
+          });
+
+          contributors.forEach(function(c) {
+            // Skip if already shown as a demo card
+            if (existingNames.includes(c.full_name.toLowerCase())) return;
+
+            var slug = c.slug;
+            var initial = c.initial;
+            var avatarHtml = c.avatar_url
+              ? '<img src="' + escapeHTML2(c.avatar_url) + '" alt="' + escapeHTML2(c.full_name) + '" class="contributor-img" />'
+              : '<div style="width:100%;height:100%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:3rem;color:#fff;font-family:Outfit,sans-serif;font-weight:800;">' + initial + '</div>';
+
+            var card = document.createElement('article');
+            card.className = 'contributor-card';
+            card.innerHTML =
+              '<a href="/contributors/' + slug + '" class="contributor-img-link">' + avatarHtml + '</a>' +
+              '<a href="/contributors/' + slug + '" class="contributor-name-link"><h3 class="contributor-name">' + escapeHTML2(c.full_name) + '</h3></a>' +
+              '<span class="contributor-specialty">' + escapeHTML2(c.specialty || 'Medical Contributor') + '</span>' +
+              '<p class="contributor-bio">' + escapeHTML2((c.bio || '').substring(0, 120) + (c.bio && c.bio.length > 120 ? '...' : '') || 'iMedipedia medical contributor.') + '</p>' +
+              '<a href="/contributors/' + slug + '" class="btn btn-secondary" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem;">View Profile & Articles</a>';
+            grid.appendChild(card);
+          });
+        } catch(e) {
+          // Silently fail - demo cards still show
+        }
+      })();
+
+      function escapeHTML2(str) {
+        var div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
       }
     </script>
   </slot>

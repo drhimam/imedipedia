@@ -98,6 +98,11 @@ export default defineConfig({
           },
           {
             type: "string",
+            name: "image",
+            label: "Cover Image URL",
+          },
+          {
+            type: "string",
             name: "tag",
             label: "Specialty / Tag",
           },
