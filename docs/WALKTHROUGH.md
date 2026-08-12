@@ -128,7 +128,12 @@ Pages that need server-side logic (auth checks, API routes, dynamic content) dec
 │   │           ├── publish.js         # POST — publish to GitHub markdown
 │   │           ├── update-article.js  # POST — update published article
 │   │           ├── articles.js        # GET — list published articles (GitHub)
-│   │           └── images.js          # GET/DELETE — manage uploaded images
+│   │           ├── images.js          # GET/DELETE — manage uploaded images
+│   │           ├── subjects-save.js   # POST — commit subject taxonomy to GitHub
+│   │           └── exams-save.js      # POST — commit exam list to GitHub
+│   ├── data/
+│   │   ├── subjects.json         # Managed subject taxonomy (single source of truth)
+│   │   └── exams.json            # Managed exam list (separate from subjects)
 │   └── content/
 │       └── blog/                 # Markdown articles (published, Git-managed)
 └── public/                       # Static assets
@@ -186,11 +191,11 @@ Database: `imedipedia-db` (ID: `8aeee120-4b92-44e1-b9d2-5f8b1566a52b`)
 | `slug` | TEXT NOT NULL | URL-friendly slug |
 | `description` | TEXT NOT NULL | Short summary |
 | `author` | TEXT NOT NULL | Author display name |
-| `tag` | TEXT DEFAULT '' | JSON array of tags |
+| `tag` | TEXT DEFAULT '' | Legacy column — now stores the `subjects` JSON array (backward-compatible) |
 | `type` | TEXT DEFAULT 'general' | `general`, `update`, `case`, `education` |
-| `subject` | TEXT | Subject area |
+| `subject` | TEXT | Stores the `subjects` JSON array (new format); legacy single-string values still parse |
 | `topic` | TEXT | Specific topic |
-| `exams` | TEXT DEFAULT '[]' | JSON array of exam names |
+| `exams` | TEXT DEFAULT '[]' | JSON array of exam names (from `src/data/exams.json`) |
 | `image` | TEXT DEFAULT '' | Cover image R2 URL |
 | `body` | TEXT NOT NULL | Markdown content |
 | `status` | TEXT DEFAULT 'pending' | `pending`, `approved`, `rejected`, `published` |
@@ -237,6 +242,52 @@ Database: `imedipedia-db` (ID: `8aeee120-4b92-44e1-b9d2-5f8b1566a52b`)
 | `secret` | TEXT NOT NULL | Base32-encoded TOTP secret |
 | `enabled` | INTEGER DEFAULT 0 | Whether MFA is active |
 | `created_at` | INTEGER | Unix timestamp |
+
+### 4.8 Managed Subject & Exam Taxonomy (Static JSON)
+
+Categories are no longer free-text. Instead, subjects and exams live in two static JSON files at the repo root of `src/data/`, and are the **single source of truth**:
+
+| File | Shape | Count | Purpose |
+|------|-------|-------|---------|
+| `src/data/subjects.json` | `[{ "name": "General Physiology", "parent": "Physiology" }, …]` | 210 subjects, 15 parents | Controlled subject taxonomy for categorization |
+| `src/data/exams.json` | `[{ "name": "USMLE Step 1", "category": "United States" }, …]` | 70 exams, 15 categories | Controlled exam list (kept separate from subjects) |
+
+**Why static JSON?**
+- **Zero D1 reads** — Astro imports the files at build time and embeds them into the page HTML (via `define:vars`), so autocomplete is instant with no per-keystroke API call.
+- **Version-controlled** — taxonomy changes are tracked in git alongside the code.
+- **Cache-friendly** — the list is baked into the static page payload and served from the Cloudflare CDN.
+
+**How contributors see the list:** both files are imported in the Astro pages and embedded client-side:
+
+```astro
+---
+import subjects from '../../data/subjects.json';
+import exams from '../../data/exams.json';
+---
+<script define:vars={{ subjects: subjects, exams: exams }}>
+  window.SUBJECTS = subjects;
+  window.EXAMS = exams;
+</script>
+```
+
+> **⚠️ Why `define:vars` and not `is:inline`?** `{JSON.stringify(...)}` inside a `<script is:inline>` tag is NOT evaluated by Astro — it renders literally. Removing `is:inline` entirely crashes esbuild on Windows with large inline data (`Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)`). `define:vars` is the correct way to pass server-imported JSON into a client script.
+
+**Autocomplete behavior (subjects and exams):**
+- User types 2+ characters → dropdown appears
+- **Substring match anywhere** (e.g., "phy" matches "Respiratory **Phy**siology" and "Ultrasound **Phy**sics")
+- Starts-with matches are prioritized over mid-word matches, then sorted by name length
+- Results capped at 15 suggestions
+- Click (or Enter/Arrow keys) adds a removable chip below the input
+
+**Storage (D1 + frontmatter):**
+- **D1 `submissions`**: subjects stored as a JSON array in both `subject` and `tag` columns (for backward compatibility); exams stored as a JSON array in `exams`
+- **Published frontmatter**: `subjects: ["Respiratory Physiology", "Ultrasound Physics"]` (YAML array); `tag`/`subject` single fields are no longer written
+- **Read compatibility**: `parsePostSubjects()` / `parseSubjects()` helpers handle old `subject: "string"`, old `tag: "a, b"` comma-strings, and the new `subjects: [...]` array
+
+**Admin management:**
+- Subjects and Exams each have their own tab in `admin.astro` with add/edit/delete + inline forms
+- "Save to GitHub" commits the file via the Contents API, triggering a Cloudflare redeploy (~2 min)
+- Exam editing in the submission modal uses autocomplete too
 
 ---
 
@@ -377,17 +428,16 @@ This is set client-side after login by writing `user` to `sessionStorage` from t
     "title": "Article Title",
     "description": "Summary (optional)",
     "body": "Markdown content",
-    "tags": "Oncology, CRISPR" or ["Oncology", "CRISPR"],
     "type": "general",
-    "subject": "Oncology",
+    "subjects": ["Respiratory Physiology", "Ultrasound Physics"],
     "topic": "Cancer Vaccines",
-    "exams": "USMLE, FRCP" or ["USMLE", "FRCP"],
+    "exams": ["USMLE Step 1", "MRCP Part 1"],
     "image": "https://pub-xxx.r2.dev/covers/...",
     "intextImages": [{ "url": "...", "name": "Fig 1", "description": "..." }]
   }
   ```
 - **Response:** `{ success: true, id, slug, message, emailSent }`
-- **Notes:** Author auto-set to `user.full_name`. Tags and exams accept JSON arrays or comma-separated strings. **Description is now optional.** All text inputs are sanitized (HTML tags stripped, truncated to max lengths: title 500, description 1000, subject/topic 200, body 100k). A branded confirmation email is sent to the contributor via SES after successful submission (non-blocking — submission succeeds even if email fails).
+- **Notes:** Author auto-set to `user.full_name`. `subjects` and `exams` are JSON arrays selected from the managed taxonomies (`src/data/subjects.json` / `src/data/exams.json`). For backward compatibility the API also accepts the legacy `subject` (string) and `tags` (array/string) fields, which are folded into `subjects`. **Description is now optional.** All text inputs are sanitized (HTML tags stripped, truncated to max lengths: title 500, description 1000, subject/topic 200, body 100k). A branded confirmation email is sent to the contributor via SES after successful submission (non-blocking — submission succeeds even if email fails).
 
 #### `GET /api/submissions/list`
 - **Auth:** Session required
@@ -402,9 +452,9 @@ This is set client-side after login by writing `user` to `sessionStorage` from t
 
 #### `PUT /api/submissions/[id]`
 - **Auth:** Session required (owner or admin)
-- **Body:** `{ title?, description?, body?, tags?, type?, subject?, topic?, exams?, image?, intextImages? }` (all optional — only send what changed)
+- **Body:** `{ title?, description?, body?, type?, subjects?, topic?, exams?, image?, intextImages? }` (all optional — only send what changed)
 - **Response:** `{ success: true, message, statusChanged, newStatus }`
-- **Behavior:** If the submission is `published`, editing reverts status to `pending` so admin must re-approve. Description is optional. All text inputs are sanitized (HTML tags stripped, trimmed, truncated).
+- **Behavior:** If the submission is `published`, editing reverts status to `pending` so admin must re-approve. `subjects` is a JSON array; a `subjects: null` sentinel distinguishes "not provided" from "cleared". Legacy `subject`/`tags` fields are still accepted and folded into `subjects`. Description is optional. All text inputs are sanitized (HTML tags stripped, trimmed, truncated).
 
 #### `DELETE /api/submissions/[id]`
 - **Auth:** Session required (owner or admin)
@@ -457,7 +507,7 @@ All admin endpoints require session + admin/co-admin role.
 
 #### `POST /api/admin/publish`
 - **Body:** `{ submissionId }`
-- **Action:** Validates submission status is `approved` (400 error otherwise). Generates markdown file with YAML frontmatter, pushes to GitHub repo via Contents API (base64-encoded). Updates submission status to `published` on success.
+- **Action:** Validates submission status is `approved` (400 error otherwise). Generates markdown file with YAML frontmatter, pushes to GitHub repo via Contents API (base64-encoded). Updates submission status to `published` on success. Frontmatter uses the managed-taxonomy format: `subjects: ["Respiratory Physiology", "Ultrasound Physics"]` (YAML array) — the legacy single `tag`/`subject` fields are no longer written.
 - **Response:** `{ success: true, message, filePath, repoUrl }`
 - **Error Handling:** Early-fail with clear message if `GITHUB_TOKEN` is missing (500). Detailed error messages for common GitHub API failures (403, 401, 404, 409) with actionable guidance. Content encoding uses a safe byte-by-byte loop (not spread operator) to avoid `String.fromCharCode` argument limits with large articles.
 - **⚠️ Ongoing Issue:** Classic `repo`-scoped tokens may still receive 403 from GitHub on the GET check (file existence). Investigation in progress — suspected causes: branch protection on `master`, token permissions, or repo access configuration. Switching to a **fine-grained token** with "Contents: Read and Write" permission on the specific repository is the recommended fix.
@@ -474,6 +524,19 @@ All admin endpoints require session + admin/co-admin role.
 - **Body:** `{ id, key }`
 - **Action:** Deletes from both R2 and D1
 - **Response:** `{ success: true, message }`
+
+#### `POST /api/admin/subjects-save`
+- **Auth:** admin/co-admin
+- **Body:** `{ subjects: [{ name, parent }, …] }`
+- **Action:** Validates the array, writes it as pretty-printed JSON to `src/data/subjects.json` via the GitHub Contents API (GET for SHA → PUT), triggering a Cloudflare redeploy.
+- **Response:** `{ success: true, message: "Subject taxonomy saved (N subjects). Deploying to Cloudflare..." }`
+- **Notes:** Requires `GITHUB_TOKEN` and `GITHUB_REPO`. Requests set `User-Agent: iMedipedia` (GitHub returns 403 without it).
+
+#### `POST /api/admin/exams-save`
+- **Auth:** admin/co-admin
+- **Body:** `{ exams: [{ name, category }, …] }`
+- **Action:** Same GitHub Contents-API pattern as `subjects-save`, but writes `src/data/exams.json`.
+- **Response:** `{ success: true, message: "Exam taxonomy saved (N exams). Deploying to Cloudflare..." }`
 
 ---
 
@@ -502,7 +565,7 @@ All admin endpoints require session + admin/co-admin role.
 
 #### Dashboard Features:
 - **Overview tab:** Stats (total/pending/published), editorial guidelines
-- **Submit Article tab:** Full form with cover image upload, in-text images (up to 5), markdown content, tags, exams
+- **Submit Article tab:** Full form with cover image upload, in-text images (up to 5), markdown content, and **autocomplete chips for Subjects (required) and Exams (optional)** — both drawn from the managed taxonomies embedded at build time
 - **My Submissions tab:** Table of submitted articles with status badges
 - **Sidebar:** Avatar initial, username, role badge, Settings link, Logout
 
@@ -511,7 +574,7 @@ All admin endpoints require session + admin/co-admin role.
 | Page | Route | Prerender | Auth | Description |
 |------|-------|-----------|------|-------------|
 | Admin Login | `/admin/login` | Static | None | Username + password login form |
-| Admin Dashboard | `/admin` | SSR (auth check) | admin/co-admin | 4 tabs: Applications, Submissions, Articles, Images |
+| Admin Dashboard | `/admin` | SSR (auth check) | admin/co-admin | 6 tabs: Applications, Submissions, Articles, Images, Subjects, Exams |
 
 #### Admin Dashboard Features:
 - **Sticky top bar:** Logo, admin badge, user name, Settings button (⚙️), Logout button (↪️)
@@ -520,6 +583,9 @@ All admin endpoints require session + admin/co-admin role.
 - **Submissions tab:** Table with Approve/Reject/Publish buttons
 - **Articles tab:** List of published articles on GitHub
 - **Images tab:** Image grid with folder filter, copy URL, delete, admin upload form
+- **Subjects tab:** Managed subject taxonomy — grouped by parent, add/edit/delete inline, "Save to GitHub" commits `src/data/subjects.json`
+- **Exams tab:** Managed exam list (separate from subjects) — grouped by category, add/edit/delete inline, "Save to GitHub" commits `src/data/exams.json`
+- **Edit modal:** Subject and exam autocomplete chips (replaces free-text fields)
 - **Responsive:** Mobile breakpoint at 640px hides labels, shows icon-only buttons
 
 ---
@@ -833,6 +899,16 @@ npx wrangler@latest d1 execute imedipedia-db --remote --file=scripts/seed-output
 
 **Commit:** `1bafa62`, `831a54e`
 
+### 14.10 Subject Autocomplete — "No matching subjects found" (RESOLVED)
+
+**Symptom:** Contributor form showed "no matching subject found" for every query despite the subject list being imported correctly.
+
+**Root Cause:** `{JSON.stringify(subjects)}` inside a `<script is:inline>` tag is **not evaluated** by Astro — `is:inline` prevents template-expression interpolation, so the literal string rendered into the HTML instead of the JSON data.
+
+**Fix:** Replace `is:inline` with `define:vars={{ subjects: subjects }}` and assign `window.SUBJECTS = subjects;` inside a regular `<script>` tag. Note: simply removing `is:inline` crashes esbuild on Windows with large inline data (`Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)`), so `define:vars` is the required approach.
+
+**Commit:** `2cc5f0d` (and related `define:vars` embeds in `admin.astro` / `dashboard.astro`)
+
 ---
 
 ## 15. Development Guide
@@ -876,12 +952,14 @@ npx wrangler@latest d1 execute imedipedia-db --local
 
 1. **All API routes** must declare `export const prerender = false;`
 2. **Inline onclick handlers** require `<script is:inline>` — without it, Astro bundles the script and functions aren't global
-3. **Session cookie pattern:** Read `session_id` cookie → check D1 `sessions` table → get user → verify role
-4. **D1 binding access:** `locals.runtime?.env?.D1_DB || locals.runtime?.env?.DB` (supports both naming conventions)
-5. **R2 upload:** Try native `env.IMAGES.put()` first, fall back to S3 SDK `PutObjectCommand`
-6. **SES email sending:** Always wrap in try/catch — response parsing may fail in Workers runtime
-7. **API keys in form payloads:** Use `snake_case` for all JSON keys (matches API expectations)
-8. **Cross-platform compatibility:** Never add `@cloudflare/workerd-*`, `@esbuild/*`, or `@rollup/*` to direct dependencies
+3. **Embedding server data in client scripts** uses `define:vars` — `{JSON.stringify(...)}` inside `<script is:inline>` is never evaluated; use `<script define:vars={{ x: data }}>window.X = x;</script>`
+4. **Session cookie pattern:** Read `session_id` cookie → check D1 `sessions` table → get user → verify role
+5. **D1 binding access:** `locals.runtime?.env?.D1_DB || locals.runtime?.env?.DB` (supports both naming conventions)
+6. **R2 upload:** Try native `env.IMAGES.put()` first, fall back to S3 SDK `PutObjectCommand`
+7. **SES email sending:** Always wrap in try/catch — response parsing may fail in Workers runtime
+8. **API keys in form payloads:** Use `snake_case` for all JSON keys (matches API expectations)
+9. **GitHub API calls from Workers:** Always set an explicit `User-Agent` header (GitHub returns 403 without one)
+10. **Cross-platform compatibility:** Never add `@cloudflare/workerd-*`, `@esbuild/*`, or `@rollup/*` to direct dependencies
 
 ### 15.5 Adding a New API Route
 
