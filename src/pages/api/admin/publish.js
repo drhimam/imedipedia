@@ -140,15 +140,23 @@ ${sanitizeBody(submission.body || '')}`;
     let sha = null;
     const getResp = await fetch(
       `https://api.github.com/repos/${repo}/contents/${filePath}`,
-      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }
+      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" } }
     );
     if (getResp.ok) {
       const existing = await getResp.json();
       sha = existing.sha;
     } else if (getResp.status === 403 || getResp.status === 401) {
-      // Token lacks permissions — fail early with clear message
+      // Read GitHub's error body for detailed diagnostics
+      const errBody = await getResp.text();
+      console.error('GitHub GET check failed:', getResp.status, errBody);
+      let detail = '';
+      try {
+        const j = JSON.parse(errBody);
+        detail = j.message || '';
+        if (j.errors) detail += ' | ' + JSON.stringify(j.errors);
+      } catch {}
       return new Response(JSON.stringify({
-        error: `GitHub authentication failed (${getResp.status}). Verify your GITHUB_TOKEN has "Contents: Read and Write" repository permission (fine-grained token) or "repo" scope (classic token).`
+        error: `GitHub authentication failed (${getResp.status}${detail ? ': ' + detail : ''}). Token prefix: ${token.substring(0, 8)}... Repo: ${repo}. Verify the token has read access to this repository.`
       }), {
         status: 500, headers: { "Content-Type": "application/json" }
       });

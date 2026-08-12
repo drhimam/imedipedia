@@ -784,7 +784,10 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
           document.getElementById('artTopic').value = s.topic || '';
           document.getElementById('artDesc').value = s.description || '';
           document.getElementById('artContent').value = s.body || '';
-          document.getElementById('artExams').value = '';
+          // Exams
+          var examsStr = '';
+          try { var ex = JSON.parse(s.exams || '[]'); examsStr = Array.isArray(ex) ? ex.join(', ') : (s.exams || ''); } catch(e) { examsStr = s.exams || ''; }
+          document.getElementById('artExams').value = examsStr;
           // Tags
           var tagsStr = '';
           try { var tags = JSON.parse(s.tag || '[]'); tagsStr = Array.isArray(tags) ? tags.join(', ') : (s.tag || ''); } catch(e) { tagsStr = s.tag || ''; }
