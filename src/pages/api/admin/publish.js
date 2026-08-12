@@ -154,10 +154,24 @@ ${sanitizeBody(submission.body || '')}`;
       });
     }
 
-    // Encode content as base64
-    const encoder = new TextEncoder();
-    const encoded = encoder.encode(frontmatter);
-    const base64Content = btoa(String.fromCharCode(...encoded));
+      // Encode content as base64 (handle Unicode safely)
+    let base64Content;
+    try {
+      const encoder = new TextEncoder();
+      const encoded = encoder.encode(frontmatter);
+      // Convert Uint8Array to binary string safely for large content
+      let binary = '';
+      for (let i = 0; i < encoded.length; i++) {
+        binary += String.fromCharCode(encoded[i]);
+      }
+      base64Content = btoa(binary);
+    } catch (encErr) {
+      return new Response(JSON.stringify({
+        error: `Content encoding failed: ${encErr.message}`
+      }), {
+        status: 500, headers: { "Content-Type": "application/json" }
+      });
+    }
 
     const putBody = {
       message: `Publish: ${submission.title}`,
@@ -181,20 +195,29 @@ ${sanitizeBody(submission.body || '')}`;
 
     if (!putResp.ok) {
       const errBody = await putResp.text();
-      let errMsg = `GitHub API returned ${putResp.status}`;
+      let errMsg = `GitHub ${putResp.status}`;
       try {
         const errJson = JSON.parse(errBody);
         errMsg = errJson.message || errMsg;
+        // Include GitHub's error code if present
+        if (errJson.errors) {
+          errMsg += ' | ' + JSON.stringify(errJson.errors);
+        }
       } catch {}
+      // Add GitHub's raw response for debugging
+      console.error('GitHub PUT failed:', putResp.status, errBody);
 
-      // Add actionable guidance for common errors
       let guidance = '';
       if (putResp.status === 403) {
-        guidance = ' Verify that your GITHUB_TOKEN has "Contents: Read and Write" repository permission (fine-grained token) or "repo" scope (classic token).';
-      } else if (putResp.status === 401) {
-        guidance = ' Your GITHUB_TOKEN may be invalid or expired. Generate a new token at https://github.com/settings/tokens.';
-      } else if (putResp.status === 404) {
-        guidance = ' Repository or branch not found. Check your GITHUB_REPO environment variable.';
+        if (errMsg.includes('Resource not accessible')) {
+          guidance = ' The token does not have write access to this repository.';
+        } else if (errMsg.includes('branch protection')) {
+          guidance = ' Branch protection rules are blocking this push. Check your repository settings.';
+        } else {
+          guidance = ' Check that the token has repo scope and has not expired. Also check if branch protection is enabled on the master branch.';
+        }
+      } else if (putResp.status === 409 && sha) {
+        guidance = ' File was modified since we read it. Try publishing again.';
       }
 
       return new Response(JSON.stringify({
