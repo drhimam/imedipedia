@@ -145,6 +145,13 @@ ${sanitizeBody(submission.body || '')}`;
     if (getResp.ok) {
       const existing = await getResp.json();
       sha = existing.sha;
+    } else if (getResp.status === 403 || getResp.status === 401) {
+      // Token lacks permissions — fail early with clear message
+      return new Response(JSON.stringify({
+        error: `GitHub authentication failed (${getResp.status}). Verify your GITHUB_TOKEN has "Contents: Read and Write" repository permission (fine-grained token) or "repo" scope (classic token).`
+      }), {
+        status: 500, headers: { "Content-Type": "application/json" }
+      });
     }
 
     // Encode content as base64
@@ -179,8 +186,19 @@ ${sanitizeBody(submission.body || '')}`;
         const errJson = JSON.parse(errBody);
         errMsg = errJson.message || errMsg;
       } catch {}
+
+      // Add actionable guidance for common errors
+      let guidance = '';
+      if (putResp.status === 403) {
+        guidance = ' Verify that your GITHUB_TOKEN has "Contents: Read and Write" repository permission (fine-grained token) or "repo" scope (classic token).';
+      } else if (putResp.status === 401) {
+        guidance = ' Your GITHUB_TOKEN may be invalid or expired. Generate a new token at https://github.com/settings/tokens.';
+      } else if (putResp.status === 404) {
+        guidance = ' Repository or branch not found. Check your GITHUB_REPO environment variable.';
+      }
+
       return new Response(JSON.stringify({
-        error: `Publishing to GitHub failed: ${errMsg}`
+        error: `Publishing to GitHub failed: ${errMsg}.${guidance}`
       }), {
         status: 500, headers: { "Content-Type": "application/json" }
       });

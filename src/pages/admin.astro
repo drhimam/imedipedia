@@ -215,6 +215,63 @@ if (Astro.request) {
   <div class="view-modal-overlay" id="adminViewModalOverlay" style="display:none;">
     <div class="view-modal" id="adminViewModalContent"></div>
   </div>
+
+  <!-- Admin Edit Submission Modal -->
+  <div class="view-modal-overlay" id="adminEditModalOverlay" style="display:none;">
+    <div class="view-modal" style="max-width:750px;">
+      <div class="view-modal-header">
+        <button class="view-modal-close" onclick="closeAdminEditModal()">&times;</button>
+        <h2>✏️ Edit Submission</h2>
+      </div>
+      <div id="adminEditStatus" class="alert" style="display:none;margin-bottom:1rem;"></div>
+      <form id="adminEditForm" class="edit-modal-form" onsubmit="return false;">
+        <input type="hidden" id="adminEditId">
+        <div class="form-group">
+          <label class="form-label">Title *</label>
+          <input class="form-input" type="text" id="adminEditTitle" required maxlength="500">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Author</label>
+          <input class="form-input" type="text" id="adminEditAuthor">
+        </div>
+        <div style="display:flex;gap:0.75rem;">
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Type</label>
+            <select class="form-input" id="adminEditType">
+              <option value="general">Clinical Digest</option>
+              <option value="update">Clinical Guidelines</option>
+              <option value="case">Case Reports</option>
+              <option value="education">Board Review</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Subject</label>
+            <input class="form-input" type="text" id="adminEditSubject" maxlength="200">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Topic</label>
+            <input class="form-input" type="text" id="adminEditTopic" maxlength="200">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags (comma-separated)</label>
+          <input class="form-input" type="text" id="adminEditTags" placeholder="e.g., Oncology, Neurology">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input class="form-input" type="text" id="adminEditDescription" maxlength="1000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Article Content (Markdown) *</label>
+          <textarea class="form-input" id="adminEditBody" required></textarea>
+        </div>
+        <div class="edit-modal-actions">
+          <button type="button" class="topbar-btn" onclick="closeAdminEditModal()" style="padding:0.6rem 1.25rem;">Cancel</button>
+          <button type="button" class="btn" onclick="saveAdminEdit()">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </BaseLayout>
 
 <style>
@@ -351,6 +408,8 @@ if (Astro.request) {
   .btn-delete-sm:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; color: #ef4444; }
   .btn-view-admin { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.35rem 0.5rem; margin: 0 0.15rem; }
   .btn-view-admin:hover { background: rgba(16,185,129,0.1); border-color: #10b981; }
+  .btn-edit-admin { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.35rem 0.5rem; margin: 0 0.15rem; }
+  .btn-edit-admin:hover { background: rgba(59,130,246,0.1); border-color: #3b82f6; }
   .copy-tooltip { position: relative; }
   .img-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
   /* Admin View Modal */
@@ -365,6 +424,15 @@ if (Astro.request) {
   .view-modal-close { position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
   .view-modal-close:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
   .view-modal-header { position: relative; }
+  /* Edit Modal form */
+  .edit-modal-form { display: flex; flex-direction: column; gap: 0.75rem; }
+  .edit-modal-form .form-group { margin-bottom: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+  .edit-modal-form .form-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .edit-modal-form .form-input { padding: 0.6rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: rgba(0,0,0,0.08); color: var(--text); font-size: 0.9rem; width: 100%; box-sizing: border-box; }
+  :global([data-theme="light"]) .edit-modal-form .form-input { background: rgba(255,255,255,0.8); }
+  .edit-modal-form .form-input:focus { outline: none; border-color: var(--accent); }
+  .edit-modal-form textarea.form-input { resize: vertical; min-height: 150px; font-family: inherit; }
+  .edit-modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.5rem; }
 </style>
 
 <script is:inline>
@@ -656,6 +724,7 @@ if (Astro.request) {
           <td>${new Date(s.created_at*1000).toLocaleDateString()}</td>
           <td>
             <button class="action-btn btn-view-admin" onclick="viewAdminSubmission(${s.id})" title="View">👁</button>
+            <button class="action-btn btn-edit-admin" onclick="editAdminSubmission(${s.id})" title="Edit">✏️</button>
             ${s.status==='pending' ? `
               <button class="action-btn btn-approve" onclick="reviewSub(${s.id},'approve')">Approve</button>
               <button class="action-btn btn-reject" onclick="reviewSub(${s.id},'reject')">Reject</button>
@@ -844,12 +913,97 @@ if (Astro.request) {
     }
   }
 
-  // Initialize view modal click-outside-to-close
+  // Admin edit submission
+  async function editAdminSubmission(id) {
+    try {
+      const resp = await fetch('/api/submissions/' + id);
+      const data = await resp.json();
+      if (!data.success) { alert(data.error); return; }
+      const s = data.submission;
+
+      document.getElementById('adminEditId').value = s.id;
+      document.getElementById('adminEditTitle').value = s.title || '';
+      document.getElementById('adminEditAuthor').value = s.author || '';
+      document.getElementById('adminEditType').value = s.type || 'general';
+      document.getElementById('adminEditSubject').value = s.subject || '';
+      document.getElementById('adminEditTopic').value = s.topic || '';
+      document.getElementById('adminEditDescription').value = s.description || '';
+      document.getElementById('adminEditBody').value = s.body || '';
+
+      // Tags: parse JSON array to comma-separated
+      let tagsStr = '';
+      try { const tags = JSON.parse(s.tag || '[]'); tagsStr = Array.isArray(tags) ? tags.join(', ') : (s.tag || ''); } catch(e) { tagsStr = s.tag || ''; }
+      document.getElementById('adminEditTags').value = tagsStr;
+
+      document.getElementById('adminEditStatus').style.display = 'none';
+      document.getElementById('adminEditModalOverlay').style.display = 'flex';
+    } catch(e) {
+      alert('Failed to load submission: ' + e.message);
+    }
+  }
+
+  function closeAdminEditModal() {
+    document.getElementById('adminEditModalOverlay').style.display = 'none';
+  }
+
+  async function saveAdminEdit() {
+    const id = document.getElementById('adminEditId').value;
+    const statusEl = document.getElementById('adminEditStatus');
+
+    const tagsInput = document.getElementById('adminEditTags').value.trim();
+    const tags = tagsInput ? tagsInput.split(',').map(function(t){return t.trim();}).filter(Boolean) : [];
+
+    const payload = {
+      title: document.getElementById('adminEditTitle').value.trim(),
+      author: document.getElementById('adminEditAuthor').value.trim(),
+      type: document.getElementById('adminEditType').value,
+      subject: document.getElementById('adminEditSubject').value.trim(),
+      topic: document.getElementById('adminEditTopic').value.trim(),
+      tag: JSON.stringify(tags),
+      description: document.getElementById('adminEditDescription').value.trim(),
+      body: document.getElementById('adminEditBody').value.trim(),
+    };
+
+    try {
+      const resp = await fetch('/api/submissions/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+
+      if (data.success) {
+        statusEl.textContent = data.message || 'Saved successfully.';
+        statusEl.className = 'alert alert-success';
+        statusEl.style.display = 'block';
+        setTimeout(function() {
+          closeAdminEditModal();
+          loadSubmissions();
+        }, 800);
+      } else {
+        statusEl.textContent = data.error || 'Save failed.';
+        statusEl.className = 'alert alert-error';
+        statusEl.style.display = 'block';
+      }
+    } catch(e) {
+      statusEl.textContent = 'Network error: ' + e.message;
+      statusEl.className = 'alert alert-error';
+      statusEl.style.display = 'block';
+    }
+  }
+
+  // Initialize modals click-outside-to-close
   document.addEventListener('DOMContentLoaded', function() {
     const overlay = document.getElementById('adminViewModalOverlay');
     if (overlay) {
       overlay.addEventListener('click', function(e) {
         if (e.target === overlay) closeAdminViewModal();
+      });
+    }
+    const editOverlay = document.getElementById('adminEditModalOverlay');
+    if (editOverlay) {
+      editOverlay.addEventListener('click', function(e) {
+        if (e.target === editOverlay) closeAdminEditModal();
       });
     }
   });
