@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import subjects from '../../data/subjects.json';
+import exams from '../../data/exams.json';
 ---
 
 <BaseLayout
@@ -219,9 +220,13 @@ import subjects from '../../data/subjects.json';
           <div class="form-group"><label for="artTopic" class="form-label">Topic *</label><input type="text" id="artTopic" class="form-input" placeholder="e.g., Cancer Vaccines" required maxlength="200" /></div>
           <div class="form-group full-width"><label for="artDesc" class="form-label">Short Description / Abstract Summary <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(optional)</span></label><input type="text" id="artDesc" class="form-input" placeholder="A concise summary of the article..." maxlength="1000" /></div>
           <div class="form-group full-width">
-            <label for="artExams" class="form-label">Relevant Exams <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(optional)</span></label>
-            <input type="text" id="artExams" class="form-input" placeholder="e.g., USMLE, FRCP, MRCP, PLAB" />
-            <span class="form-hint">Comma-separated exam names (optional)</span>
+            <label for="examSearch" class="form-label">Relevant Exams <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(optional)</span></label>
+            <div class="subject-autocomplete-wrapper">
+              <input type="text" id="examSearch" class="form-input" placeholder="Search exams (e.g., 'usmle' → USMLE Step 1, 2 CK...)" autocomplete="off" />
+              <div class="subject-dropdown" id="examDropdown" style="display:none;"></div>
+            </div>
+            <div class="subject-chips" id="examChips"></div>
+            <span class="form-hint">Select one or more relevant exams from the managed list</span>
           </div>
 
           <!-- Cover Image Upload -->
@@ -289,9 +294,10 @@ import subjects from '../../data/subjects.json';
   </div>
 
   <slot name="scripts">
-    <script define:vars={{ subjects: subjects }}>
-      // Subject taxonomy embedded at build time (zero D1 reads)
+    <script define:vars={{ subjects: subjects, exams: exams }}>
+      // Subject + exam taxonomies embedded at build time (zero D1 reads)
       window.SUBJECTS = subjects;
+      window.EXAMS = exams;
     </script>
     <script is:inline>
       // --- Auth Gate ---
@@ -436,6 +442,105 @@ import subjects from '../../data/subjects.json';
       document.addEventListener('click', function(e) {
         if (!subjectSearchEl.contains(e.target) && !subjectDropdownEl.contains(e.target)) {
           subjectDropdownEl.style.display = 'none';
+        }
+      });
+
+      // --- Exam Autocomplete ---
+      var selectedExams = [];
+      var examList = window.EXAMS || [];
+
+      function matchExams(query, list) {
+        if (!query || query.length < 2) return [];
+        var q = query.toLowerCase();
+        return list
+          .filter(function(e) { return e.name.toLowerCase().indexOf(q) !== -1; })
+          .sort(function(a, b) {
+            var aStarts = a.name.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+            var bStarts = b.name.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+            return aStarts - bStarts || a.name.length - b.name.length;
+          })
+          .slice(0, 15);
+      }
+
+      function renderExamChips() {
+        var container = document.getElementById('examChips');
+        container.innerHTML = selectedExams.map(function(name, i) {
+          return '<span class="subj-chip">' + escapeHTML(name) + '<button type="button" class="subj-chip-remove" onclick="removeExam(' + i + ')" title="Remove">&times;</button></span>';
+        }).join('');
+      }
+
+      function addExam(name) {
+        if (selectedExams.indexOf(name) === -1) {
+          selectedExams.push(name);
+          renderExamChips();
+        }
+        document.getElementById('examSearch').value = '';
+        document.getElementById('examDropdown').style.display = 'none';
+      }
+
+      function removeExam(index) {
+        selectedExams.splice(index, 1);
+        renderExamChips();
+      }
+
+      function renderExamDropdown(matches, query) {
+        var dropdown = document.getElementById('examDropdown');
+        if (matches.length === 0) {
+          dropdown.innerHTML = '<div class="no-subjects-match">No matching exams found</div>';
+          dropdown.style.display = 'block';
+          return;
+        }
+        dropdown.innerHTML = matches.map(function(e) {
+          return '<div class="subject-option" data-name="' + escapeHTML(e.name) + '" onclick="addExam(\'' + escapeHTML(e.name).replace(/'/g, "\\'") + '\')">' +
+            highlightMatch(e.name, query) +
+            (e.category ? '<span class="subject-parent">' + escapeHTML(e.category) + '</span>' : '') +
+            '</div>';
+        }).join('');
+        dropdown.style.display = 'block';
+      }
+
+      var examSearchEl = document.getElementById('examSearch');
+      var examDropdownEl = document.getElementById('examDropdown');
+      var activeExamDropdownIndex = -1;
+
+      examSearchEl.addEventListener('input', function() {
+        var query = this.value;
+        if (query.length < 2) {
+          examDropdownEl.style.display = 'none';
+          return;
+        }
+        var matches = matchExams(query, examList);
+        renderExamDropdown(matches, query);
+        activeExamDropdownIndex = -1;
+      });
+
+      examSearchEl.addEventListener('keydown', function(e) {
+        var options = examDropdownEl.querySelectorAll('.subject-option');
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeExamDropdownIndex = Math.min(activeExamDropdownIndex + 1, options.length - 1);
+          options.forEach(function(o, i) { o.classList.toggle('active', i === activeExamDropdownIndex); });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeExamDropdownIndex = Math.max(activeExamDropdownIndex - 1, 0);
+          options.forEach(function(o, i) { o.classList.toggle('active', i === activeExamDropdownIndex); });
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (activeExamDropdownIndex >= 0 && options[activeExamDropdownIndex]) {
+            addExam(options[activeExamDropdownIndex].getAttribute('data-name'));
+          } else if (this.value.trim() && options.length > 0) {
+            addExam(options[0].getAttribute('data-name'));
+          }
+          activeExamDropdownIndex = -1;
+        } else if (e.key === 'Escape') {
+          examDropdownEl.style.display = 'none';
+          activeExamDropdownIndex = -1;
+        }
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!examSearchEl.contains(e.target) && !examDropdownEl.contains(e.target)) {
+          examDropdownEl.style.display = 'none';
         }
       });
 
@@ -738,9 +843,7 @@ import subjects from '../../data/subjects.json';
           return;
         }
 
-        // Collect exams (comma-separated, optional)
-        var examsInput = document.getElementById('artExams').value.trim();
-        var exams = examsInput ? examsInput.split(',').map(function(t){return t.trim();}).filter(Boolean) : [];
+        // Exams are already collected in selectedExams (optional)
 
         // Upload cover image to R2
         var coverUrl = '';
@@ -796,7 +899,7 @@ import subjects from '../../data/subjects.json';
           subjects: selectedSubjects,       // Array of subject names
           topic: document.getElementById('artTopic').value.trim(),
           description: document.getElementById('artDesc').value.trim(),
-          exams: exams,
+          exams: selectedExams,           // Array of exam names
           image: coverUrl,                 // R2 URL instead of base64
           intextImages: intextImages,      // Array of {url, name, description}
           body: document.getElementById('artContent').value.trim()
@@ -828,9 +931,11 @@ import subjects from '../../data/subjects.json';
             // Re-set author
             document.getElementById('artAuthor').value = user.full_name || user.username || '';
 
-            // Clear subject chips
+            // Clear subject and exam chips
             selectedSubjects = [];
             renderSubjectChips();
+            selectedExams = [];
+            renderExamChips();
 
             // Hide edit warning
             var warnBanner = document.getElementById('editWarningBanner');
@@ -937,10 +1042,21 @@ import subjects from '../../data/subjects.json';
           document.getElementById('artTopic').value = s.topic || '';
           document.getElementById('artDesc').value = s.description || '';
           document.getElementById('artContent').value = s.body || '';
-          // Exams
-          var examsStr = '';
-          try { var ex = JSON.parse(s.exams || '[]'); examsStr = Array.isArray(ex) ? ex.join(', ') : (s.exams || ''); } catch(e) { examsStr = s.exams || ''; }
-          document.getElementById('artExams').value = examsStr;
+          // Exams - load from stored JSON array (or legacy comma string)
+          selectedExams = [];
+          try {
+            var exData = JSON.parse(s.exams || '[]');
+            if (Array.isArray(exData)) {
+              selectedExams = exData;
+            } else if (s.exams) {
+              selectedExams = [s.exams];
+            }
+          } catch(e) {
+            if (s.exams && typeof s.exams === 'string') {
+              selectedExams = s.exams.split(',').map(function(x){return x.trim();}).filter(Boolean);
+            }
+          }
+          renderExamChips();
           // Subjects - load from stored JSON (tries subject column first, then falls back to tag column)
           selectedSubjects = [];
           try {

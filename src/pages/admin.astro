@@ -5,6 +5,7 @@ export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import subjects from '../data/subjects.json';
+import exams from '../data/exams.json';
 const SITE_TITLE = "Admin Dashboard";
 
 // Server-side auth check
@@ -171,6 +172,7 @@ if (Astro.request) {
       <button class="tab-nav-btn" data-main-tab="articles">Articles</button>
       <button class="tab-nav-btn" data-main-tab="images">Images</button>
       <button class="tab-nav-btn" data-main-tab="subjects">Subjects</button>
+      <button class="tab-nav-btn" data-main-tab="exams">Exams</button>
     </nav>
 
     <!-- Applications Tab -->
@@ -244,6 +246,39 @@ if (Astro.request) {
       </div>
       <div id="subjectsTable" style="overflow-x:auto;"></div>
     </div>
+
+    <!-- Exams Tab -->
+    <div class="tab-panel" id="tab-exams">
+      <div id="examsStatus" class="alert" style="margin-bottom:1rem;display:none;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.5rem;">
+        <h3 style="font-family:'Outfit',sans-serif;margin:0;font-size:1.2rem;">Managed Exam List</h3>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn btn-sm" onclick="addNewExam()">＋ Add Exam</button>
+          <button class="btn btn-sm btn-secondary" onclick="saveExamsToGitHub()">💾 Save to GitHub</button>
+        </div>
+      </div>
+      <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.5rem;">Manage the controlled exam list (separate from subjects). Contributors select relevant exams when submitting articles. Changes deploy when you save to GitHub (~2 min).</p>
+      <!-- Add/Edit inline form -->
+      <div id="examEditRow" style="display:none;border:1px solid var(--accent);border-radius:8px;padding:1rem;margin-bottom:1rem;background:rgba(99,102,241,0.05);">
+        <div style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
+          <div class="form-group" style="flex:1;min-width:200px;">
+            <label class="form-label">Exam Name</label>
+            <input class="form-input" type="text" id="examEditName" placeholder="e.g., USMLE Step 1" maxlength="200">
+          </div>
+          <div class="form-group" style="flex:1;min-width:150px;">
+            <label class="form-label">Category / Region</label>
+            <input class="form-input" type="text" id="examEditCategory" placeholder="e.g., United States" maxlength="200" list="categoryList">
+            <datalist id="categoryList"></datalist>
+          </div>
+          <div style="display:flex;gap:0.5rem;padding-bottom:0.25rem;">
+            <button class="btn btn-sm" id="examSaveBtn" onclick="saveExamEdit()">Save</button>
+            <button class="btn btn-sm btn-secondary" onclick="cancelExamEdit()">Cancel</button>
+          </div>
+        </div>
+        <input type="hidden" id="examEditIndex" value="-1">
+      </div>
+      <div id="examsTable" style="overflow-x:auto;"></div>
+    </div>
   </main>
 
   <!-- Admin View Submission Modal -->
@@ -295,6 +330,14 @@ if (Astro.request) {
             <div id="adminEditSubjectDropdown" class="subject-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;max-height:200px;overflow-y:auto;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,0.2);"></div>
           </div>
           <div id="adminEditSubjectChips" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Exams</label>
+          <div style="position:relative;">
+            <input class="form-input" type="text" id="adminEditExamSearch" placeholder="Search exams..." autocomplete="off">
+            <div id="adminEditExamDropdown" class="subject-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;max-height:200px;overflow-y:auto;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,0.2);"></div>
+          </div>
+          <div id="adminEditExamChips" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;"></div>
         </div>
         <div class="form-group">
           <label class="form-label">Description</label>
@@ -474,9 +517,10 @@ if (Astro.request) {
   .edit-modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.5rem; }
 </style>
 
-<script define:vars={{ subjects: subjects }}>
-  // Subject taxonomy embedded at build time (zero D1 reads)
+<script define:vars={{ subjects: subjects, exams: exams }}>
+  // Subject + exam taxonomies embedded at build time (zero D1 reads)
   window.ADMIN_SUBJECTS = subjects;
+  window.ADMIN_EXAMS = exams;
 </script>
 <script is:inline>
   // ========== ADMIN TOP BAR & SETTINGS ==========
@@ -693,6 +737,7 @@ if (Astro.request) {
       else if (tab === 'articles') loadArticles();
       else if (tab === 'images') loadImages();
       else if (tab === 'subjects') loadSubjects();
+      else if (tab === 'exams') loadExams();
     });
   });
 
@@ -999,6 +1044,22 @@ if (Astro.request) {
       }
       renderAdminEditSubjectChips();
 
+      // Exams: parse JSON array (fallback to legacy comma string)
+      adminEditSelectedExams = [];
+      try {
+        var exData = JSON.parse(s.exams || '[]');
+        if (Array.isArray(exData)) {
+          adminEditSelectedExams = exData;
+        } else if (s.exams) {
+          adminEditSelectedExams = [s.exams];
+        }
+      } catch(e) {
+        if (s.exams && typeof s.exams === 'string') {
+          adminEditSelectedExams = s.exams.split(',').map(function(x){return x.trim();}).filter(Boolean);
+        }
+      }
+      renderAdminEditExamChips();
+
       document.getElementById('adminEditStatus').style.display = 'none';
       document.getElementById('adminEditModalOverlay').style.display = 'flex';
     } catch(e) {
@@ -1010,9 +1071,14 @@ if (Astro.request) {
     document.getElementById('adminEditModalOverlay').style.display = 'none';
     adminEditSelectedSubjects = [];
     renderAdminEditSubjectChips();
+    adminEditSelectedExams = [];
+    renderAdminEditExamChips();
     document.getElementById('adminEditSubjectSearch').value = '';
+    document.getElementById('adminEditExamSearch').value = '';
     var dd = document.getElementById('adminEditSubjectDropdown');
     if (dd) dd.style.display = 'none';
+    var edd = document.getElementById('adminEditExamDropdown');
+    if (edd) edd.style.display = 'none';
   }
 
   async function saveAdminEdit() {
@@ -1026,6 +1092,7 @@ if (Astro.request) {
       subject: document.getElementById('adminEditSubject').value.trim(),
       topic: document.getElementById('adminEditTopic').value.trim(),
       subjects: adminEditSelectedSubjects,
+      exams: adminEditSelectedExams,
       description: document.getElementById('adminEditDescription').value.trim(),
       body: document.getElementById('adminEditBody').value.trim(),
     };
@@ -1148,7 +1215,9 @@ if (Astro.request) {
 
   // ========== SUBJECT MANAGEMENT ==========
   var adminSubjects = window.ADMIN_SUBJECTS ? window.ADMIN_SUBJECTS.slice() : [];
+  var adminExams = window.ADMIN_EXAMS ? window.ADMIN_EXAMS.slice() : [];
   var adminEditSelectedSubjects = [];
+  var adminEditSelectedExams = [];
 
   function loadSubjects() {
     renderSubjectsTable();
@@ -1277,6 +1346,132 @@ if (Astro.request) {
     }
   }
 
+  // ========== EXAM MANAGEMENT ==========
+  function loadExams() {
+    renderExamsTable();
+    refreshCategoryList();
+  }
+
+  function renderExamsTable() {
+    var container = document.getElementById('examsTable');
+    var groups = {};
+    adminExams.forEach(function(e, i) {
+      var category = e.category || 'Uncategorized';
+      if (!groups[category]) groups[category] = [];
+      groups[category].push({ name: e.name, index: i });
+    });
+    var categoryNames = Object.keys(groups).sort();
+    var html = '';
+    categoryNames.forEach(function(category) {
+      var items = groups[category];
+      html += '<h4 style="font-family:Outfit,sans-serif;font-size:1rem;margin:1.5rem 0 0.5rem;color:var(--accent);border-bottom:1px solid var(--border);padding-bottom:0.25rem;">' + esc(category) + ' <span style="font-weight:400;font-size:0.8rem;color:var(--muted);">(' + items.length + ')</span></h4>';
+      html += '<table class="data-table"><tbody>';
+      items.forEach(function(e) {
+        html += '<tr>' +
+          '<td style="width:40px;font-size:1.2rem;text-align:center;">📝</td>' +
+          '<td><strong>' + esc(e.name) + '</strong></td>' +
+          '<td style="white-space:nowrap;">' +
+            '<button class="action-btn btn-edit-admin" onclick="editExam(' + e.index + ')" title="Edit">✏️</button>' +
+            '<button class="action-btn btn-delete-sm" onclick="deleteExam(' + e.index + ')" title="Delete">🗑</button>' +
+          '</td>' +
+          '</tr>';
+      });
+      html += '</tbody></table>';
+    });
+    if (adminExams.length === 0) {
+      html = '<p style="color:var(--muted);text-align:center;padding:2rem;">No exams defined. Click "＋ Add Exam" to create the exam list.</p>';
+    }
+    container.innerHTML = html;
+  }
+
+  function refreshCategoryList() {
+    var datalist = document.getElementById('categoryList');
+    var categories = [];
+    adminExams.forEach(function(e) { if (e.category && categories.indexOf(e.category) === -1) categories.push(e.category); });
+    datalist.innerHTML = categories.map(function(c) { return '<option value="' + esc(c) + '">'; }).join('');
+  }
+
+  function addNewExam() {
+    document.getElementById('examEditName').value = '';
+    document.getElementById('examEditCategory').value = '';
+    document.getElementById('examEditIndex').value = '-1';
+    document.getElementById('examEditRow').style.display = 'block';
+    document.getElementById('examEditName').focus();
+  }
+
+  function editExam(index) {
+    var e = adminExams[index];
+    document.getElementById('examEditName').value = e.name;
+    document.getElementById('examEditCategory').value = e.category || '';
+    document.getElementById('examEditIndex').value = index;
+    document.getElementById('examEditRow').style.display = 'block';
+    document.getElementById('examEditName').focus();
+  }
+
+  function saveExamEdit() {
+    var name = document.getElementById('examEditName').value.trim();
+    var category = document.getElementById('examEditCategory').value.trim();
+    var index = parseInt(document.getElementById('examEditIndex').value);
+    if (!name) { alert('Exam name is required.'); return; }
+
+    if (index >= 0) {
+      adminExams[index] = { name: name, category: category || undefined };
+    } else {
+      adminExams.push({ name: name, category: category || undefined });
+    }
+
+    adminExams.sort(function(a, b) {
+      var ca = (a.category || '').toLowerCase();
+      var cb = (b.category || '').toLowerCase();
+      if (ca !== cb) return ca < cb ? -1 : 1;
+      return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+    });
+
+    cancelExamEdit();
+    renderExamsTable();
+    refreshCategoryList();
+  }
+
+  function cancelExamEdit() {
+    document.getElementById('examEditRow').style.display = 'none';
+    document.getElementById('examEditIndex').value = '-1';
+  }
+
+  function deleteExam(index) {
+    if (!confirm('Delete "' + adminExams[index].name + '" from the exam list?')) return;
+    adminExams.splice(index, 1);
+    renderExamsTable();
+    refreshCategoryList();
+  }
+
+  async function saveExamsToGitHub() {
+    if (!confirm('Save ' + adminExams.length + ' exams to GitHub? This will trigger a redeployment.')) return;
+    var statusEl = document.getElementById('examsStatus');
+    statusEl.textContent = 'Saving...';
+    statusEl.className = 'alert alert-info';
+    statusEl.style.display = 'block';
+
+    try {
+      var resp = await fetch('/api/admin/exams-save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exams: adminExams })
+      });
+      var data = await resp.json();
+      if (data.success) {
+        statusEl.textContent = data.message;
+        statusEl.className = 'alert alert-success';
+        window.ADMIN_EXAMS = adminExams.slice();
+      } else {
+        statusEl.textContent = data.error || 'Save failed.';
+        statusEl.className = 'alert alert-error';
+      }
+    } catch(e) {
+      statusEl.textContent = 'Network error: ' + e.message;
+      statusEl.className = 'alert alert-error';
+    }
+  }
+
   // ========== ADMIN EDIT SUBJECT AUTOCOMPLETE ==========
   function adminMatchSubjects(query) {
     if (!query || query.length < 2) return [];
@@ -1356,6 +1551,88 @@ if (Astro.request) {
     document.addEventListener('click', function(e) {
       if (!adminEditSearchEl.contains(e.target) && !adminEditDropdownEl.contains(e.target)) {
         adminEditDropdownEl.style.display = 'none';
+      }
+    });
+  }
+
+  // ========== ADMIN EDIT EXAM AUTOCOMPLETE ==========
+  function adminMatchExams(query) {
+    if (!query || query.length < 2) return [];
+    var q = query.toLowerCase();
+    return (window.ADMIN_EXAMS || []).filter(function(e) {
+      return e.name.toLowerCase().indexOf(q) !== -1;
+    }).sort(function(a, b) {
+      var aStarts = a.name.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      var bStarts = b.name.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      return aStarts - bStarts || a.name.length - b.name.length;
+    }).slice(0, 12);
+  }
+
+  function renderAdminEditExamChips() {
+    var container = document.getElementById('adminEditExamChips');
+    container.innerHTML = adminEditSelectedExams.map(function(name, i) {
+      return '<span class="chip">' + esc(name) + '<button type="button" class="chip-remove" onclick="removeAdminEditExam(' + i + ')" title="Remove">&times;</button></span>';
+    }).join('');
+  }
+
+  function addAdminEditExam(name) {
+    if (adminEditSelectedExams.indexOf(name) === -1) {
+      adminEditSelectedExams.push(name);
+      renderAdminEditExamChips();
+    }
+    document.getElementById('adminEditExamSearch').value = '';
+    document.getElementById('adminEditExamDropdown').style.display = 'none';
+  }
+
+  function removeAdminEditExam(index) {
+    adminEditSelectedExams.splice(index, 1);
+    renderAdminEditExamChips();
+  }
+
+  var adminEditExamSearchEl = document.getElementById('adminEditExamSearch');
+  if (adminEditExamSearchEl) {
+    var adminEditExamDropdownEl = document.getElementById('adminEditExamDropdown');
+    var adminExamActiveIdx = -1;
+
+    adminEditExamSearchEl.addEventListener('input', function() {
+      var query = this.value;
+      if (query.length < 2) {
+        adminEditExamDropdownEl.style.display = 'none';
+        return;
+      }
+      var matches = adminMatchExams(query);
+      if (matches.length === 0) {
+        adminEditExamDropdownEl.innerHTML = '<div style="padding:0.65rem 1rem;color:var(--muted);font-size:0.85rem;">No matches</div>';
+      } else {
+        adminEditExamDropdownEl.innerHTML = matches.map(function(e) {
+          return '<div class="subject-option" data-name="' + esc(e.name) + '" style="padding:0.5rem 0.75rem;cursor:pointer;font-size:0.85rem;border-bottom:1px solid rgba(255,255,255,0.03);"' +
+            'onmousedown="event.preventDefault();addAdminEditExam(\'' + esc(e.name).replace(/'/g, "\\'") + '\')">' +
+            esc(e.name) + (e.category ? ' <span style="font-size:0.7rem;color:var(--muted);">(' + esc(e.category) + ')</span>' : '') +
+            '</div>';
+        }).join('');
+      }
+      adminEditExamDropdownEl.style.display = 'block';
+      adminExamActiveIdx = -1;
+    });
+
+    adminEditExamSearchEl.addEventListener('keydown', function(e) {
+      var options = adminEditExamDropdownEl.querySelectorAll('.subject-option');
+      if (e.key === 'ArrowDown') { e.preventDefault(); adminExamActiveIdx = Math.min(adminExamActiveIdx + 1, options.length - 1); options.forEach(function(o, i) { o.style.background = i === adminExamActiveIdx ? 'rgba(99,102,241,0.12)' : ''; }); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); adminExamActiveIdx = Math.max(adminExamActiveIdx - 1, 0); options.forEach(function(o, i) { o.style.background = i === adminExamActiveIdx ? 'rgba(99,102,241,0.12)' : ''; }); }
+      else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (adminExamActiveIdx >= 0 && options[adminExamActiveIdx]) {
+          addAdminEditExam(options[adminExamActiveIdx].getAttribute('data-name'));
+        } else if (options.length > 0) {
+          addAdminEditExam(options[0].getAttribute('data-name'));
+        }
+        adminExamActiveIdx = -1;
+      }
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!adminEditExamSearchEl.contains(e.target) && !adminEditExamDropdownEl.contains(e.target)) {
+        adminEditExamDropdownEl.style.display = 'none';
       }
     });
   }
