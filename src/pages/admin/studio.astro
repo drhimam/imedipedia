@@ -1,0 +1,769 @@
+---
+// AI Studio — full-page, multi-type article generation workspace
+// SSR-only: verifies admin session on every request
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import subjects from '../../data/subjects.json';
+import exams from '../../data/exams.json';
+const SITE_TITLE = "AI Studio";
+
+// Server-side auth check
+if (Astro.request) {
+  const cookieHeader = Astro.request.headers.get("cookie") || "";
+  const match = cookieHeader.match(/session_id=([^;]+)/);
+  const sessionId = match ? match[1] : null;
+
+  if (!sessionId) {
+    return Astro.redirect("/admin/login");
+  }
+
+  try {
+    const db = Astro.locals?.runtime?.env?.D1_DB || Astro.locals?.runtime?.env?.DB;
+    if (db) {
+      const now = Math.floor(Date.now() / 1000);
+      const session = await db.prepare("SELECT * FROM sessions WHERE id = ? AND expires_at > ?")
+        .bind(sessionId, now).first();
+
+      if (!session) {
+        return Astro.redirect("/admin/login");
+      }
+
+      const user = await db.prepare("SELECT * FROM users WHERE id = ?").bind(session.user_id).first();
+      if (!user || (user.role !== 'admin' && user.role !== 'co-admin')) {
+        return Astro.redirect("/admin/login");
+      }
+    }
+  } catch (err) {
+    console.error("Studio auth error:", err.message);
+    return Astro.redirect("/admin/login");
+  }
+}
+---
+
+<BaseLayout title={SITE_TITLE}>
+  <header class="st-topbar">
+    <div class="st-topbar-left">
+      <a href="/admin" class="st-back">&larr; Admin</a>
+      <span class="st-title">✨ AI Studio</span>
+      <span class="st-badge" id="stTypeBadge">Research Digest</span>
+    </div>
+    <div class="st-topbar-right">
+      <span class="st-status" id="stStatus"></span>
+    </div>
+  </header>
+
+  <main class="st-main">
+    <!-- LEFT: CONFIG PANEL -->
+    <aside class="st-config">
+      <section class="st-card">
+        <h3 class="st-card-title">Article Type</h3>
+        <div class="st-type-grid">
+          <button class="st-type-card active" data-type="general" onclick="selectType('general')">
+            <span class="st-type-icon">📚</span>
+            <span class="st-type-name">Research Digest</span>
+            <span class="st-type-desc">Latest evidence &amp; clinical updates</span>
+          </button>
+          <button class="st-type-card" data-type="update" onclick="selectType('update')">
+            <span class="st-type-icon">📋</span>
+            <span class="st-type-name">Clinical Guidelines</span>
+            <span class="st-type-desc">Summaries &amp; changes vs prior</span>
+          </button>
+          <button class="st-type-card" data-type="case" onclick="selectType('case')">
+            <span class="st-type-icon">🩺</span>
+            <span class="st-type-name">Case Report</span>
+            <span class="st-type-desc">CARE-structured case study</span>
+          </button>
+          <button class="st-type-card" data-type="education" onclick="selectType('education')">
+            <span class="st-type-icon">🎓</span>
+            <span class="st-type-name">CME &amp; Learning</span>
+            <span class="st-type-desc">Board review, mnemonics &amp; Q&amp;A</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="st-card">
+        <h3 class="st-card-title">Details</h3>
+
+        <div class="st-field">
+          <label class="st-label">Topic</label>
+          <input id="stTopic" class="st-input" type="text" placeholder="e.g., Immunotherapy, Hypertension…" maxlength="200">
+        </div>
+
+        <div class="st-field">
+          <label class="st-label">Subjects</label>
+          <div class="st-autocomplete">
+            <input id="stSubjectSearch" class="st-input" type="text" placeholder="Search subjects…" autocomplete="off">
+            <div id="stSubjectDropdown" class="st-dropdown"></div>
+          </div>
+          <div id="stSubjectChips" class="st-chips"></div>
+        </div>
+
+        <div class="st-field">
+          <label class="st-label">Exams <span class="st-hint">(optional — leave empty for digests/guidelines)</span></label>
+          <div class="st-autocomplete">
+            <input id="stExamSearch" class="st-input" type="text" placeholder="Search exams…" autocomplete="off">
+            <div id="stExamDropdown" class="st-dropdown"></div>
+          </div>
+          <div id="stExamChips" class="st-chips"></div>
+        </div>
+
+        <div class="st-field" id="stGuidelineField" style="display:none;">
+          <label class="st-label">Guideline version / source</label>
+          <input id="stGuidelineVersion" class="st-input" type="text" placeholder="e.g., 2025 ACC/AHA Hypertension Guideline" maxlength="300">
+        </div>
+        <div class="st-field" id="stCompareField" style="display:none;">
+          <label class="st-check"><input type="checkbox" id="stComparePrevious"> Compare vs previous version</label>
+        </div>
+
+        <div class="st-field">
+          <label class="st-label">Brief / instructions</label>
+          <textarea id="stBrief" class="st-input st-textarea" rows="3" placeholder="Optional editorial guidance for the AI…"></textarea>
+        </div>
+
+        <div class="st-field">
+          <label class="st-label">Fine-tune instructions <span class="st-hint">(optional)</span></label>
+          <textarea id="stFineTune" class="st-input st-textarea" rows="3" placeholder="Additional fine-tuning: tone, length, audience, sections to emphasize, style…"></textarea>
+        </div>
+
+        <div class="st-field" id="stCaseField" style="display:none;">
+          <label class="st-label">Raw case notes</label>
+          <textarea id="stCaseNotes" class="st-input st-textarea" rows="6" placeholder="Paste de-identified raw case notes, history, examination, investigations…"></textarea>
+        </div>
+      </section>
+
+      <section class="st-card">
+        <h3 class="st-card-title">Cover Image</h3>
+        <button class="st-btn st-btn-secondary" id="stCoverBtn" onclick="generateCover()">✨ Generate cover</button>
+        <div id="stCoverPreview" class="st-cover-preview" style="display:none;">
+          <img id="stCoverImg" alt="Cover preview">
+          <button class="st-link-btn" onclick="removeCover()">Remove</button>
+        </div>
+      </section>
+    </aside>
+
+    <!-- RIGHT: EDITOR PANEL -->
+    <section class="st-editor">
+      <div class="st-card">
+        <div class="st-editor-toolbar">
+          <div class="st-toggle">
+            <button id="stEditTab" class="st-toggle-btn active" onclick="setMode('edit')">✏️ Edit</button>
+            <button id="stPreviewTab" class="st-toggle-btn" onclick="setMode('preview')">👁 Preview</button>
+          </div>
+          <div class="st-editor-actions">
+            <button class="st-btn st-btn-secondary" onclick="copyMarkdown()" id="stCopyBtn">📋 Copy</button>
+            <button class="st-btn" onclick="saveSubmission()" id="stSaveBtn">💾 Save as Submission</button>
+          </div>
+        </div>
+
+        <div id="stGenStatus" class="st-alert" style="display:none;"></div>
+
+        <!-- Edit pane -->
+        <div id="stEditPane">
+          <div class="st-field">
+            <label class="st-label st-label-row">
+              <span>Title</span>
+              <button class="st-ai-btn" onclick="refineTitle()" id="stRefineBtn" title="Refine the title based on the content">✨ Refine title</button>
+            </label>
+            <input id="stTitle" class="st-input" type="text" placeholder="e.g., Advances in CAR-T Cell Therapy" maxlength="500">
+          </div>
+
+          <div class="st-field">
+            <label class="st-label st-label-row">
+              <span>Description — TL;DR Summary (2–3 sentences)</span>
+              <button class="st-ai-btn" onclick="summarizeDescription()" id="stSummarizeBtn" title="Summarize the body into a 2–3 sentence TL;DR">✨ Summarize</button>
+            </label>
+            <textarea id="stDescription" class="st-input st-textarea" rows="2" placeholder="2–3 sentence TL;DR summary…"></textarea>
+          </div>
+
+          <div class="st-field">
+            <label class="st-label st-label-row">
+              <span>Body (Markdown)</span>
+              <button class="st-btn st-btn-sm" onclick="generateArticle()" id="stGenerateBtn">✨ Generate</button>
+            </label>
+            <textarea id="stBody" class="st-input st-textarea st-body" rows="18" placeholder="Click ✨ Generate to write the article…"></textarea>
+          </div>
+        </div>
+
+        <!-- Preview pane -->
+        <div id="stPreviewPane" style="display:none;">
+          <div id="stPreviewContainer"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<style is:global>
+  /* ===== Studio chrome ===== */
+  .st-topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.7rem 1.5rem; background: var(--card-bg);
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 40;
+    backdrop-filter: blur(10px); gap: 0.75rem;
+  }
+  .st-topbar-left { display: flex; align-items: center; gap: 0.85rem; }
+  .st-topbar-right { display: flex; align-items: center; }
+  .st-back { color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; transition: all 0.15s; }
+  .st-back:hover { color: var(--accent); border-color: var(--accent); }
+  .st-title { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.3px; }
+  .st-badge { background: var(--accent); color: white; padding: 0.18rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .st-status { font-size: 0.8rem; color: var(--muted); }
+
+  .st-main {
+    max-width: 1280px; margin: 0 auto; padding: 1.75rem 1.5rem 4rem;
+    display: grid; grid-template-columns: 340px 1fr; gap: 1.75rem; align-items: start;
+  }
+  .st-config { display: flex; flex-direction: column; gap: 1.25rem; position: sticky; top: 76px; }
+  .st-editor { min-width: 0; }
+
+  .st-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 1.4rem; }
+  .st-card-title { font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 700; margin: 0 0 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border); }
+
+  .st-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+  .st-type-card {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem;
+    text-align: left; padding: 0.85rem; border-radius: 10px; cursor: pointer;
+    background: rgba(0,0,0,0.08); border: 1px solid var(--border); color: var(--text);
+    font-family: inherit; transition: all 0.15s;
+  }
+  .st-type-card:hover { border-color: var(--accent); }
+  .st-type-card.active { border-color: var(--accent); background: rgba(13, 148, 136, 0.08); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .st-type-icon { font-size: 1.4rem; line-height: 1; }
+  .st-type-name { font-size: 0.85rem; font-weight: 700; }
+  .st-type-desc { font-size: 0.72rem; color: var(--muted); line-height: 1.3; }
+
+  .st-field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+  .st-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .st-label-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+  .st-hint { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 0.7rem; }
+  .st-input { padding: 0.6rem 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.08); color: var(--text); font-size: 0.9rem; width: 100%; box-sizing: border-box; font-family: inherit; }
+  .st-input:focus { outline: none; border-color: var(--accent); }
+  .st-textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+  .st-body { min-height: 420px; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.85rem; line-height: 1.55; }
+
+  .st-autocomplete { position: relative; }
+  .st-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 30; box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+  .st-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+  .st-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.55rem; background: var(--accent); color: #fff; border-radius: 20px; font-size: 0.8rem; font-weight: 500; }
+  .st-chip-x { background: transparent; border: none; color: rgba(255,255,255,0.85); cursor: pointer; font-size: 0.9rem; line-height: 1; padding: 0; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .st-chip-x:hover { color: #fff; background: rgba(255,255,255,0.2); }
+  .st-check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text); font-weight: 500; cursor: pointer; }
+
+  .st-cover-preview { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .st-cover-preview img { width: 100%; border-radius: 10px; border: 1px solid var(--border); }
+  .st-link-btn { background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 0.8rem; font-weight: 600; padding: 0; text-align: left; font-family: inherit; }
+
+  .st-editor-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.1rem; }
+  .st-toggle { display: flex; gap: 0.3rem; background: rgba(0,0,0,0.08); border: 1px solid var(--border); border-radius: 8px; padding: 0.25rem; }
+  .st-toggle-btn { background: transparent; border: none; color: var(--muted); padding: 0.45rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; font-family: inherit; transition: all 0.15s; }
+  .st-toggle-btn.active { background: var(--accent); color: #fff; }
+  .st-editor-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+  .st-btn { background: var(--accent); color: #fff; border: none; padding: 0.6rem 1.1rem; font-size: 0.88rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: opacity 0.15s; font-family: inherit; }
+  .st-btn:hover { opacity: 0.9; }
+  .st-btn:disabled { opacity: 0.5; cursor: wait; }
+  .st-btn-secondary { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+  .st-btn-secondary:hover { background: var(--accent); color: #fff; opacity: 1; }
+  .st-btn-sm { padding: 0.4rem 0.85rem; font-size: 0.8rem; }
+  .st-ai-btn { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; border-radius: 6px; padding: 0.3rem 0.6rem; font-size: 0.72rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: opacity 0.15s, transform 0.15s; font-family: inherit; }
+  .st-ai-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .st-ai-btn:disabled { opacity: 0.55; cursor: wait; }
+
+  .st-alert { padding: 0.6rem 0.75rem; border-radius: 6px; font-size: 0.8rem; margin-bottom: 1rem; }
+  .st-alert-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #10b981; }
+  .st-alert-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+
+  /* ===== Article preview (mirrors the live site) ===== */
+  .article-view { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; }
+  .article-header { border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  .article-title { font-family: 'Outfit', sans-serif; font-size: 2.5rem; margin: 0.5rem 0; line-height: 1.2; }
+  .article-meta { color: var(--muted); font-size: 0.95rem; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .article-image-container { border-radius: 12px; overflow: hidden; margin-bottom: 2rem; border: 1px solid var(--border); background: #090d16; max-height: 450px; }
+  .article-image { width: 100%; height: auto; display: block; }
+  .tldr-box { background: rgba(13, 148, 136, 0.06); border-left: 4px solid var(--accent); padding: 1.25rem; border-radius: 4px; margin-bottom: 2rem; font-style: italic; }
+  .article-body { font-size: 1.1rem; line-height: 1.7; }
+  .article-body h1, .article-body h2, .article-body h3 { font-family: 'Outfit', sans-serif; color: var(--text); margin-top: 2rem; margin-bottom: 0.75rem; line-height: 1.3; }
+  .article-body h2 { font-size: 1.6rem; }
+  .article-body h3 { font-size: 1.3rem; }
+  .article-body p { margin-bottom: 1.25rem; }
+  .article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; padding: 0; }
+  .article-body li { margin-bottom: 0.35rem; }
+  .article-body a { color: var(--accent); }
+  .article-body blockquote { border-left: 4px solid var(--border); margin: 1.25rem 0; padding: 0.5rem 1rem; color: var(--muted); }
+  .article-body code { background: rgba(0,0,0,0.1); padding: 0.1rem 0.35rem; border-radius: 4px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.9em; }
+  .article-body pre { background: rgba(0,0,0,0.1); padding: 1rem; border-radius: 8px; overflow-x: auto; margin-bottom: 1.25rem; }
+  .article-body pre code { background: transparent; padding: 0; }
+  .article-body table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.92rem; display: block; overflow-x: auto; }
+  .article-body th { text-align: left; padding: 0.6rem 0.75rem; background: rgba(13,148,136,0.1); border: 1px solid var(--border); font-weight: 700; }
+  .article-body td { padding: 0.6rem 0.75rem; border: 1px solid var(--border); vertical-align: top; }
+  .article-body hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  .article-body img { max-width: 100%; border-radius: 8px; }
+
+  @media (max-width: 900px) {
+    .st-main { grid-template-columns: 1fr; }
+    .st-config { position: static; }
+  }
+  @media (max-width: 640px) {
+    .st-main { padding: 1rem 1rem 3rem; }
+    .article-view { padding: 1.25rem; }
+    .article-title { font-size: 1.7rem; }
+    .st-type-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script define:vars={{ subjects: subjects, exams: exams }}>
+  // Subject + exam taxonomies embedded at build time (zero D1 reads)
+  window.ADMIN_SUBJECTS = subjects;
+  window.ADMIN_EXAMS = exams;
+</script>
+
+<script is:inline>
+  // ========== AI STUDIO ==========
+  var currentType = 'general';
+  var studioSubjects = [];
+  var studioExams = [];
+  var coverUrl = '';
+  var currentUser = 'iMedipedia Editorial Board';
+
+  var TYPE_META = {
+    general: { label: 'Research Digest' },
+    update: { label: 'Clinical Guidelines' },
+    case: { label: 'Case Report' },
+    education: { label: 'CME & Learning' },
+  };
+
+  function esc(str) {
+    if (!str) return '';
+    var d = document.createElement('div');
+    d.textContent = String(str);
+    return d.innerHTML;
+  }
+
+  function showStatus(msg, ok) {
+    var el = document.getElementById('stGenStatus');
+    el.textContent = msg;
+    el.className = 'st-alert ' + (ok ? 'st-alert-success' : 'st-alert-error');
+    el.style.display = 'block';
+  }
+
+  function selectType(type) {
+    currentType = type;
+    document.querySelectorAll('.st-type-card').forEach(function(c) {
+      c.classList.toggle('active', c.dataset.type === type);
+    });
+    document.getElementById('stTypeBadge').textContent = TYPE_META[type].label;
+    var isUpdate = type === 'update';
+    var isCase = type === 'case';
+    document.getElementById('stGuidelineField').style.display = isUpdate ? '' : 'none';
+    document.getElementById('stCompareField').style.display = isUpdate ? '' : 'none';
+    document.getElementById('stCaseField').style.display = isCase ? '' : 'none';
+  }
+
+  // --- Generic autocomplete ---
+  function studioMatch(list, query) {
+    if (!query || query.length < 2) return [];
+    var q = query.toLowerCase();
+    return (list || []).filter(function(s) {
+      return s.name.toLowerCase().indexOf(q) !== -1;
+    }).sort(function(a, b) {
+      var aStarts = a.name.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      var bStarts = b.name.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      return aStarts - bStarts || a.name.length - b.name.length;
+    }).slice(0, 12);
+  }
+
+  function setupAutocomplete(searchId, dropdownId, addFnName, matchFn) {
+    var searchEl = document.getElementById(searchId);
+    var dropdownEl = document.getElementById(dropdownId);
+    if (!searchEl || !dropdownEl) return;
+    var activeIdx = -1;
+    searchEl.addEventListener('input', function() {
+      var query = this.value;
+      if (query.length < 2) { dropdownEl.style.display = 'none'; return; }
+      var matches = matchFn(query);
+      if (!matches.length) {
+        dropdownEl.innerHTML = '<div style="padding:0.65rem 1rem;color:var(--muted);font-size:0.85rem;">No matches</div>';
+      } else {
+        dropdownEl.innerHTML = matches.map(function(item) {
+          var sub = item.parent || item.category || '';
+          return '<div class="st-option" data-name="' + esc(item.name) + '" style="padding:0.5rem 0.75rem;cursor:pointer;font-size:0.85rem;border-bottom:1px solid var(--border);"' +
+            'onmousedown="event.preventDefault();' + addFnName + '(\'' + esc(item.name).replace(/'/g, "\\'") + '\')">' +
+            esc(item.name) + (sub ? ' <span style="font-size:0.7rem;color:var(--muted);">(' + esc(sub) + ')</span>' : '') +
+            '</div>';
+        }).join('');
+      }
+      dropdownEl.style.display = 'block';
+      activeIdx = -1;
+    });
+    searchEl.addEventListener('keydown', function(e) {
+      var options = dropdownEl.querySelectorAll('.st-option');
+      if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx + 1, options.length - 1); options.forEach(function(o, i) { o.style.background = i === activeIdx ? 'rgba(99,102,241,0.12)' : ''; }); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx - 1, 0); options.forEach(function(o, i) { o.style.background = i === activeIdx ? 'rgba(99,102,241,0.12)' : ''; }); }
+      else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeIdx >= 0 && options[activeIdx]) window[addFnName](options[activeIdx].getAttribute('data-name'));
+        else if (options.length > 0) window[addFnName](options[0].getAttribute('data-name'));
+        activeIdx = -1;
+      }
+    });
+    document.addEventListener('click', function(e) {
+      if (!searchEl.contains(e.target) && !dropdownEl.contains(e.target)) dropdownEl.style.display = 'none';
+    });
+  }
+
+  // --- Subjects ---
+  function renderSubjectChips() {
+    document.getElementById('stSubjectChips').innerHTML = studioSubjects.map(function(s, i) {
+      return '<span class="st-chip">' + esc(s) + '<button type="button" class="st-chip-x" onclick="removeStudioSubject(' + i + ')">&times;</button></span>';
+    }).join('');
+  }
+  function addStudioSubject(name) {
+    if (studioSubjects.indexOf(name) === -1) { studioSubjects.push(name); renderSubjectChips(); }
+    document.getElementById('stSubjectSearch').value = '';
+    document.getElementById('stSubjectDropdown').style.display = 'none';
+  }
+  function removeStudioSubject(i) { studioSubjects.splice(i, 1); renderSubjectChips(); }
+
+  // --- Exams ---
+  function renderExamChips() {
+    document.getElementById('stExamChips').innerHTML = studioExams.map(function(s, i) {
+      return '<span class="st-chip">' + esc(s) + '<button type="button" class="st-chip-x" onclick="removeStudioExam(' + i + ')">&times;</button></span>';
+    }).join('');
+  }
+  function addStudioExam(name) {
+    if (studioExams.indexOf(name) === -1) { studioExams.push(name); renderExamChips(); }
+    document.getElementById('stExamSearch').value = '';
+    document.getElementById('stExamDropdown').style.display = 'none';
+  }
+  function removeStudioExam(i) { studioExams.splice(i, 1); renderExamChips(); }
+
+  setupAutocomplete('stSubjectSearch', 'stSubjectDropdown', 'addStudioSubject', function(q) { return studioMatch(window.ADMIN_SUBJECTS || [], q); });
+  setupAutocomplete('stExamSearch', 'stExamDropdown', 'addStudioExam', function(q) { return studioMatch(window.ADMIN_EXAMS || [], q); });
+
+  // --- Shared AI call (reuses /api/ai/generate) ---
+  async function aiGenerate(prompt, buttonEl) {
+    if (!prompt || !prompt.trim()) { alert('Nothing to send to AI — add some content first.'); return null; }
+    var doFetch = async function() {
+      var resp = await fetch('/api/ai/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt })
+      });
+      var data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || ('Request failed (' + resp.status + ')'));
+      return data.result || '';
+    };
+    if (buttonEl) {
+      buttonEl.disabled = true;
+      var original = buttonEl.textContent;
+      buttonEl.textContent = '⏳ Working…';
+      try { return await doFetch(); }
+      catch (e) { alert('AI error: ' + e.message); return null; }
+      finally { buttonEl.disabled = false; buttonEl.textContent = original; }
+    }
+    try { return await doFetch(); }
+    catch (e) { alert('AI error: ' + e.message); return null; }
+  }
+
+  // --- Full multi-step generation (body → refined title + TL;DR) ---
+  async function generateArticle() {
+    var title = document.getElementById('stTitle').value.trim();
+    var topic = document.getElementById('stTopic').value.trim();
+    var brief = document.getElementById('stBrief').value.trim();
+    var fineTune = document.getElementById('stFineTune').value.trim();
+    if (!title && !topic && !brief) { showStatus('Enter a title or topic first.', false); return; }
+
+    var btn = document.getElementById('stGenerateBtn');
+    btn.disabled = true;
+    var orig = btn.textContent;
+    btn.textContent = '⏳ Generating…';
+    showStatus('Generating body, then refining title + TL;DR…', true);
+
+    try {
+      var resp = await fetch('/api/admin/studio/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: currentType,
+          title: title,
+          topic: topic,
+          brief: brief,
+          fineTune: fineTune,
+          subjects: studioSubjects,
+          exams: studioExams,
+          caseNotes: document.getElementById('stCaseNotes').value.trim(),
+          guidelineVersion: document.getElementById('stGuidelineVersion').value.trim(),
+          comparePrevious: document.getElementById('stComparePrevious').checked,
+        })
+      });
+      var data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || ('Failed (' + resp.status + ')'));
+
+      document.getElementById('stBody').value = data.body || '';
+      document.getElementById('stTitle').value = data.title || title;
+      document.getElementById('stDescription').value = data.description || '';
+      showStatus('Generated title, TL;DR, and body. Review & edit, then preview or save.', true);
+    } catch (e) {
+      showStatus('Error: ' + e.message, false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  }
+
+  async function refineTitle() {
+    var body = document.getElementById('stBody').value.trim();
+    var title = document.getElementById('stTitle').value.trim();
+    if (!body && !title) { alert('Write some content or a working title first.'); return; }
+    var prompt = 'Refine the title for the following medical article into a crisp, professional, SEO-friendly title. ' +
+      'Return ONLY the title text (no quotes, no markdown, max ~120 characters).\n\n' +
+      'Working title: ' + (title || document.getElementById('stTopic').value.trim() || '') + '\n\n' +
+      'Article:\n' + (body || title);
+    var result = await aiGenerate(prompt, document.getElementById('stRefineBtn'));
+    if (result) document.getElementById('stTitle').value = result.trim().slice(0, 200);
+  }
+
+  async function summarizeDescription() {
+    var body = document.getElementById('stBody').value.trim();
+    if (!body) { alert('Generate or write article content first.'); return; }
+    var result = await aiGenerate(
+      'Write a TL;DR summary (2–3 sentences) of the following medical article. Return ONLY the summary as plain text (no markdown, no headings, no "TL;DR" label).\n\n' + body,
+      document.getElementById('stSummarizeBtn')
+    );
+    if (result) document.getElementById('stDescription').value = result.trim().slice(0, 600);
+  }
+
+  // --- Cover image: server generates → client encodes AVIF → R2 upload ---
+  async function generateCover() {
+    var btn = document.getElementById('stCoverBtn');
+    var title = document.getElementById('stTitle').value.trim();
+    var topic = document.getElementById('stTopic').value.trim();
+    btn.disabled = true;
+    var orig = btn.textContent;
+    btn.textContent = '⏳ Generating…';
+
+    try {
+      var resp = await fetch('/api/admin/studio/cover', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title, topic: topic })
+      });
+      var data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || ('Failed (' + resp.status + ')'));
+
+      var encoded = await toAvifDataUri(data.imageData);
+
+      var up = await fetch('/api/images/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: encoded.dataUri, name: title || topic || 'cover', folder: 'covers' })
+      });
+      var upData = await up.json();
+      if (!upData.success) throw new Error(upData.error || 'Upload failed');
+
+      coverUrl = upData.url;
+      document.getElementById('stCoverImg').src = coverUrl;
+      document.getElementById('stCoverPreview').style.display = '';
+      showStatus('Cover generated (' + (encoded.type || 'image') + ') and uploaded.', true);
+    } catch (e) {
+      showStatus('Cover error: ' + e.message, false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  }
+
+  function removeCover() {
+    coverUrl = '';
+    document.getElementById('stCoverImg').src = '';
+    document.getElementById('stCoverPreview').style.display = 'none';
+  }
+
+  function loadImage(src) {
+    return new Promise(function(resolve, reject) {
+      var img = new Image();
+      img.onload = function() { resolve(img); };
+      img.onerror = function() { reject(new Error('Could not load generated image')); };
+      img.src = src;
+    });
+  }
+
+  function canvasToBlob(canvas, type, quality) {
+    if (canvas.convertToBlob) {
+      return canvas.convertToBlob({ type: type, quality: quality })
+        .then(function(b) { return b || null; })
+        .catch(function() { return new Promise(function(res) { canvas.toBlob(res, type, quality); }); });
+    }
+    return new Promise(function(res) { canvas.toBlob(res, type, quality); });
+  }
+
+  function blobToDataUri(blob) {
+    return new Promise(function(resolve, reject) {
+      var r = new FileReader();
+      r.onload = function() { resolve(r.result); };
+      r.onerror = function() { reject(new Error('Could not read blob')); };
+      r.readAsDataURL(blob);
+    });
+  }
+
+  async function toAvifDataUri(dataUri) {
+    var img = await loadImage(dataUri);
+    var maxW = 1200;
+    var scale = Math.min(1, maxW / img.naturalWidth);
+    var w = Math.round(img.naturalWidth * scale);
+    var h = Math.round(img.naturalHeight * scale);
+    var canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+
+    var types = ['image/avif', 'image/webp', 'image/png'];
+    for (var i = 0; i < types.length; i++) {
+      try {
+        var blob = await canvasToBlob(canvas, types[i], 0.7);
+        if (blob && blob.size > 0) {
+          return { dataUri: await blobToDataUri(blob), type: blob.type || types[i] };
+        }
+      } catch (e) {}
+    }
+    throw new Error('Could not encode cover image (AVIF/WebP unsupported in this browser).');
+  }
+
+  // --- Copy markdown ---
+  function yamlArray(arr) {
+    if (!arr.length) return '[]';
+    return '["' + arr.map(function(s) { return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"'); }).join('", "') + '"]';
+  }
+
+  function buildMarkdown() {
+    var title = document.getElementById('stTitle').value.trim();
+    var description = document.getElementById('stDescription').value.trim();
+    var topic = document.getElementById('stTopic').value.trim();
+    var body = document.getElementById('stBody').value.trim();
+    var pubDate = new Date().toISOString().slice(0, 10);
+    var author = currentUser;
+
+    var lines = [
+      '---',
+      'title: "' + title.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"',
+      'pubDate: ' + pubDate,
+      'description: "' + description.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"',
+      'author: "' + author.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"',
+      'type: "' + currentType + '"',
+      'subjects: ' + yamlArray(studioSubjects),
+      'topic: "' + topic.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"',
+      'exams: ' + yamlArray(studioExams),
+    ];
+    if (coverUrl) lines.push('image: "' + coverUrl.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"');
+    lines.push('---', '', body);
+    return lines.join('\n');
+  }
+
+  async function copyMarkdown() {
+    var md = buildMarkdown();
+    var btn = document.getElementById('stCopyBtn');
+    try {
+      await navigator.clipboard.writeText(md);
+      btn.textContent = '✅ Copied';
+      setTimeout(function() { btn.textContent = '📋 Copy'; }, 1500);
+    } catch (e) {
+      prompt('Copy this markdown:', md);
+    }
+  }
+
+  // --- Save as submission ---
+  async function saveSubmission() {
+    var title = document.getElementById('stTitle').value.trim();
+    var body = document.getElementById('stBody').value.trim();
+    if (!title || !body) { alert('Generate (or write) both a title and body first.'); return; }
+    var btn = document.getElementById('stSaveBtn');
+    btn.disabled = true;
+    var orig = btn.textContent;
+    btn.textContent = 'Saving…';
+
+    try {
+      var resp = await fetch('/api/submissions/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title,
+          topic: document.getElementById('stTopic').value.trim(),
+          type: currentType,
+          subjects: studioSubjects,
+          exams: studioExams,
+          description: document.getElementById('stDescription').value.trim(),
+          image: coverUrl,
+          body: body,
+        })
+      });
+      var data = await resp.json();
+      if (data.success) {
+        showStatus('Saved as a pending submission — review in Admin → Submissions.', true);
+      } else {
+        showStatus(data.error || 'Save failed.', false);
+      }
+    } catch (e) {
+      showStatus('Save error: ' + e.message, false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  }
+
+  // --- Edit / Preview ---
+  function setMode(mode) {
+    var edit = mode === 'edit';
+    document.getElementById('stEditPane').style.display = edit ? '' : 'none';
+    document.getElementById('stPreviewPane').style.display = edit ? 'none' : '';
+    document.getElementById('stEditTab').classList.toggle('active', edit);
+    document.getElementById('stPreviewTab').classList.toggle('active', !edit);
+    if (!edit) renderPreview();
+  }
+
+  var previewTimer = null;
+  function renderPreview() {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(doRenderPreview, 400);
+  }
+
+  async function doRenderPreview() {
+    var container = document.getElementById('stPreviewContainer');
+    container.innerHTML = '<p style="color:var(--muted)">Loading preview…</p>';
+    try {
+      var resp = await fetch('/api/admin/studio/preview', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: document.getElementById('stTitle').value,
+          description: document.getElementById('stDescription').value,
+          author: currentUser,
+          image: coverUrl,
+          body: document.getElementById('stBody').value,
+        })
+      });
+      var data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || ('Failed (' + resp.status + ')'));
+      container.innerHTML = data.html;
+    } catch (e) {
+      container.innerHTML = '<p class="st-alert-error">Preview error: ' + esc(e.message) + '</p>';
+    }
+  }
+
+  // Debounced re-preview while editing
+  ['stTitle', 'stDescription', 'stBody'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', function() {
+        if (document.getElementById('stPreviewPane').style.display !== 'none') renderPreview();
+      });
+    }
+  });
+
+  // Load the current user's name for the byline
+  async function loadUser() {
+    try {
+      var resp = await fetch('/api/profile/get');
+      var data = await resp.json();
+      if (data.profile) currentUser = data.profile.full_name || data.profile.username || currentUser;
+    } catch (e) {}
+  }
+
+  selectType('general');
+  loadUser();
+</script>

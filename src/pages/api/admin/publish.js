@@ -119,6 +119,7 @@ export async function POST({ request, locals }) {
     const topicValue = escapeYAML(submission.topic || '');
 
     const pubDate = `${yyyy}-${mm}-${String(now.getDate()).padStart(2, '0')}`;
+    const imageLine = imageValue ? `image: "${imageValue}"\n` : '';
 
     const frontmatter = `---
 title: "${escapeYAML(submission.title)}"
@@ -129,7 +130,7 @@ type: "${escapeYAML(submission.type || 'general')}"
 subjects: ${subjectsYAML}
 topic: "${topicValue}"
 exams: ${examsYAML}
----
+${imageLine}---
 
 ${sanitizeBody(submission.body || '')}`;
 
