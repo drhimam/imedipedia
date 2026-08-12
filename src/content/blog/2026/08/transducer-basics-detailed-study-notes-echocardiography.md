@@ -250,4 +250,3 @@ Use these tables as a comprehensive rapid-revision guide for ultrasound transduc
 | ☐ | What is sensitivity? | Ability to detect reflected ultrasound and convert it to an electrical signal |
 | ☐ | What is ringing? | Continued ultrasound generation after the electrical signal stops |
 — — —
-*Use these tables together with the original document diagrams: the mechanically steered single-crystal probe, the phased array sector scan, the layered transducer construction (PZT, matching layer, backing material, case, wire), and the impedance-matching schematic.*
