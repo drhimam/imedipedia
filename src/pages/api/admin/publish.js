@@ -31,6 +31,7 @@ function escapeYAML(str) {
 
 function sanitizeBody(body) {
   if (!body) return '';
+  // Escape frontmatter delimiters to prevent YAML injection
   return body.replace(/^\s*---\s*$/gm, '— — —');
 }
 
@@ -82,6 +83,12 @@ export async function POST({ request, locals }) {
       });
     }
 
+    if (submission.status !== 'approved') {
+      return new Response(JSON.stringify({ error: "Only approved submissions can be published. Current status: " + submission.status }), {
+        status: 400, headers: { "Content-Type": "application/json" }
+      });
+    }
+
     // Generate markdown file path
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -117,57 +124,78 @@ type: "article"
 
 ${sanitizeBody(submission.body || '')}`;
 
-    // Update submission status
-    await db.prepare(
-      "UPDATE submissions SET status = 'published', updated_at = ? WHERE id = ?"
-    ).bind(Math.floor(Date.now() / 1000), submissionId).run();
-
     // Push to GitHub
     const token = locals.runtime?.env?.GITHUB_TOKEN || '';
     const repo = locals.runtime?.env?.GITHUB_REPO || 'drhimam/imedipedia';
 
-    if (token) {
-      try {
-        // Get the file SHA if it already exists
-        let sha = null;
-        const getResp = await fetch(
-          `https://api.github.com/repos/${repo}/contents/${filePath}`,
-          { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" } }
-        );
-        if (getResp.ok) {
-          const existing = await getResp.json();
-          sha = existing.sha;
-        }
-
-        const base64Content = btoa(unescape(encodeURIComponent(frontmatter)));
-        const putBody = {
-          message: `Publish: ${submission.title}`,
-          content: base64Content,
-          branch: 'master',
-        };
-        if (sha) putBody.sha = sha;
-
-        const putResp = await fetch(
-          `https://api.github.com/repos/${repo}/contents/${filePath}`,
-          {
-            method: 'PUT',
-            headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" },
-            body: JSON.stringify(putBody),
-          }
-        );
-
-        if (!putResp.ok) {
-          console.error('GitHub push failed:', await putResp.text());
-        }
-      } catch (ghErr) {
-        console.error('GitHub API error:', ghErr.message);
-      }
+    if (!token) {
+      return new Response(JSON.stringify({
+        error: "GitHub token is not configured. Please set the GITHUB_TOKEN environment variable to enable publishing."
+      }), {
+        status: 500, headers: { "Content-Type": "application/json" }
+      });
     }
+
+    // Get the file SHA if it already exists (for updates)
+    let sha = null;
+    const getResp = await fetch(
+      `https://api.github.com/repos/${repo}/contents/${filePath}`,
+      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }
+    );
+    if (getResp.ok) {
+      const existing = await getResp.json();
+      sha = existing.sha;
+    }
+
+    // Encode content as base64
+    const encoder = new TextEncoder();
+    const encoded = encoder.encode(frontmatter);
+    const base64Content = btoa(String.fromCharCode(...encoded));
+
+    const putBody = {
+      message: `Publish: ${submission.title}`,
+      content: base64Content,
+      branch: 'master',
+    };
+    if (sha) putBody.sha = sha;
+
+    const putResp = await fetch(
+      `https://api.github.com/repos/${repo}/contents/${filePath}`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        body: JSON.stringify(putBody),
+      }
+    );
+
+    if (!putResp.ok) {
+      const errBody = await putResp.text();
+      let errMsg = `GitHub API returned ${putResp.status}`;
+      try {
+        const errJson = JSON.parse(errBody);
+        errMsg = errJson.message || errMsg;
+      } catch {}
+      return new Response(JSON.stringify({
+        error: `Publishing to GitHub failed: ${errMsg}`
+      }), {
+        status: 500, headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // Update submission status to published
+    await db.prepare(
+      "UPDATE submissions SET status = 'published', updated_at = ? WHERE id = ?"
+    ).bind(Math.floor(Date.now() / 1000), submissionId).run();
 
     return new Response(JSON.stringify({
       success: true,
-      message: "Article published successfully.",
+      message: "Article published successfully to GitHub.",
       filePath,
+      repoUrl: `https://github.com/${repo}/blob/master/${filePath}`,
     }), {
       status: 200, headers: { "Content-Type": "application/json" }
     });

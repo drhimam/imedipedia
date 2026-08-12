@@ -1,4 +1,6 @@
 export const prerender = false;
+import { buildSubmissionReceivedEmail } from "../_email-template.js";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 
 // --- Auth ---
 async function getSessionUser(db, request) {
@@ -50,8 +52,59 @@ function normalizeExams(value) {
 }
 
 /**
+ * Sanitize input: strip HTML tags, trim whitespace, enforce max length.
+ * Prevents XSS and oversized inputs.
+ */
+function sanitize(str, maxLen = 100000) {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .replace(/<[^>]*>/g, '')  // Strip HTML tags
+    .replace(/```[\s\S]*?```/g, '') // Strip code blocks to prevent injection
+    .trim()
+    .substring(0, maxLen);
+}
+
+/**
+ * Strip HTML from an array of strings.
+ */
+function sanitizeArray(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(s => sanitize(String(s), 500));
+}
+
+/**
+ * Send email via AWS SES (same pattern as application-review.js).
+ */
+async function sendSESEmail(env, to, subject, htmlBody) {
+  const awsRegion = env.AWS_REGION || 'ca-central-1';
+  const accessKeyId = env.AWS_ACCESS_KEY_ID || '';
+  const secretAccessKey = env.AWS_SECRET_ACCESS_KEY || '';
+  const fromEmail = env.SES_FROM_EMAIL || '';
+
+  if (!accessKeyId || !secretAccessKey || !fromEmail) {
+    console.warn('SES not configured — skipping email.');
+    return false;
+  }
+
+  const client = new SESClient({
+    region: awsRegion,
+    credentials: { accessKeyId, secretAccessKey },
+  });
+  await client.send(new SendEmailCommand({
+    Source: fromEmail,
+    Destination: { ToAddresses: [to] },
+    Message: {
+      Subject: { Data: subject, Charset: "UTF-8" },
+      Body: { Html: { Data: htmlBody, Charset: "UTF-8" } },
+    },
+  }));
+  return true;
+}
+
+/**
  * POST /api/submissions/create
- * Body: { title, description, body, tags, type, subject, topic, exams, image, intextImages }
+ * Body: { title, description, tags, type, subject, topic, exams, image, intextImages, body }
+ * description is now optional.
  */
 export async function POST({ request, locals }) {
   const db = locals.runtime?.env?.D1_DB || locals.runtime?.env?.DB;
@@ -86,45 +139,73 @@ export async function POST({ request, locals }) {
   const { title, description, tags, type, subject, topic, exams, image, intextImages } = body;
   const articleBody = body.body || '';
 
-  if (!title || !description || !articleBody) {
-    return new Response(JSON.stringify({ error: "Title, description, and body are required." }), {
+  // Sanitize all text inputs
+  const cleanTitle = sanitize(title, 500);
+  const cleanDescription = sanitize(description || '', 1000);
+  const cleanSubject = sanitize(subject || '', 200);
+  const cleanTopic = sanitize(topic || '', 200);
+  const cleanBody = sanitize(articleBody, 100000);
+  const cleanImage = sanitize(image || '', 2000);
+
+  if (!cleanTitle || !cleanBody) {
+    return new Response(JSON.stringify({ error: "Title and body are required." }), {
       status: 400, headers: { "Content-Type": "application/json" }
     });
   }
 
   // Author is always the logged-in user's full name
-  const author = user.full_name || user.username;
+  const author = sanitize(user.full_name || user.username, 200);
 
   try {
     const now = Math.floor(Date.now() / 1000);
-    const datePath = new Date().toISOString().slice(0, 7).replace('-', '/'); // e.g. "2026/08"
-    const slug = `${slugify(title)}`;
+    const slug = `${slugify(cleanTitle)}`;
 
     const result = await db.prepare(
       `INSERT INTO submissions (user_id, title, slug, description, author, tag, type, subject, topic, exams, image, body, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
     ).bind(
       user.id,
-      title.trim(),
+      cleanTitle,
       slug,
-      description.trim(),
+      cleanDescription,
       author,
       normalizeTags(tags),
       (type || 'general').trim(),
-      (subject || '').trim(),
-      (topic || '').trim(),
+      cleanSubject,
+      cleanTopic,
       normalizeExams(exams),
-      (image || '').trim(),
-      articleBody,
+      cleanImage,
+      cleanBody,
       now,
       now
     ).run();
+
+    // Send confirmation email (non-blocking — failure does not fail the submission)
+    const env = locals.runtime?.env || {};
+    const userEmail = user.email || '';
+    if (userEmail) {
+      try {
+        const dashboardUrl = 'https://imedipedia.pages.dev/contributors/dashboard';
+        const htmlBody = buildSubmissionReceivedEmail({
+          name: user.full_name || user.username,
+          title: cleanTitle,
+          dashboardUrl,
+        });
+        await sendSESEmail(env, userEmail,
+          `Article Submission Received: "${cleanTitle}"`,
+          htmlBody
+        );
+      } catch (emailErr) {
+        console.error('Submission confirmation email failed (non-fatal):', emailErr.message);
+      }
+    }
 
     return new Response(JSON.stringify({
       success: true,
       id: result.meta?.last_row_id || null,
       slug,
       message: "Your article has been submitted for review.",
+      emailSent: !!userEmail,
     }), {
       status: 201, headers: { "Content-Type": "application/json" }
     });

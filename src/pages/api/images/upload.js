@@ -30,13 +30,14 @@ function generateShortId() {
 }
 
 // Allowed image types and max size
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
 const MAX_SIZE = 1 * 1024 * 1024; // 1MB
 const EXT_MAP = {
   'image/jpeg': '.jpg',
   'image/png': '.png',
   'image/webp': '.webp',
   'image/gif': '.gif',
+  'image/avif': '.avif',
 };
 
 /**

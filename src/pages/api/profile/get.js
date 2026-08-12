@@ -27,6 +27,14 @@ export async function GET({ request, locals }) {
     });
   }
 
+  // Parse JSON array fields (backward-compatible with plain strings)
+  function parseArrayField(val) {
+    if (!val || val === '') return [];
+    try { const parsed = JSON.parse(val); if (Array.isArray(parsed)) return parsed; } catch {}
+    // Legacy: plain string → wrap as single-element array
+    return [String(val)];
+  }
+
   return new Response(JSON.stringify({
     success: true,
     profile: {
@@ -34,9 +42,10 @@ export async function GET({ request, locals }) {
       username: user.username,
       email: user.email || '',
       full_name: user.full_name || '',
-      specialty: user.specialty || '',
+      specialty: parseArrayField(user.specialty),
       bio: user.bio || '',
-      affiliation: user.affiliation || '',
+      affiliation: parseArrayField(user.affiliation),
+      experience: parseArrayField(user.experience),
       avatar_url: user.avatar_url || '',
       role: user.role,
       force_password_change: user.force_password_change === 1,

@@ -13,8 +13,30 @@ async function getSessionUser(db, request) {
 }
 
 /**
+ * Normalize a field value to a JSON array string.
+ * Handles: arrays, comma-separated strings, single values, or already-JSON strings.
+ */
+function normalizeArrayField(value) {
+  if (!value) return '[]';
+  if (Array.isArray(value)) return JSON.stringify(value.map(v => String(v).trim()).filter(Boolean));
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return JSON.stringify(parsed.map(v => String(v).trim()).filter(Boolean));
+    } catch {}
+    // Comma-separated or single value
+    if (value.includes(',')) {
+      return JSON.stringify(value.split(',').map(v => v.trim()).filter(Boolean));
+    }
+    return JSON.stringify([value.trim()]);
+  }
+  return '[]';
+}
+
+/**
  * POST /api/profile/update
- * Body: { full_name, email, specialty, bio, affiliation, avatar_url? }
+ * Body: { full_name, email, specialty, bio, affiliation, experience, avatar_url? }
+ * specialty, affiliation, experience can be arrays or comma-separated strings.
  */
 export async function POST({ request, locals }) {
   const db = locals.runtime?.env?.D1_DB || locals.runtime?.env?.DB;
@@ -38,16 +60,17 @@ export async function POST({ request, locals }) {
     });
   }
 
-  const { full_name, email, specialty, bio, affiliation, avatar_url } = body;
+  const { full_name, email, specialty, bio, affiliation, experience, avatar_url } = body;
 
   await db.prepare(
-    `UPDATE users SET full_name = ?, email = ?, specialty = ?, bio = ?, affiliation = ?, avatar_url = ? WHERE id = ?`
+    `UPDATE users SET full_name = ?, email = ?, specialty = ?, bio = ?, affiliation = ?, experience = ?, avatar_url = ? WHERE id = ?`
   ).bind(
     (full_name || '').trim(),
     (email || '').trim(),
-    (specialty || '').trim(),
+    normalizeArrayField(specialty),
     (bio || '').trim(),
-    (affiliation || '').trim(),
+    normalizeArrayField(affiliation),
+    normalizeArrayField(experience),
     (avatar_url || '').trim(),
     user.id
   ).run();

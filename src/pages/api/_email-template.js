@@ -162,6 +162,110 @@ export function buildRejectionEmail({ name, reason }) {
   });
 }
 
+export function buildSubmissionReceivedEmail({ name, title, dashboardUrl }) {
+  const content = `
+    <h2 style="margin:0 0 8px;color:${TEXT_COLOR};font-size:22px;">Article Submission Received 📝</h2>
+    <p style="margin:0 0 16px;color:${MUTED_COLOR};font-size:15px;line-height:1.6;">
+      Dear ${escapeHTML(name)},<br><br>
+      Thank you for your submission to iMedipedia. We have received your article:
+    </p>
+
+    ${buildInfoBox(`
+      <strong>Article Title:</strong><br>
+      <span style="font-size:16px;">${escapeHTML(title)}</span>
+    `, 'info')}
+
+    <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      <strong>What happens next?</strong>
+    </p>
+    <ul style="margin:8px 0;padding-left:20px;font-size:14px;color:${TEXT_COLOR};line-height:1.8;">
+      <li>Our editorial board will review your submission</li>
+      <li>You will receive an email notification once a decision is made</li>
+      <li>If approved, your article will be published on iMedipedia</li>
+    </ul>
+
+    ${buildButton('View Your Dashboard', dashboardUrl)}
+
+    <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      You can track the status of your submission at any time from your contributor dashboard.<br><br>
+      <strong>— The iMedipedia Editorial Team</strong>
+    </p>
+  `;
+  return buildEmail({
+    subject: `Article Submission Received: "${title}"`,
+    preview: `Thank you ${name}, your article "${title}" has been submitted for review.`,
+    content,
+  });
+}
+
+export function buildSubmissionApprovedEmail({ name, title, dashboardUrl }) {
+  const content = `
+    <h2 style="margin:0 0 8px;color:${TEXT_COLOR};font-size:22px;">Article Approved! ✅</h2>
+    <p style="margin:0 0 16px;color:${MUTED_COLOR};font-size:15px;line-height:1.6;">
+      Dear ${escapeHTML(name)},<br><br>
+      Great news! Your article has been <strong style="color:#16a34a;">approved</strong> by the editorial board:
+    </p>
+
+    ${buildInfoBox(`
+      <strong>Article:</strong> ${escapeHTML(title)}<br>
+      <strong>Status:</strong> <span style="color:#16a34a;">Approved — Queued for Publishing</span>
+    `, 'success')}
+
+    <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      Your article is now queued for publishing. The admin team will publish it to iMedipedia shortly.
+      Once published, it will be visible to all readers on the platform.
+    </p>
+
+    ${buildButton('View Your Dashboard', dashboardUrl)}
+
+    <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      <strong>— The iMedipedia Editorial Team</strong>
+    </p>
+  `;
+  return buildEmail({
+    subject: `Your Article Has Been Approved: "${title}"`,
+    preview: `Congratulations ${name}! Your article "${title}" has been approved and queued for publishing.`,
+    content,
+  });
+}
+
+export function buildSubmissionRejectedEmail({ name, title, notes, dashboardUrl }) {
+  const notesSection = notes
+    ? `<p style="margin:8px 0 0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Reviewer Feedback:</strong><br>${escapeHTML(notes)}</p>`
+    : '';
+  const content = `
+    <h2 style="margin:0 0 8px;color:${TEXT_COLOR};font-size:22px;">Article Needs Revision</h2>
+    <p style="margin:0 0 16px;color:${MUTED_COLOR};font-size:15px;line-height:1.6;">
+      Dear ${escapeHTML(name)},<br><br>
+      Thank you for your submission. After careful review, the editorial board has determined that your article requires revisions before it can be published:
+    </p>
+
+    ${buildInfoBox(`
+      <strong>Article:</strong> ${escapeHTML(title)}<br>
+      <strong>Status:</strong> Rejected — Revisions Requested
+    `, 'warning')}
+
+    ${notesSection}
+
+    <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      You can edit and resubmit your article from your contributor dashboard.
+      The editorial board will review your revised submission.
+    </p>
+
+    ${buildButton('Edit & Resubmit', dashboardUrl)}
+
+    <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      If you have any questions about the review feedback, please contact the administration team.<br><br>
+      <strong>— The iMedipedia Editorial Team</strong>
+    </p>
+  `;
+  return buildEmail({
+    subject: `Update on Your Article Submission: "${title}"`,
+    preview: `Dear ${name}, your article "${title}" requires revisions. Please review the feedback.`,
+    content,
+  });
+}
+
 export function buildPasswordResetEmail({ name, resetUrl }) {
   const content = `
     <h2 style="margin:0 0 8px;color:${TEXT_COLOR};font-size:22px;">Reset Your Password</h2>

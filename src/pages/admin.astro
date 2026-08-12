@@ -79,11 +79,27 @@ if (Astro.request) {
         </div>
         <div class="form-group">
           <label class="form-label">Affiliation</label>
-          <input class="form-input" type="text" id="settingsAffiliation" placeholder="Hospital / Institution">
+          <div class="chip-container" id="adminAffiliationChips"></div>
+          <div class="chip-input-row">
+            <input class="form-input chip-input" type="text" id="adminAffiliationInput" placeholder="Add hospital, institution, or organization">
+            <button type="button" class="chip-add-btn" onclick="addAdminChip('affiliation')">＋ Add</button>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Specialty</label>
-          <input class="form-input" type="text" id="settingsSpecialty" placeholder="e.g. Cardiology">
+          <div class="chip-container" id="adminSpecialtyChips"></div>
+          <div class="chip-input-row">
+            <input class="form-input chip-input" type="text" id="adminSpecialtyInput" placeholder="Add medical specialty">
+            <button type="button" class="chip-add-btn" onclick="addAdminChip('specialty')">＋ Add</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Experience</label>
+          <div class="chip-container" id="adminExperienceChips"></div>
+          <div class="chip-input-row">
+            <input class="form-input chip-input" type="text" id="adminExperienceInput" placeholder="Add work experience or position">
+            <button type="button" class="chip-add-btn" onclick="addAdminChip('experience')">＋ Add</button>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Bio</label>
@@ -194,6 +210,11 @@ if (Astro.request) {
       <div id="imagesTable" style="overflow-x:auto;"></div>
     </div>
   </main>
+
+  <!-- Admin View Submission Modal -->
+  <div class="view-modal-overlay" id="adminViewModalOverlay" style="display:none;">
+    <div class="view-modal" id="adminViewModalContent"></div>
+  </div>
 </BaseLayout>
 
 <style>
@@ -252,6 +273,16 @@ if (Astro.request) {
   :global([data-theme="light"]) .form-input { background: rgba(255,255,255,0.8); }
   .form-input:focus { outline: none; border-color: var(--accent); }
   .form-textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+  /* Chip styles for multi-value fields */
+  .chip-container { display: flex; flex-wrap: wrap; gap: 0.4rem; min-height: 0; margin-bottom: 0.25rem; }
+  .chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.55rem; background: var(--accent); color: #fff; border-radius: 20px; font-size: 0.8rem; font-weight: 500; animation: chipIn 0.2s ease-out; }
+  @keyframes chipIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .chip-remove { background: transparent; border: none; color: rgba(255,255,255,0.8); cursor: pointer; font-size: 0.9rem; line-height: 1; padding: 0; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .chip-remove:hover { color: #fff; background: rgba(255,255,255,0.2); }
+  .chip-input-row { display: flex; gap: 0.4rem; }
+  .chip-input { flex: 1; min-width: 0; }
+  .chip-add-btn { padding: 0.5rem 0.7rem; border-radius: 6px; border: 1px dashed var(--border); background: transparent; color: var(--accent); cursor: pointer; font-size: 0.8rem; font-weight: 600; white-space: nowrap; font-family: inherit; }
+  .chip-add-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
   .btn { background: var(--accent); color: #fff; border: none; padding: 0.7rem 1.25rem; font-size: 0.9rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: opacity 0.15s; }
   .btn:hover { opacity: 0.9; }
   .btn-sm { padding: 0.5rem 1rem; font-size: 0.85rem; }
@@ -316,14 +347,68 @@ if (Astro.request) {
   .btn-publish { background: #6366f1; color: white; }
   .btn-copy { background: var(--accent); color: white; }
   .btn-delete { background: var(--border); color: var(--text); }
+  .btn-delete-sm { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.35rem 0.5rem; margin: 0 0.15rem; }
+  .btn-delete-sm:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; color: #ef4444; }
+  .btn-view-admin { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.35rem 0.5rem; margin: 0 0.15rem; }
+  .btn-view-admin:hover { background: rgba(16,185,129,0.1); border-color: #10b981; }
   .copy-tooltip { position: relative; }
   .img-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+  /* Admin View Modal */
+  .view-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 998; display: flex; align-items: center; justify-content: center; animation: modalFadeIn 0.2s ease-out; }
+  @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .view-modal { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; animation: modalPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  @keyframes modalPopIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .view-modal h2 { font-family: 'Outfit', sans-serif; font-size: 1.4rem; font-weight: 700; margin: 0 0 0.75rem 0; }
+  .view-modal-meta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: var(--muted); }
+  .view-modal-body { background: rgba(0,0,0,0.05); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; font-size: 0.95rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; font-family: inherit; }
+  :global([data-theme="light"]) .view-modal-body { background: rgba(0,0,0,0.02); }
+  .view-modal-close { position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .view-modal-close:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+  .view-modal-header { position: relative; }
 </style>
 
 <script is:inline>
   // ========== ADMIN TOP BAR & SETTINGS ==========
 
   let currentProfile = null;
+
+  // --- Chip management for admin settings ---
+  const adminChipData = { affiliation: [], specialty: [], experience: [] };
+
+  function renderAdminChips(field) {
+    const container = document.getElementById('admin' + field.charAt(0).toUpperCase() + field.slice(1) + 'Chips');
+    if (!container) return;
+    container.innerHTML = adminChipData[field].map((val, i) =>
+      `<span class="chip">${esc(val)}<button type="button" class="chip-remove" onclick="removeAdminChip('${field}',${i})" title="Remove">&times;</button></span>`
+    ).join('');
+  }
+
+  function addAdminChip(field) {
+    const input = document.getElementById('admin' + field.charAt(0).toUpperCase() + field.slice(1) + 'Input');
+    if (!input) return;
+    const val = input.value.trim();
+    if (!val) return;
+    if (adminChipData[field].includes(val)) { input.value = ''; return; }
+    adminChipData[field].push(val);
+    input.value = '';
+    input.focus();
+    renderAdminChips(field);
+  }
+
+  function removeAdminChip(field, index) {
+    adminChipData[field].splice(index, 1);
+    renderAdminChips(field);
+  }
+
+  // Allow Enter key on admin chip inputs
+  ['adminAffiliationInput','adminSpecialtyInput','adminExperienceInput'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); addAdminChip(id.replace('admin','').replace('Input','').toLowerCase()); }
+      });
+    }
+  });
 
   async function loadUserInfo() {
     try {
@@ -335,9 +420,14 @@ if (Astro.request) {
         // Pre-fill settings form
         document.getElementById('settingsFullName').value = data.profile.full_name || '';
         document.getElementById('settingsEmail').value = data.profile.email || '';
-        document.getElementById('settingsAffiliation').value = data.profile.affiliation || '';
-        document.getElementById('settingsSpecialty').value = data.profile.specialty || '';
         document.getElementById('settingsBio').value = data.profile.bio || '';
+        // Load chips
+        adminChipData.affiliation = Array.isArray(data.profile.affiliation) ? data.profile.affiliation : [];
+        adminChipData.specialty = Array.isArray(data.profile.specialty) ? data.profile.specialty : [];
+        adminChipData.experience = Array.isArray(data.profile.experience) ? data.profile.experience : [];
+        renderAdminChips('affiliation');
+        renderAdminChips('specialty');
+        renderAdminChips('experience');
         // MFA status
         const mfaEnabled = data.profile.mfa_enabled;
         document.getElementById('mfaStatusText').textContent = mfaEnabled ? '✅ MFA is enabled' : '⚠️ MFA is not set up';
@@ -379,8 +469,9 @@ if (Astro.request) {
         body: JSON.stringify({
           full_name: document.getElementById('settingsFullName').value,
           email: document.getElementById('settingsEmail').value,
-          affiliation: document.getElementById('settingsAffiliation').value,
-          specialty: document.getElementById('settingsSpecialty').value,
+          affiliation: adminChipData.affiliation,
+          specialty: adminChipData.specialty,
+          experience: adminChipData.experience,
           bio: document.getElementById('settingsBio').value,
         })
       });
@@ -563,12 +654,16 @@ if (Astro.request) {
           <td>${esc(s.type || 'general')}</td>
           <td><span class="badge badge-${s.status === 'published' ? 'approved' : s.status}">${s.status}</span></td>
           <td>${new Date(s.created_at*1000).toLocaleDateString()}</td>
-          <td>${s.status==='pending' ? `
-            <button class="action-btn btn-approve" onclick="reviewSub(${s.id},'approve')">Approve</button>
-            <button class="action-btn btn-reject" onclick="reviewSub(${s.id},'reject')">Reject</button>
-          ` : s.status==='approved' ? `
-            <button class="action-btn btn-publish" onclick="publishArticle(${s.id})">Publish</button>
-          ` : ''}</td>
+          <td>
+            <button class="action-btn btn-view-admin" onclick="viewAdminSubmission(${s.id})" title="View">👁</button>
+            ${s.status==='pending' ? `
+              <button class="action-btn btn-approve" onclick="reviewSub(${s.id},'approve')">Approve</button>
+              <button class="action-btn btn-reject" onclick="reviewSub(${s.id},'reject')">Reject</button>
+            ` : s.status==='approved' ? `
+              <button class="action-btn btn-publish" onclick="publishArticle(${s.id})">Publish</button>
+            ` : ''}
+            <button class="action-btn btn-delete-sm" onclick="deleteAdminSubmission(${s.id})" title="Delete">🗑</button>
+          </td>
         </tr>
       `).join('')}</tbody></table>`;
     } catch (e) {
@@ -698,6 +793,66 @@ if (Astro.request) {
       alert('Error: ' + e.message);
     }
   }
+
+  // --- Admin View Submission ---
+  async function viewAdminSubmission(id) {
+    try {
+      const resp = await fetch('/api/submissions/' + id);
+      const data = await resp.json();
+      if (!data.success) { alert(data.error); return; }
+      const s = data.submission;
+      const date = new Date(s.created_at*1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      let tagsDisplay = '';
+      try { const tags = JSON.parse(s.tag || '[]'); tagsDisplay = Array.isArray(tags) ? tags.join(', ') : (s.tag || '—'); } catch(e) { tagsDisplay = s.tag || '—'; }
+      const modal = document.getElementById('adminViewModalContent');
+      modal.innerHTML =
+        '<div class="view-modal-header">' +
+          '<button class="view-modal-close" onclick="closeAdminViewModal()">&times;</button>' +
+          '<h2>' + esc(s.title) + '</h2>' +
+          '<div class="view-modal-meta">' +
+            '<span><strong>Author:</strong> ' + esc(s.author) + '</span>' +
+            '<span><strong>Type:</strong> ' + esc(s.type || 'general') + '</span>' +
+            '<span><strong>Tags:</strong> ' + esc(tagsDisplay) + '</span>' +
+            '<span><strong>Status:</strong> <span class="badge badge-' + s.status + '">' + s.status + '</span></span>' +
+            '<span><strong>Date:</strong> ' + date + '</span>' +
+          '</div>' +
+          (s.image ? '<div style="margin-bottom:1rem;"><img src="' + esc(s.image) + '" style="max-width:100%;max-height:300px;border-radius:8px;object-fit:cover;" alt="Cover"></div>' : '') +
+          (s.description ? '<p style="color:var(--muted);font-style:italic;margin-bottom:1rem;">' + esc(s.description) + '</p>' : '') +
+          '<div class="view-modal-body">' + esc(s.body).replace(/\\n/g, '<br>') + '</div>' +
+          (s.admin_notes ? '<div style="margin-top:1rem;padding:0.75rem;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:0.85rem;"><strong>Admin Notes:</strong> ' + esc(s.admin_notes) + '</div>' : '') +
+        '</div>';
+      document.getElementById('adminViewModalOverlay').style.display = 'flex';
+    } catch(e) {
+      alert('Failed to load submission: ' + e.message);
+    }
+  }
+
+  function closeAdminViewModal() {
+    document.getElementById('adminViewModalOverlay').style.display = 'none';
+  }
+
+  // Admin delete submission
+  async function deleteAdminSubmission(id) {
+    if (!confirm('Delete this submission? This action cannot be undone.')) return;
+    try {
+      const resp = await fetch('/api/submissions/' + id, { method: 'DELETE' });
+      const data = await resp.json();
+      alert(data.message || data.error);
+      loadSubmissions();
+    } catch(e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  // Initialize view modal click-outside-to-close
+  document.addEventListener('DOMContentLoaded', function() {
+    const overlay = document.getElementById('adminViewModalOverlay');
+    if (overlay) {
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closeAdminViewModal();
+      });
+    }
+  });
 
   async function uploadAdminImage() {
     const fileInput = document.getElementById('adminImageFile');
