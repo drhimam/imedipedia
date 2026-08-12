@@ -20,6 +20,9 @@
     "tinacms": "^2.2.0",
     "zod": "^3.23.8"
   },
+  "optionalDependencies": {
+    "@cloudflare/workerd-windows-64": "*"
+  },
   "devDependencies": {
     "@tinacms/cli": "^1.6.0"
   }
