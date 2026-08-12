@@ -147,7 +147,9 @@ export async function PUT({ params, request, locals }) {
       });
     }
 
-    const { title, description, tags, type, subject, topic, exams, image, intextImages } = body;
+    const { title, description, tag, type, subject, topic, exams, image, intextImages } = body;
+    // Accept both "tag" and "tags" for backward compatibility
+    const rawTags = tag || body.tags;
     const articleBody = body.body || '';
 
     const cleanTitle = sanitize(title || existing.title, 500);
@@ -175,7 +177,7 @@ export async function PUT({ params, request, locals }) {
       cleanTitle,
       slug,
       cleanDescription,
-      normalizeTags(tags !== undefined ? tags : existing.tag),
+      normalizeTags(rawTags !== undefined ? rawTags : existing.tag),
       (type || existing.type || 'general').trim(),
       cleanSubject,
       cleanTopic,

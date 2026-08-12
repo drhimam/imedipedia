@@ -140,7 +140,7 @@ ${sanitizeBody(submission.body || '')}`;
     let sha = null;
     const getResp = await fetch(
       `https://api.github.com/repos/${repo}/contents/${filePath}`,
-      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" } }
+      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }
     );
     if (getResp.ok) {
       const existing = await getResp.json();
@@ -155,6 +155,8 @@ ${sanitizeBody(submission.body || '')}`;
         detail = j.message || '';
         if (j.errors) detail += ' | ' + JSON.stringify(j.errors);
       } catch {}
+      // If GitHub didn't give us a parseable message, include the raw body
+      if (!detail && errBody) detail = errBody.substring(0, 200);
       return new Response(JSON.stringify({
         error: `GitHub authentication failed (${getResp.status}${detail ? ': ' + detail : ''}). Token prefix: ${token.substring(0, 8)}... Repo: ${repo}. Verify the token has read access to this repository.`
       }), {

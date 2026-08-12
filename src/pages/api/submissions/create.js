@@ -136,7 +136,9 @@ export async function POST({ request, locals }) {
     });
   }
 
-  const { title, description, tags, type, subject, topic, exams, image, intextImages } = body;
+  const { title, description, tag, type, subject, topic, exams, image, intextImages } = body;
+  // Accept both "tag" and "tags" for backward compatibility
+  const rawTags = tag || body.tags;
   const articleBody = body.body || '';
 
   // Sanitize all text inputs
@@ -169,7 +171,7 @@ export async function POST({ request, locals }) {
       slug,
       cleanDescription,
       author,
-      normalizeTags(tags),
+      normalizeTags(rawTags),
       (type || 'general').trim(),
       cleanSubject,
       cleanTopic,
