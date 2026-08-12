@@ -474,9 +474,9 @@ if (Astro.request) {
   .edit-modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.5rem; }
 </style>
 
-<script is:inline>
+<script define:vars={{ subjects: subjects }}>
   // Subject taxonomy embedded at build time (zero D1 reads)
-  window.ADMIN_SUBJECTS = {JSON.stringify(subjects)};
+  window.ADMIN_SUBJECTS = subjects;
 </script>
 <script is:inline>
   // ========== ADMIN TOP BAR & SETTINGS ==========

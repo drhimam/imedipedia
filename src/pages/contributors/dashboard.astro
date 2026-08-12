@@ -289,9 +289,9 @@ import subjects from '../../data/subjects.json';
   </div>
 
   <slot name="scripts">
-    <script is:inline>
+    <script define:vars={{ subjects: subjects }}>
       // Subject taxonomy embedded at build time (zero D1 reads)
-      window.SUBJECTS = {JSON.stringify(subjects)};
+      window.SUBJECTS = subjects;
     </script>
     <script is:inline>
       // --- Auth Gate ---
