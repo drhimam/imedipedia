@@ -209,12 +209,14 @@ ${sanitizeBody(submission.body || '')}`;
       try {
         const errJson = JSON.parse(errBody);
         errMsg = errJson.message || errMsg;
-        // Include GitHub's error code if present
         if (errJson.errors) {
           errMsg += ' | ' + JSON.stringify(errJson.errors);
         }
       } catch {}
-      // Add GitHub's raw response for debugging
+      // If GitHub didn't give us a parseable message, include the raw body
+      if (errMsg === `GitHub ${putResp.status}` && errBody) {
+        errMsg += ': ' + errBody.substring(0, 300);
+      }
       console.error('GitHub PUT failed:', putResp.status, errBody);
 
       let guidance = '';
