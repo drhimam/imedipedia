@@ -1,6 +1,6 @@
 # iMedipedia — Implementation Walkthrough
 
-> **Last Updated:** 2026-08-11
+> **Last Updated:** 2026-08-12
 > **Platform:** Medical Research & Education Platform
 > **Live URL:** https://imedipedia.pages.dev
 
@@ -114,6 +114,7 @@ Pages that need server-side logic (auth checks, API routes, dynamic content) dec
 │   │       │   └── submit.js         # POST — submit contributor application
 │   │       ├── submissions/
 │   │       │   ├── create.js         # POST — create article submission
+│   │       │   ├── [id].js           # GET/PUT/DELETE — single submission CRUD
 │   │       │   └── list.js           # GET — list user's submissions
 │   │       ├── contributors/
 │   │       │   └── list.js           # GET — public contributor listing
@@ -149,12 +150,15 @@ Database: `imedipedia-db` (ID: `8aeee120-4b92-44e1-b9d2-5f8b1566a52b`)
 | `role` | TEXT DEFAULT 'editor' | `admin`, `co-admin`, `contributor`, `editor` |
 | `full_name` | TEXT | Display name |
 | `email` | TEXT | Email address |
-| `affiliation` | TEXT | Hospital/Institution |
-| `specialty` | TEXT | Medical specialty |
+| `affiliation` | TEXT DEFAULT '[]' | JSON array of institutions/hospitals |
+| `specialty` | TEXT DEFAULT '[]' | JSON array of medical specialties |
+| `experience` | TEXT DEFAULT '[]' | JSON array of experience entries |
 | `bio` | TEXT | Short biography |
 | `avatar_url` | TEXT | Profile image URL |
 | `force_password_change` | INTEGER DEFAULT 0 | Flag for first-login reset |
 | `mfa_enabled` | INTEGER DEFAULT 0 | TOTP MFA status |
+
+> **⚠️ Multi-Value Fields:** `affiliation`, `specialty`, and `experience` are stored as JSON arrays (e.g., `["Cardiology","Internal Medicine"]`). All API endpoints use `parseArrayField()` / `normalizeArrayField()` helpers for backward compatibility with legacy plain-string values stored by earlier versions.
 
 ### 4.2 `sessions` Table
 
@@ -371,7 +375,7 @@ This is set client-side after login by writing `user` to `sessionStorage` from t
   ```json
   {
     "title": "Article Title",
-    "description": "Summary",
+    "description": "Summary (optional)",
     "body": "Markdown content",
     "tags": "Oncology, CRISPR" or ["Oncology", "CRISPR"],
     "type": "general",
@@ -382,14 +386,30 @@ This is set client-side after login by writing `user` to `sessionStorage` from t
     "intextImages": [{ "url": "...", "name": "Fig 1", "description": "..." }]
   }
   ```
-- **Response:** `{ success: true, id, slug, message }`
-- **Notes:** Author auto-set to `user.full_name`. Tags and exams accept JSON arrays or comma-separated strings.
+- **Response:** `{ success: true, id, slug, message, emailSent }`
+- **Notes:** Author auto-set to `user.full_name`. Tags and exams accept JSON arrays or comma-separated strings. **Description is now optional.** All text inputs are sanitized (HTML tags stripped, truncated to max lengths: title 500, description 1000, subject/topic 200, body 100k). A branded confirmation email is sent to the contributor via SES after successful submission (non-blocking — submission succeeds even if email fails).
 
 #### `GET /api/submissions/list`
 - **Auth:** Session required
 - **Query:** `?status=pending&page=1&limit=20`
 - **Response:** `{ submissions: [...], total, page, limit, totalPages }`
 - **Notes:** Contributors see only their own submissions. Admins see all.
+
+#### `GET /api/submissions/[id]`
+- **Auth:** Session required (owner or admin)
+- **Response:** `{ success: true, submission: { ... } }`
+- **Notes:** Returns 403 if user is not the owner and not an admin. Returns 404 if not found.
+
+#### `PUT /api/submissions/[id]`
+- **Auth:** Session required (owner or admin)
+- **Body:** `{ title?, description?, body?, tags?, type?, subject?, topic?, exams?, image?, intextImages? }` (all optional — only send what changed)
+- **Response:** `{ success: true, message, statusChanged, newStatus }`
+- **Behavior:** If the submission is `published`, editing reverts status to `pending` so admin must re-approve. Description is optional. All text inputs are sanitized (HTML tags stripped, trimmed, truncated).
+
+#### `DELETE /api/submissions/[id]`
+- **Auth:** Session required (owner or admin)
+- **Response:** `{ success: true, message: "Submission deleted." }`
+- **Restrictions:** Contributors cannot delete published articles (returns 400). Admins can delete any submission regardless of status.
 
 ### 6.5 Public Contributor Endpoint
 
@@ -404,7 +424,7 @@ This is set client-side after login by writing `user` to `sessionStorage` from t
 - **Auth:** Session required
 - **Body:** `{ file: "data:image/png;base64,...", name: "Image name", description: "Caption", folder: "covers"|"inline"|"uploads" }`
 - **Response:** `{ success: true, id, key, url, name, storageUsed: "r2"|"none" }`
-- **Validation:** Max 1MB. Allowed types: JPEG, PNG, WebP, GIF.
+- **Validation:** Max 1MB. Allowed types: JPEG, PNG, WebP, GIF, AVIF.
 - **Upload priority:** Native R2 binding → S3 SDK fallback → skip (track in D1 only)
 
 ### 6.7 Admin Endpoints
@@ -428,12 +448,19 @@ All admin endpoints require session + admin/co-admin role.
 
 #### `POST /api/admin/review`
 - **Body:** `{ submissionId, action: "approve"|"reject", notes? }`
-- **Response:** `{ success: true, message }`
+- **Response:** `{ success: true, message, emailSent }`
+- **Notes:** Sends branded HTML email notification to contributor on decision:
+  - **Approve:** Green success box, "queued for publishing" message, dashboard link
+  - **Reject:** Warning box with admin feedback notes, edit & resubmit button
+  - Email uses JOIN to fetch `users.email` and `users.full_name` from the submission owner
+  - Email sending is non-blocking (caught and logged) — review succeeds even if email fails
 
 #### `POST /api/admin/publish`
 - **Body:** `{ submissionId }`
-- **Action:** Generates markdown file with YAML frontmatter, pushes to GitHub repo via API
-- **Response:** `{ success: true, message, filePath }`
+- **Action:** Validates submission status is `approved` (400 error otherwise). Generates markdown file with YAML frontmatter, pushes to GitHub repo via Contents API (base64-encoded). Updates submission status to `published` on success.
+- **Response:** `{ success: true, message, filePath, repoUrl }`
+- **Error Handling:** Early-fail with clear message if `GITHUB_TOKEN` is missing (500). Detailed error messages for common GitHub API failures (403, 401, 404, 409) with actionable guidance. Content encoding uses a safe byte-by-byte loop (not spread operator) to avoid `String.fromCharCode` argument limits with large articles.
+- **⚠️ Ongoing Issue:** Classic `repo`-scoped tokens may still receive 403 from GitHub on the GET check (file existence). Investigation in progress — suspected causes: branch protection on `master`, token permissions, or repo access configuration. Switching to a **fine-grained token** with "Contents: Read and Write" permission on the specific repository is the recommended fix.
 
 #### `GET /api/admin/articles`
 - **Response:** `{ articles: [{ name, path, sha, url }] }`
@@ -519,6 +546,9 @@ Centralized branded HTML email builder with:
 | `buildAcceptanceEmail` | Admin accepts application | "Welcome to iMedipedia — Your Contributor Account is Ready" |
 | `buildRejectionEmail` | Admin rejects application | "Update on Your iMedipedia Contributor Application" |
 | `buildPasswordResetEmail` | User requests forgot password | "Reset Your iMedipedia Password" |
+| `buildSubmissionReceivedEmail` | Contributor submits article | "We've Received Your Article Submission: "[title]"" |
+| `buildSubmissionApprovedEmail` | Admin approves submission | "Your Article Has Been Approved: "[title]"" |
+| `buildSubmissionRejectedEmail` | Admin rejects submission | "Update on Your Article Submission: "[title]"" |
 
 ### 8.3 SES Configuration
 
@@ -770,9 +800,38 @@ npx wrangler@latest d1 execute imedipedia-db --remote --file=scripts/seed-output
 
 **Symptom:** Cloudflare Pages build failed — `@cloudflare/workerd-windows-64` couldn't install on Linux.
 
-**Fix:** Removed from `dependencies` in `package.json`. Regenerated `package-lock.json` with `npm install --package-lock-only`.
+**Fix:** Marked as `optionalDependencies` in `package.json`. Regenerated `package-lock.json` with `npm install --package-lock-only`. Both top-level and nested `workerd` entries for `workerd-windows-64` have `"optional": true` in the lock file. The root `optionalDependencies` block provides an additional safety net.
 
-**Commit:** `ba9f6fe`, `82c7ddd`
+**Commit:** `ba9f6fe`, `82c7ddd`, `27e4b4e`
+
+### 14.8 GitHub Publishing 403 (INVESTIGATING)
+
+**Symptom:** Admin publish returns "GitHub authentication failed (403)" when checking file existence (GET) on `https://api.github.com/repos/drhimam/imedipedia/contents/...`. The `GITHUB_TOKEN` (classic, `repo` scope) works locally but fails in Cloudflare Pages runtime.
+
+**Troubleshooting Steps Taken:**
+1. Verified token is classic with full `repo` scope, expires Nov 2026, no SSO required
+2. Token works for GET requests from local machine (curl returns 200)
+3. Both `GITHUB_TOKEN` and `GITHUB_REPO` environment variables are set in Cloudflare Pages dashboard
+4. Base64 encoding improved: switched from `String.fromCharCode(...encoded)` spread operator (which hits argument limits with large content) to a safe byte-by-byte loop
+5. Error messages now include GitHub's raw error response body for debugging
+
+**Current Hypothesis:** Classic token may have a permission gap that the Cloudflare Pages runtime exposes. The GET check fails before ever reaching the PUT — so the token can't read the repository from Cloudflare's IP range, even though it works locally.
+
+**Recommended Fix:** Switch to a **fine-grained personal access token**:
+1. Go to https://github.com/settings/tokens?type=beta
+2. Create token with "Only select repositories" → `drhimam/imedipedia`
+3. Permission: "Contents" → "Read and Write"
+4. Update `GITHUB_TOKEN` in Cloudflare Pages dashboard
+
+**Related Commits:** `6cbd435`, `831a54e`
+
+### 14.9 Submission Edit → Status Reversion (RESOLVED)
+
+**Symptom:** When a contributor edits a published article, the admin approve button needs to re-activate for re-review.
+
+**Fix:** `PUT /api/submissions/[id]` checks if `existing.status === 'published'` and reverts to `'pending'`. Admin sees the reverted submission in the pending queue with Approve/Reject buttons. On approval, the contributor receives a new approval email. On publish, the GitHub file is updated (SHA-based update, not duplicate).
+
+**Commit:** `1bafa62`, `831a54e`
 
 ---
 
