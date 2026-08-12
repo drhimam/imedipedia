@@ -93,21 +93,25 @@ export async function POST({ request, locals }) {
     // Update frontmatter
     let parsedTags = [];
     try { parsedTags = typeof tags === 'string' ? JSON.parse(tags) : (Array.isArray(tags) ? tags : []); } catch { parsedTags = []; }
-    const tagsYAML = parsedTags.length > 0 ? `["${parsedTags.map(t => escapeYAML(t)).join('", "')}"]` : '[]';
+    const tagStr = parsedTags.length > 0 ? escapeYAML(parsedTags.join(', ')) : '';
 
     const imageValue = image && !image.startsWith('data:') ? escapeYAML(image) : '';
 
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const pubDate = `${yyyy}-${mm}-${dd}`;
+
     const frontmatter = `---
 title: "${escapeYAML(title || '')}"
-date: "${new Date().toISOString()}"
-author: "${escapeYAML(author || '')}"
+pubDate: ${pubDate}
 description: "${escapeYAML(description || '')}"
-image: "${imageValue}"
-tags: ${tagsYAML}
-category: "${escapeYAML(type || 'general')}"
+author: "${escapeYAML(author || '')}"
+tag: "${tagStr}"
+type: "${escapeYAML(type || 'general')}"
 subject: "${escapeYAML(subject || '')}"
 topic: "${escapeYAML(topic || '')}"
-type: "article"
 ---
 
 ${sanitizeBody(articleBody || '')}`;

@@ -1,15 +1,13 @@
 ---
 title: "Transducer Basics – Detailed Study Notes (Echocardiography)"
-date: "2026-08-12T05:13:30.709Z"
-author: "iMedipedia Desk"
+pubDate: 2026-08-12
 description: ""
-image: ""
-tags: ["Radiology", "Echocardiography"]
-category: "education"
+author: "iMedipedia Desk"
+tag: "Radiology, Echocardiography"
+type: "education"
 subject: "Ultrasound Physics"
 topic: "Transducer Basics"
 exams: ["ARDMS", "FRCR"]
-type: "article"
 ---
 
 Use these tables as a comprehensive rapid-revision guide for ultrasound transducer physics and construction.

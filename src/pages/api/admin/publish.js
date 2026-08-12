@@ -95,31 +95,34 @@ export async function POST({ request, locals }) {
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const filePath = `src/content/blog/${yyyy}/${mm}/${submission.slug}.md`;
 
-    // Parse tags
+    // Parse tags — used as comma-separated string (matching existing article format)
     let tags = [];
     try { tags = JSON.parse(submission.tag || '[]'); } catch { tags = []; }
-    const tagsYAML = tags.length > 0 ? `["${tags.map(t => escapeYAML(t)).join('", "')}"]` : '[]';
+    const tagStr = tags.length > 0 ? escapeYAML(tags.join(', ')) : '';
 
-    // Parse exams
+    // Parse exams — stored as JSON array in YAML (matching existing format)
     let exams = [];
     try { exams = JSON.parse(submission.exams || '[]'); } catch { exams = []; }
     const examsYAML = exams.length > 0 ? `["${exams.map(e => escapeYAML(e)).join('", "')}"]` : '[]';
 
     // Build frontmatter (skip base64 data URIs, only store R2 URLs)
     const imageValue = submission.image && !submission.image.startsWith('data:') ? escapeYAML(submission.image) : '';
+    const descValue = escapeYAML(submission.description || '');
+    const subjValue = escapeYAML(submission.subject || '');
+    const topicValue = escapeYAML(submission.topic || '');
+
+    const pubDate = `${yyyy}-${mm}-${String(now.getDate()).padStart(2, '0')}`;
 
     const frontmatter = `---
 title: "${escapeYAML(submission.title)}"
-date: "${now.toISOString()}"
+pubDate: ${pubDate}
+description: "${descValue}"
 author: "${escapeYAML(submission.author)}"
-description: "${escapeYAML(submission.description)}"
-image: "${imageValue}"
-tags: ${tagsYAML}
-category: "${escapeYAML(submission.type || 'general')}"
-subject: "${escapeYAML(submission.subject || '')}"
-topic: "${escapeYAML(submission.topic || '')}"
+tag: "${tagStr}"
+type: "${escapeYAML(submission.type || 'general')}"
+subject: "${subjValue}"
+topic: "${topicValue}"
 exams: ${examsYAML}
-type: "article"
 ---
 
 ${sanitizeBody(submission.body || '')}`;
