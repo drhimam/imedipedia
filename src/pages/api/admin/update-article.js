@@ -77,7 +77,7 @@ export async function POST({ request, locals }) {
     // Get existing file SHA
     const getResp = await fetch(
       `https://api.github.com/repos/${repo}/contents/${filePath}`,
-      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" } }
+      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "User-Agent": "iMedipedia" } }
     );
 
     if (!getResp.ok) {
@@ -118,7 +118,7 @@ ${sanitizeBody(articleBody || '')}`;
       `https://api.github.com/repos/${repo}/contents/${filePath}`,
       {
         method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" },
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "User-Agent": "iMedipedia" },
         body: JSON.stringify({
           message: `Update: ${title || 'Article'}`,
           content: base64Content,

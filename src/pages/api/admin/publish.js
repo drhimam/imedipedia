@@ -140,7 +140,7 @@ ${sanitizeBody(submission.body || '')}`;
     let sha = null;
     const getResp = await fetch(
       `https://api.github.com/repos/${repo}/contents/${filePath}`,
-      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }
+      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "iMedipedia" } }
     );
     if (getResp.ok) {
       const existing = await getResp.json();

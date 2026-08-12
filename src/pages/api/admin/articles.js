@@ -44,7 +44,7 @@ export async function GET({ request, locals }) {
 
     const resp = await fetch(
       `https://api.github.com/repos/${repo}/contents/src/content/blog`,
-      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" } }
+      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "User-Agent": "iMedipedia" } }
     );
 
     if (!resp.ok) {
