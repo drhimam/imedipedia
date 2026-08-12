@@ -3,9 +3,8 @@ title: "Wave Parameters – Detailed Study Notes (Echocardiography)"
 pubDate: 2026-08-12
 description: ""
 author: "iMedipedia Desk"
-tag: "radiology, echocardiography"
 type: "education"
-subject: "Radiology"
+subjects: ["Radiology", "Echocardiography"]
 topic: "Wave Parameters"
 exams: []
 ---
