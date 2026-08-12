@@ -30,6 +30,50 @@ function sanitizeBody(body) {
   return body.replace(/^\s*---\s*$/gm, '— — —');
 }
 
+function parseYamlValue(raw) {
+  const val = (raw || '').trim();
+  if (!val) return '';
+  const quoted = val.match(/^"([\s\S]*)"$/) || val.match(/^'([\s\S]*)'$/);
+  if (quoted) return quoted[1];
+  if (val.startsWith('[') && val.endsWith(']')) {
+    try {
+      const arr = JSON.parse(val);
+      return Array.isArray(arr) ? arr : val;
+    } catch {
+      return val;
+    }
+  }
+  return val;
+}
+
+// Extract frontmatter key/values from existing markdown so edits preserve fields
+// the client did not send (pubDate, subjects, exams, author, type, topic, image).
+function parseFrontmatter(markdown) {
+  const result = { title: '', description: '', author: '', type: '', topic: '', subjects: [], exams: [], pubDate: '', image: '', body: '' };
+  if (!markdown) return result;
+  const match = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+  if (!match) { result.body = markdown; return result; }
+  result.body = match[2] || '';
+  match[1].split(/\r?\n/).forEach((line) => {
+    const idx = line.indexOf(':');
+    if (idx === -1) return;
+    const key = line.slice(0, idx).trim();
+    const value = parseYamlValue(line.slice(idx + 1).trim());
+    switch (key) {
+      case 'title': result.title = typeof value === 'string' ? value : ''; break;
+      case 'description': result.description = typeof value === 'string' ? value : ''; break;
+      case 'author': result.author = typeof value === 'string' ? value : ''; break;
+      case 'type': result.type = typeof value === 'string' ? value : ''; break;
+      case 'topic': result.topic = typeof value === 'string' ? value : ''; break;
+      case 'pubDate': result.pubDate = typeof value === 'string' ? value : ''; break;
+      case 'image': result.image = typeof value === 'string' ? value : ''; break;
+      case 'subjects': result.subjects = Array.isArray(value) ? value.map(String) : (value ? [String(value)] : []); break;
+      case 'exams': result.exams = Array.isArray(value) ? value.map(String) : (value ? [String(value)] : []); break;
+    }
+  });
+  return result;
+}
+
 /**
  * POST /api/admin/update-article
  * Updates an existing published article's markdown file on GitHub.
@@ -56,7 +100,7 @@ export async function POST({ request, locals }) {
     });
   }
 
-  const { filePath, title, description, tags, body: articleBody, image, type, subject, topic, author, subjects } = body;
+  const { filePath, title, description, tags, body: articleBody, image, type, subject, topic, author, subjects, exams, pubDate: providedPubDate } = body;
 
   if (!filePath) {
     return new Response(JSON.stringify({ error: "filePath is required." }), {
@@ -90,7 +134,10 @@ export async function POST({ request, locals }) {
     const existingContent = atob(existing.content);
     const decodedContent = decodeURIComponent(escape(existingContent));
 
-    // Parse subjects from body (new format: JSON array) or fall back to old tags/subject
+    // Preserve fields the client did not send by parsing the existing frontmatter
+    const existingFm = parseFrontmatter(decodedContent);
+
+    // Parse subjects from body (new format: JSON array) or fall back to old tags/subject/existing
     let parsedSubjects = [];
     if (subjects !== undefined) {
       if (Array.isArray(subjects)) {
@@ -99,33 +146,52 @@ export async function POST({ request, locals }) {
         try { const p = JSON.parse(subjects); parsedSubjects = Array.isArray(p) ? p.map(s => String(s).trim()).filter(Boolean) : []; } catch { parsedSubjects = []; }
       }
     } else {
-      // Fallback: build from old tags + subject fields
+      // Fallback: build from old tags + subject fields + existing frontmatter subjects
       let oldTags = [];
       try { oldTags = typeof tags === 'string' ? JSON.parse(tags) : (Array.isArray(tags) ? tags : []); } catch { oldTags = []; }
       const oldSubject = (subject || '').trim();
       var seen = {};
-      [].concat(oldTags, oldSubject ? [oldSubject] : []).forEach(function(s) {
+      [].concat(oldTags, oldSubject ? [oldSubject] : [], Array.isArray(existingFm.subjects) ? existingFm.subjects : []).forEach(function(s) {
         if (s && !seen[s.toLowerCase()]) { seen[s.toLowerCase()] = true; parsedSubjects.push(s); }
       });
     }
     const subjectsYAML = parsedSubjects.length > 0 ? `["${parsedSubjects.map(s => escapeYAML(s)).join('", "')}"]` : '[]';
 
-    const imageValue = image && !image.startsWith('data:') ? escapeYAML(image) : '';
+    // Parse exams from body (new) or preserve existing frontmatter exams
+    let parsedExams = [];
+    if (exams !== undefined) {
+      if (Array.isArray(exams)) {
+        parsedExams = exams.map(e => String(e).trim()).filter(Boolean);
+      } else if (typeof exams === 'string') {
+        try { const p = JSON.parse(exams); parsedExams = Array.isArray(p) ? p.map(e => String(e).trim()).filter(Boolean) : []; } catch { parsedExams = []; }
+      }
+    } else {
+      parsedExams = Array.isArray(existingFm.exams) ? existingFm.exams.map(e => String(e).trim()).filter(Boolean) : [];
+    }
+    const examsYAML = parsedExams.length > 0 ? `["${parsedExams.map(e => escapeYAML(e)).join('", "')}"]` : '[]';
 
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
-    const pubDate = `${yyyy}-${mm}-${dd}`;
+    // Preserve original pubDate on edit unless explicitly overridden
+    const pubDate = providedPubDate || existingFm.pubDate || `${yyyy}-${mm}-${dd}`;
+
+    const finalTitle = title || existingFm.title || '';
+    const finalDescription = (description !== undefined && description !== '') ? description : existingFm.description;
+    const finalAuthor = author || existingFm.author || '';
+    const finalType = type || existingFm.type || 'general';
+    const finalTopic = (topic !== undefined && topic !== '') ? topic : existingFm.topic;
 
     const frontmatter = `---
-title: "${escapeYAML(title || '')}"
+title: "${escapeYAML(finalTitle)}"
 pubDate: ${pubDate}
-description: "${escapeYAML(description || '')}"
-author: "${escapeYAML(author || '')}"
-type: "${escapeYAML(type || 'general')}"
+description: "${escapeYAML(finalDescription)}"
+author: "${escapeYAML(finalAuthor)}"
+type: "${escapeYAML(finalType)}"
 subjects: ${subjectsYAML}
-topic: "${escapeYAML(topic || '')}"
+topic: "${escapeYAML(finalTopic)}"
+exams: ${examsYAML}
 ---
 
 ${sanitizeBody(articleBody || '')}`;
@@ -138,7 +204,7 @@ ${sanitizeBody(articleBody || '')}`;
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "User-Agent": "iMedipedia" },
         body: JSON.stringify({
-          message: `Update: ${title || 'Article'}`,
+          message: `Update: ${finalTitle || 'Article'}`,
           content: base64Content,
           sha: existing.sha,
           branch: 'master',

@@ -50,6 +50,9 @@ if (Astro.request) {
     </div>
     <div class="topbar-right">
       <span class="topbar-user" id="topbarUserName">Loading...</span>
+      <button class="topbar-btn" onclick="openGenerateModal()" title="Generate article with AI">
+        <span class="tb-btn-icon">✨</span><span class="tb-btn-label">Generate</span>
+      </button>
       <button class="topbar-btn topbar-settings-btn" onclick="openSettings()" title="Settings">
         <span class="tb-btn-icon">⚙️</span><span class="tb-btn-label">Settings</span>
       </button>
@@ -340,16 +343,125 @@ if (Astro.request) {
           <div id="adminEditExamChips" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;"></div>
         </div>
         <div class="form-group">
-          <label class="form-label">Description</label>
+          <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Description</span>
+            <button type="button" class="ai-btn" id="aiSummarizeBtn" onclick="aiSummarizeEdit()" title="Generate a 2-3 sentence summary from the article body">✨ Summarize</button>
+          </label>
           <input class="form-input" type="text" id="adminEditDescription" maxlength="1000">
         </div>
         <div class="form-group">
-          <label class="form-label">Article Content (Markdown) *</label>
+          <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Article Content (Markdown) *</span>
+            <span style="display:flex;gap:0.35rem;">
+              <button type="button" class="ai-btn" id="aiRewriteBtn" onclick="aiRewriteBody('plain')">✨ Plain English</button>
+              <button type="button" class="ai-btn" id="aiImproveBtn" onclick="aiRewriteBody('improve')">✨ Improve</button>
+              <button type="button" class="ai-btn" id="aiExpandBtn" onclick="aiRewriteBody('expand')">✨ Expand</button>
+            </span>
+          </label>
           <textarea class="form-input" id="adminEditBody" required></textarea>
         </div>
         <div class="edit-modal-actions">
           <button type="button" class="topbar-btn" onclick="closeAdminEditModal()" style="padding:0.6rem 1.25rem;">Cancel</button>
           <button type="button" class="btn" onclick="saveAdminEdit()">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Generate Article Modal -->
+  <div class="view-modal-overlay" id="generateModalOverlay" style="display:none;">
+    <div class="view-modal" style="max-width:750px;">
+      <div class="view-modal-header">
+        <button class="view-modal-close" onclick="closeGenerateModal()">&times;</button>
+        <h2>✨ Generate Article with AI</h2>
+      </div>
+      <div id="generateStatus" class="alert" style="display:none;margin-bottom:1rem;"></div>
+      <form id="generateForm" class="edit-modal-form" onsubmit="return false;">
+        <div class="form-group">
+          <label class="form-label">Title *</label>
+          <input class="form-input" type="text" id="genTitle" required maxlength="500" placeholder="e.g., Advances in CAR-T Cell Therapy">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Topic</label>
+          <input class="form-input" type="text" id="genTopic" maxlength="200" placeholder="e.g., Immunotherapy">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="form-input" id="genType">
+            <option value="general">Clinical Digest</option>
+            <option value="update">Clinical Guidelines</option>
+            <option value="case">Case Reports</option>
+            <option value="education">Board Review</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subjects</label>
+          <div style="position:relative;">
+            <input class="form-input" type="text" id="genSubjectSearch" placeholder="Search subjects..." autocomplete="off">
+            <div id="genSubjectDropdown" class="subject-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;max-height:200px;overflow-y:auto;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,0.2);"></div>
+          </div>
+          <div id="genSubjectChips" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Exams</label>
+          <div style="position:relative;">
+            <input class="form-input" type="text" id="genExamSearch" placeholder="Search exams..." autocomplete="off">
+            <div id="genExamDropdown" class="subject-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;max-height:200px;overflow-y:auto;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,0.2);"></div>
+          </div>
+          <div id="genExamChips" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Description</span>
+            <button type="button" class="ai-btn" id="aiSummarizeGenBtn" onclick="aiSummarizeGen()">✨ Summarize</button>
+          </label>
+          <input class="form-input" type="text" id="genDescription" maxlength="1000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Article Content (Markdown)</label>
+          <textarea class="form-input" id="genBody" style="min-height:200px;" placeholder="Click Generate to write the article..."></textarea>
+        </div>
+        <div class="edit-modal-actions">
+          <button type="button" class="topbar-btn" onclick="closeGenerateModal()" style="padding:0.6rem 1.25rem;">Cancel</button>
+          <button type="button" class="btn btn-secondary" id="genGenerateBtn" onclick="generateArticleBody()">✨ Generate</button>
+          <button type="button" class="btn" id="genSaveBtn" onclick="saveGeneratedSubmission()">Save as Submission</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Published Article Modal -->
+  <div class="view-modal-overlay" id="articleEditModalOverlay" style="display:none;">
+    <div class="view-modal" style="max-width:750px;">
+      <div class="view-modal-header">
+        <button class="view-modal-close" onclick="closeArticleEditModal()">&times;</button>
+        <h2>✏️ Edit Published Article</h2>
+      </div>
+      <div id="articleEditStatus" class="alert" style="display:none;margin-bottom:1rem;"></div>
+      <form id="articleEditForm" class="edit-modal-form" onsubmit="return false;">
+        <input type="hidden" id="articleEditPath">
+        <div class="form-group">
+          <label class="form-label">Title *</label>
+          <input class="form-input" type="text" id="articleEditTitle" required maxlength="500">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input class="form-input" type="text" id="articleEditDescription" maxlength="1000">
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Article Content (Markdown) *</span>
+            <span style="display:flex;gap:0.35rem;">
+              <button type="button" class="ai-btn" id="aiRewriteArtPlainBtn" onclick="aiRewriteArticle('plain')">✨ Plain English</button>
+              <button type="button" class="ai-btn" id="aiRewriteArtImproveBtn" onclick="aiRewriteArticle('improve')">✨ Improve</button>
+              <button type="button" class="ai-btn" id="aiRewriteArtExpandBtn" onclick="aiRewriteArticle('expand')">✨ Expand</button>
+            </span>
+          </label>
+          <textarea class="form-input" id="articleEditBody" required></textarea>
+        </div>
+        <div class="edit-modal-actions">
+          <button type="button" class="topbar-btn" onclick="closeArticleEditModal()" style="padding:0.6rem 1.25rem;">Cancel</button>
+          <button type="button" class="btn" onclick="saveArticleEdit()">Save & Push to GitHub</button>
         </div>
       </form>
     </div>
@@ -515,6 +627,10 @@ if (Astro.request) {
   .edit-modal-form .form-input:focus { outline: none; border-color: var(--accent); }
   .edit-modal-form textarea.form-input { resize: vertical; min-height: 150px; font-family: inherit; }
   .edit-modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.5rem; }
+  /* AI action buttons */
+  .ai-btn { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; border-radius: 6px; padding: 0.3rem 0.6rem; font-size: 0.72rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: opacity 0.15s, transform 0.15s; }
+  .ai-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .ai-btn:disabled { opacity: 0.55; cursor: wait; transform: none; }
 </style>
 
 <script define:vars={{ subjects: subjects, exams: exams }}>
@@ -876,7 +992,10 @@ if (Astro.request) {
         <tr>
           <td><strong>${esc(a.name)}</strong></td>
           <td style="font-family:monospace;font-size:0.85rem;">${esc(a.path)}</td>
-          <td><a href="${esc(a.url)}" target="_blank" class="action-btn btn-publish" style="text-decoration:none;">View on GitHub</a></td>
+          <td style="white-space:nowrap;">
+            <button class="action-btn btn-edit-admin" onclick="editPublishedArticle('${esc(a.path).replace(/'/g, "\\'")}', '${esc(a.name).replace(/'/g, "\\'")}')">Edit</button>
+            <a href="${esc(a.url)}" target="_blank" class="action-btn btn-publish" style="text-decoration:none;">View on GitHub</a>
+          </td>
         </tr>
       `).join('')}</tbody></table>`;
       if (data.message) container.innerHTML += `<p style="color:var(--muted);margin-top:0.5rem;">${esc(data.message)}</p>`;
@@ -1635,6 +1754,299 @@ if (Astro.request) {
         adminEditExamDropdownEl.style.display = 'none';
       }
     });
+  }
+
+  // ========== AI HELPERS ==========
+  async function aiGenerate(prompt, buttonEl) {
+    if (!prompt || !prompt.trim()) { alert('Nothing to send to AI — add some content first.'); return null; }
+    const doFetch = async () => {
+      const resp = await fetch('/api/ai/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || ('Request failed (' + resp.status + ')'));
+      return data.result || '';
+    };
+    if (buttonEl) {
+      buttonEl.disabled = true;
+      const original = buttonEl.textContent;
+      buttonEl.textContent = '⏳ Working...';
+      try { return await doFetch(); }
+      catch (e) { alert('AI error: ' + e.message); return null; }
+      finally { buttonEl.disabled = false; buttonEl.textContent = original; }
+    }
+    try { return await doFetch(); }
+    catch (e) { alert('AI error: ' + e.message); return null; }
+  }
+
+  function aiRewriteInstructions(action) {
+    return {
+      plain: 'Rewrite the following medical article in plain, accessible English for a general audience while preserving clinical accuracy and keeping markdown formatting:',
+      improve: 'Improve the following medical article: fix grammar, tighten wording, improve clarity and flow, and keep it professionally written. Preserve markdown formatting and clinical accuracy:',
+      expand: 'Expand the following medical article with more depth, additional relevant clinical detail, and section headers where useful, while preserving markdown formatting and clinical accuracy:'
+    }[action] || 'Improve the following medical article while preserving clinical accuracy and markdown formatting:';
+  }
+
+  // --- AI on submitted articles (admin edit modal) ---
+  async function aiSummarizeEdit() {
+    const body = document.getElementById('adminEditBody').value.trim();
+    if (!body) { alert('Write some article content first.'); return; }
+    const result = await aiGenerate('Summarize the following medical article into 2-3 concise sentences suitable as a description (plain text, no markdown):\n\n' + body, document.getElementById('aiSummarizeBtn'));
+    if (result) document.getElementById('adminEditDescription').value = result.trim();
+  }
+
+  async function aiRewriteBody(action) {
+    const body = document.getElementById('adminEditBody').value.trim();
+    if (!body) { alert('Write some article content first.'); return; }
+    const btnMap = { plain: 'aiRewriteBtn', improve: 'aiImproveBtn', expand: 'aiExpandBtn' };
+    const result = await aiGenerate(aiRewriteInstructions(action) + '\n\n' + body, document.getElementById(btnMap[action]));
+    if (result) document.getElementById('adminEditBody').value = result.trim();
+  }
+
+  // ========== GENERATE ARTICLE MODAL ==========
+  var genSelectedSubjects = [];
+  var genSelectedExams = [];
+
+  function openGenerateModal() {
+    document.getElementById('generateModalOverlay').style.display = 'flex';
+    hideGenStatus();
+    setTimeout(function() { document.getElementById('genTitle').focus(); }, 50);
+  }
+
+  function closeGenerateModal() {
+    document.getElementById('generateModalOverlay').style.display = 'none';
+    genSelectedSubjects = []; renderGenSubjectChips();
+    genSelectedExams = []; renderGenExamChips();
+    document.getElementById('genSubjectSearch').value = '';
+    document.getElementById('genExamSearch').value = '';
+    document.getElementById('genSubjectDropdown').style.display = 'none';
+    document.getElementById('genExamDropdown').style.display = 'none';
+  }
+
+  function showGenStatus(msg, ok) {
+    const el = document.getElementById('generateStatus');
+    el.textContent = msg;
+    el.className = 'alert ' + (ok ? 'alert-success' : 'alert-error');
+    el.style.display = 'block';
+  }
+  function hideGenStatus() {
+    document.getElementById('generateStatus').style.display = 'none';
+  }
+
+  function renderGenSubjectChips() {
+    document.getElementById('genSubjectChips').innerHTML = genSelectedSubjects.map(function(s, i) {
+      return '<span class="chip">' + esc(s) + '<button type="button" class="chip-remove" onclick="removeGenSubject(' + i + ')" title="Remove">&times;</button></span>';
+    }).join('');
+  }
+  function addGenSubject(name) {
+    if (genSelectedSubjects.indexOf(name) === -1) { genSelectedSubjects.push(name); renderGenSubjectChips(); }
+    document.getElementById('genSubjectSearch').value = '';
+    document.getElementById('genSubjectDropdown').style.display = 'none';
+  }
+  function removeGenSubject(index) { genSelectedSubjects.splice(index, 1); renderGenSubjectChips(); }
+
+  function renderGenExamChips() {
+    document.getElementById('genExamChips').innerHTML = genSelectedExams.map(function(name, i) {
+      return '<span class="chip">' + esc(name) + '<button type="button" class="chip-remove" onclick="removeGenExam(' + i + ')" title="Remove">&times;</button></span>';
+    }).join('');
+  }
+  function addGenExam(name) {
+    if (genSelectedExams.indexOf(name) === -1) { genSelectedExams.push(name); renderGenExamChips(); }
+    document.getElementById('genExamSearch').value = '';
+    document.getElementById('genExamDropdown').style.display = 'none';
+  }
+  function removeGenExam(index) { genSelectedExams.splice(index, 1); renderGenExamChips(); }
+
+  function setupGenAutocomplete(searchId, dropdownId, matchFn, addFn) {
+    const searchEl = document.getElementById(searchId);
+    const dropdownEl = document.getElementById(dropdownId);
+    if (!searchEl || !dropdownEl) return;
+    let activeIdx = -1;
+    searchEl.addEventListener('input', function() {
+      const query = this.value;
+      if (query.length < 2) { dropdownEl.style.display = 'none'; return; }
+      const matches = matchFn(query);
+      if (matches.length === 0) {
+        dropdownEl.innerHTML = '<div style="padding:0.65rem 1rem;color:var(--muted);font-size:0.85rem;">No matches</div>';
+      } else {
+        dropdownEl.innerHTML = matches.map(function(item) {
+          const sub = item.parent || item.category || '';
+          return '<div class="subject-option" data-name="' + esc(item.name) + '" style="padding:0.5rem 0.75rem;cursor:pointer;font-size:0.85rem;border-bottom:1px solid rgba(255,255,255,0.03);"' +
+            'onmousedown="event.preventDefault();' + addFn + '(\'' + esc(item.name).replace(/'/g, "\\'") + '\')">' +
+            esc(item.name) + (sub ? ' <span style="font-size:0.7rem;color:var(--muted);">(' + esc(sub) + ')</span>' : '') +
+            '</div>';
+        }).join('');
+      }
+      dropdownEl.style.display = 'block';
+      activeIdx = -1;
+    });
+    searchEl.addEventListener('keydown', function(e) {
+      const options = dropdownEl.querySelectorAll('.subject-option');
+      if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx + 1, options.length - 1); options.forEach(function(o, i) { o.style.background = i === activeIdx ? 'rgba(99,102,241,0.12)' : ''; }); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx - 1, 0); options.forEach(function(o, i) { o.style.background = i === activeIdx ? 'rgba(99,102,241,0.12)' : ''; }); }
+      else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeIdx >= 0 && options[activeIdx]) { window[addFn](options[activeIdx].getAttribute('data-name')); }
+        else if (options.length > 0) { window[addFn](options[0].getAttribute('data-name')); }
+        activeIdx = -1;
+      }
+    });
+    document.addEventListener('click', function(e) {
+      if (!searchEl.contains(e.target) && !dropdownEl.contains(e.target)) dropdownEl.style.display = 'none';
+    });
+  }
+  setupGenAutocomplete('genSubjectSearch', 'genSubjectDropdown', adminMatchSubjects, 'addGenSubject');
+  setupGenAutocomplete('genExamSearch', 'genExamDropdown', adminMatchExams, 'addGenExam');
+
+  async function aiSummarizeGen() {
+    const body = document.getElementById('genBody').value.trim();
+    if (!body) { alert('Generate or write article content first.'); return; }
+    const result = await aiGenerate('Summarize the following medical article into 2-3 concise sentences suitable as a description (plain text, no markdown):\n\n' + body, document.getElementById('aiSummarizeGenBtn'));
+    if (result) document.getElementById('genDescription').value = result.trim();
+  }
+
+  async function generateArticleBody() {
+    const title = document.getElementById('genTitle').value.trim();
+    if (!title) { alert('Please enter a title.'); return; }
+    const topic = document.getElementById('genTopic').value.trim();
+    const type = document.getElementById('genType').value;
+    const subjectsList = genSelectedSubjects.join(', ') || 'General Medicine';
+    const examsList = genSelectedExams.join(', ') || 'None';
+    const prompt = 'Write a comprehensive, well-structured medical article in Markdown titled "' + title + '".' +
+      (topic ? ' Topic focus: ' + topic + '.' : '') +
+      ' Article type: ' + type + '.' +
+      ' Relevant subjects: ' + subjectsList + '.' +
+      ' Relevant exams: ' + examsList + '.' +
+      ' Use clear ## section headings, an introductory paragraph, and clinically accurate, up-to-date content. Write in a professional medical-science tone with plain-language explanations where helpful.';
+    showGenStatus('Generating article…', true);
+    const result = await aiGenerate(prompt, document.getElementById('genGenerateBtn'));
+    if (result) {
+      document.getElementById('genBody').value = result.trim();
+      hideGenStatus();
+    } else {
+      showGenStatus('Generation failed.', false);
+    }
+  }
+
+  async function saveGeneratedSubmission() {
+    const title = document.getElementById('genTitle').value.trim();
+    const body = document.getElementById('genBody').value.trim();
+    if (!title || !body) { alert('Please generate (or write) both a title and article body first.'); return; }
+    const btn = document.getElementById('genSaveBtn');
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = 'Saving…';
+    try {
+      const resp = await fetch('/api/submissions/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          topic: document.getElementById('genTopic').value.trim(),
+          type: document.getElementById('genType').value,
+          subjects: genSelectedSubjects,
+          exams: genSelectedExams,
+          description: document.getElementById('genDescription').value.trim(),
+          body
+        })
+      });
+      const data = await resp.json();
+      if (data.success) {
+        showGenStatus(data.message || 'Saved as a pending submission.', true);
+        setTimeout(function() { closeGenerateModal(); switchTab('submissions'); }, 900);
+      } else {
+        showGenStatus(data.error || 'Save failed.', false);
+      }
+    } catch (e) {
+      showGenStatus('Save error: ' + e.message, false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.mainTab === tab));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
+    if (tab === 'applications') loadApplications();
+    else if (tab === 'submissions') loadSubmissions();
+    else if (tab === 'articles') loadArticles();
+    else if (tab === 'images') loadImages();
+    else if (tab === 'subjects') loadSubjects();
+    else if (tab === 'exams') loadExams();
+  }
+
+  // ========== EDIT PUBLISHED ARTICLE ==========
+  async function editPublishedArticle(path, name) {
+    if (!path) { alert('Missing file path.'); return; }
+    const statusEl = document.getElementById('articleEditStatus');
+    statusEl.style.display = 'none';
+    document.getElementById('articleEditPath').value = path;
+    document.getElementById('articleEditTitle').value = '';
+    document.getElementById('articleEditDescription').value = '';
+    document.getElementById('articleEditBody').value = '';
+    document.getElementById('articleEditModalOverlay').style.display = 'flex';
+    try {
+      const resp = await fetch('/api/admin/article-content?path=' + encodeURIComponent(path));
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || ('Failed (' + resp.status + ')'));
+      document.getElementById('articleEditTitle').value = data.title || '';
+      document.getElementById('articleEditDescription').value = data.description || '';
+      document.getElementById('articleEditBody').value = data.body || '';
+      statusEl.textContent = 'Loaded: ' + (name || path);
+      statusEl.className = 'alert alert-info';
+      statusEl.style.display = 'block';
+    } catch (e) {
+      statusEl.textContent = 'Error loading article: ' + e.message;
+      statusEl.className = 'alert alert-error';
+      statusEl.style.display = 'block';
+    }
+  }
+
+  function closeArticleEditModal() {
+    document.getElementById('articleEditModalOverlay').style.display = 'none';
+  }
+
+  async function aiRewriteArticle(action) {
+    const body = document.getElementById('articleEditBody').value.trim();
+    if (!body) { alert('Write some article content first.'); return; }
+    const btnMap = { plain: 'aiRewriteArtPlainBtn', improve: 'aiRewriteArtImproveBtn', expand: 'aiRewriteArtExpandBtn' };
+    const result = await aiGenerate(aiRewriteInstructions(action) + '\n\n' + body, document.getElementById(btnMap[action]));
+    if (result) document.getElementById('articleEditBody').value = result.trim();
+  }
+
+  async function saveArticleEdit() {
+    const path = document.getElementById('articleEditPath').value;
+    const title = document.getElementById('articleEditTitle').value.trim();
+    const body = document.getElementById('articleEditBody').value.trim();
+    if (!path || !title || !body) { alert('Title and body are required.'); return; }
+    const statusEl = document.getElementById('articleEditStatus');
+    statusEl.textContent = 'Saving…';
+    statusEl.className = 'alert alert-info';
+    statusEl.style.display = 'block';
+    try {
+      const resp = await fetch('/api/admin/update-article', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filePath: path,
+          title,
+          description: document.getElementById('articleEditDescription').value.trim(),
+          body
+        })
+      });
+      const data = await resp.json();
+      if (data.success) {
+        statusEl.textContent = data.message || 'Article updated.';
+        statusEl.className = 'alert alert-success';
+        setTimeout(function() { closeArticleEditModal(); loadArticles(); }, 800);
+      } else {
+        statusEl.textContent = data.error || 'Update failed.';
+        statusEl.className = 'alert alert-error';
+      }
+    } catch (e) {
+      statusEl.textContent = 'Update error: ' + e.message;
+      statusEl.className = 'alert alert-error';
+    }
   }
 
   // Load on page load
