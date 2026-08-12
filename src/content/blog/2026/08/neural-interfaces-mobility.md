@@ -3,10 +3,9 @@ title: "Restoring Mobility: High-Density Neural Interfaces"
 pubDate: 2026-08-08
 description: "How ultra-thin brain-computer interfaces are enabling paralyzed individuals to control robotic limbs and communicate with microscopic latency."
 author: "Dr. Marcus Thorne"
+subjects: ["Neurology"]
 image: "/images/neural.png"
-tag: "Neurology"
 type: "general"
-subject: "Neurology"
 topic: "Neural Interfaces"
 exams: ["FRCP"]
 ---

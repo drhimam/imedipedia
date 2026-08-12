@@ -3,10 +3,9 @@ title: "High-Yield Cardiology Questions for Board Preparation"
 pubDate: 2026-08-02
 description: "Practice questions and detailed explanations covering clinical scenarios in cardiology for USMLE Step 2/3 and internal medicine boards."
 author: "Dr. Sarah Jenkins"
+subjects: ["Cardiology"]
 image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=600"
-tag: "Cardiology"
 type: "education"
-subject: "Cardiology"
 topic: "Board Review"
 exams: ["USMLE", "FRCP"]
 ---

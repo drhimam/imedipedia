@@ -3,10 +3,9 @@ title: "Pediatric Immunization Updates and High-Yield Board Cases"
 pubDate: 2026-08-01
 description: "Review of key immunization guidelines, catch-up schedules, and common vaccine contraindications tested on pediatrics licensing exams."
 author: "Dr. Eleanor Vance"
+subjects: ["Pediatrics"]
 image: "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&q=80&w=600"
-tag: "Pediatrics"
 type: "education"
-subject: "Pediatrics"
 topic: "Immunizations"
 exams: ["USMLE"]
 ---

@@ -152,9 +152,31 @@ export async function PUT({ params, request, locals }) {
     const rawTags = tag || body.tags;
     const articleBody = body.body || '';
 
+    // Accept "subjects" (new array) with fallback to old "tag" + "subject" (single string)
+    let subjectsArray = null;  // null = not provided, use existing
+    if (body.subjects !== undefined) {
+      subjectsArray = body.subjects;
+      if (typeof subjectsArray === 'string') {
+        try { subjectsArray = JSON.parse(subjectsArray); } catch { subjectsArray = []; }
+      }
+      if (!Array.isArray(subjectsArray)) subjectsArray = [];
+      subjectsArray = subjectsArray.map(function(s) { return sanitize(String(s), 200); }).filter(Boolean);
+    } else if (rawTags !== undefined || subject !== undefined) {
+      // Old format provided: build from tag + subject
+      const oldTagsVal = rawTags !== undefined ? normalizeTags(rawTags) : existing.tag;
+      let parsedTags = [];
+      try { parsedTags = JSON.parse(oldTagsVal); } catch { parsedTags = []; }
+      const oldSubjectVal = sanitize((subject !== undefined ? subject : existing.subject) || '', 200);
+      var seen = {};
+      subjectsArray = [];
+      [].concat(parsedTags, oldSubjectVal ? [oldSubjectVal] : []).forEach(function(s) {
+        if (s && !seen[s.toLowerCase()]) { seen[s.toLowerCase()] = true; subjectsArray.push(s); }
+      });
+    }
+    const subjectsJSON = subjectsArray !== null ? JSON.stringify(subjectsArray) : existing.subject;
+
     const cleanTitle = sanitize(title || existing.title, 500);
     const cleanDescription = sanitize(description !== undefined ? description : existing.description, 1000);
-    const cleanSubject = sanitize(subject || existing.subject || '', 200);
     const cleanTopic = sanitize(topic || existing.topic || '', 200);
     const cleanBody = sanitize(articleBody || existing.body, 100000);
     const cleanImage = sanitize(image !== undefined ? image : existing.image, 2000);
@@ -177,9 +199,9 @@ export async function PUT({ params, request, locals }) {
       cleanTitle,
       slug,
       cleanDescription,
-      normalizeTags(rawTags !== undefined ? rawTags : existing.tag),
+      subjectsJSON,  // tag column now stores subjects JSON
       (type || existing.type || 'general').trim(),
-      cleanSubject,
+      subjectsJSON,  // subject column also stores subjects JSON
       cleanTopic,
       normalizeExams(exams !== undefined ? exams : existing.exams),
       cleanImage,

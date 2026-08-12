@@ -3,9 +3,8 @@ title: "Transducer Basics – Detailed Study Notes (Echocardiography)"
 pubDate: 2026-08-12
 description: ""
 author: "iMedipedia Desk"
-tag: "Radiology, Echocardiography"
 type: "education"
-subject: "Ultrasound Physics"
+subjects: ["Radiology", "Echocardiography", "Ultrasound Physics"]
 topic: "Transducer Basics"
 exams: ["ARDMS", "FRCR"]
 ---

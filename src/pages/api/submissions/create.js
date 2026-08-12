@@ -141,10 +141,34 @@ export async function POST({ request, locals }) {
   const rawTags = tag || body.tags;
   const articleBody = body.body || '';
 
+  // Accept "subjects" (new array) with fallback to old "tag" + "subject" (single string)
+  // This ensures backward compatibility with old client code
+  let subjectsArray = [];
+  if (body.subjects !== undefined) {
+    // New format: subjects is a JSON array of strings
+    subjectsArray = body.subjects;
+    if (typeof subjectsArray === 'string') {
+      try { subjectsArray = JSON.parse(subjectsArray); } catch { subjectsArray = []; }
+    }
+    if (!Array.isArray(subjectsArray)) subjectsArray = [];
+    subjectsArray = subjectsArray.map(function(s) { return sanitize(String(s), 200); }).filter(Boolean);
+  } else {
+    // Old format: build subjects from old tag + subject fields
+    const oldTags = rawTags ? normalizeTags(rawTags) : '[]';
+    let parsedTags = [];
+    try { parsedTags = JSON.parse(oldTags); } catch { parsedTags = []; }
+    const oldSubject = sanitize(subject || '', 200);
+    // Merge tags + old subject, deduplicate
+    var seen = {};
+    subjectsArray = [];
+    [].concat(parsedTags, oldSubject ? [oldSubject] : []).forEach(function(s) {
+      if (s && !seen[s.toLowerCase()]) { seen[s.toLowerCase()] = true; subjectsArray.push(s); }
+    });
+  }
+
   // Sanitize all text inputs
   const cleanTitle = sanitize(title, 500);
   const cleanDescription = sanitize(description || '', 1000);
-  const cleanSubject = sanitize(subject || '', 200);
   const cleanTopic = sanitize(topic || '', 200);
   const cleanBody = sanitize(articleBody, 100000);
   const cleanImage = sanitize(image || '', 2000);
@@ -171,9 +195,9 @@ export async function POST({ request, locals }) {
       slug,
       cleanDescription,
       author,
-      normalizeTags(rawTags),
+      JSON.stringify(subjectsArray),  // Reuse tag column for subjects (backward compat)
       (type || 'general').trim(),
-      cleanSubject,
+      JSON.stringify(subjectsArray),  // subject column now stores subjects array
       cleanTopic,
       normalizeExams(exams),
       cleanImage,

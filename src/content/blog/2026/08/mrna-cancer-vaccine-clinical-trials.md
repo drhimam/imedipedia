@@ -3,10 +3,9 @@ title: "mRNA Cancer Vaccine Shows Promising Results in Phase II Trials"
 pubDate: 2026-08-08
 description: "A detailed review of the phase II clinical trials evaluating personalized mRNA-4157 cancer vaccines combined with pembrolizumab for high-risk melanoma."
 author: "Dr. Eleanor Vance"
+subjects: ["Oncology"]
 image: "https://images.unsplash.com/photo-1579154204601-01588f351167?auto=format&fit=crop&q=80&w=600"
-tag: "Oncology"
 type: "update"
-subject: "Oncology"
 topic: "Cancer Vaccines"
 exams: ["USMLE", "FRCP"]
 ---

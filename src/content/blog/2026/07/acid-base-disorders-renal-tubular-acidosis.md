@@ -3,10 +3,9 @@ title: "Understanding Renal Tubular Acidosis (RTA) for Internal Medicine Boards"
 pubDate: 2026-07-31
 description: "A comprehensive educational breakdown comparing Type 1, Type 2, and Type 4 renal tubular acidosis including diagnostic flowcharts."
 author: "Dr. Eleanor Vance"
+subjects: ["Nephrology"]
 image: "https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&q=80&w=600"
-tag: "Nephrology"
 type: "education"
-subject: "Nephrology"
 topic: "Renal Acidosis"
 exams: ["USMLE", "FRCP"]
 ---

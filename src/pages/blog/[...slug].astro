@@ -20,7 +20,13 @@ const { Content } = await post.render();
 
 // Dynamic Navigation details
 const allPosts = await getCollection('blog');
-const categories = Array.from(new Set(allPosts.map(p => p.data.tag).filter(Boolean)));
+// Parse subjects from all posts, handling both old and new formats
+function parseSubjects(post) {
+  if (post.data.subjects && Array.isArray(post.data.subjects)) return post.data.subjects;
+  if (post.data.tag && typeof post.data.tag === 'string') return post.data.tag.split(',').map(s => s.trim()).filter(Boolean);
+  return [];
+}
+const categories = Array.from(new Set(allPosts.flatMap(p => parseSubjects(p)).map(s => s.toLowerCase()))).sort();
 const years = Array.from(new Set(allPosts.map(p => new Date(p.data.pubDate).getFullYear())));
 ---
 

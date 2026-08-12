@@ -3,9 +3,8 @@ title: "Breakthrough Immunotherapy for Glioblastoma"
 pubDate: 2026-08-09
 description: "A clinical trial demonstrates that a novel personalized mRNA-based vaccine triggers a strong immune response against glioblastoma, extending survivability in trial patients."
 author: "Dr. Eleanor Vance"
-tag: "Oncology"
+subjects: ["Oncology"]
 type: "general"
-subject: "Oncology"
 topic: "Glioblastoma"
 exams: ["USMLE"]
 ---

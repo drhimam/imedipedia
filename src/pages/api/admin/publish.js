@@ -95,12 +95,20 @@ export async function POST({ request, locals }) {
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const filePath = `src/content/blog/${yyyy}/${mm}/${submission.slug}.md`;
 
-    // Parse tags — used as comma-separated string (matching existing article format)
-    let tags = [];
-    try { tags = JSON.parse(submission.tag || '[]'); } catch { tags = []; }
-    const tagStr = tags.length > 0 ? escapeYAML(tags.join(', ')) : '';
+    // Parse subjects from subject column (now stores JSON array)
+    let subjects = [];
+    try { subjects = JSON.parse(submission.subject || '[]'); } catch {
+      // Fallback: old single-string subject
+      if (submission.subject && typeof submission.subject === 'string' && submission.subject.trim()) {
+        subjects = [submission.subject.trim()];
+      } else {
+        subjects = [];
+      }
+    }
+    if (!Array.isArray(subjects)) subjects = [];
+    const subjectsYAML = subjects.length > 0 ? `["${subjects.map(s => escapeYAML(s)).join('", "')}"]` : '[]';
 
-    // Parse exams — stored as JSON array in YAML (matching existing format)
+    // Parse exams — stored as JSON array in YAML
     let exams = [];
     try { exams = JSON.parse(submission.exams || '[]'); } catch { exams = []; }
     const examsYAML = exams.length > 0 ? `["${exams.map(e => escapeYAML(e)).join('", "')}"]` : '[]';
@@ -108,7 +116,6 @@ export async function POST({ request, locals }) {
     // Build frontmatter (skip base64 data URIs, only store R2 URLs)
     const imageValue = submission.image && !submission.image.startsWith('data:') ? escapeYAML(submission.image) : '';
     const descValue = escapeYAML(submission.description || '');
-    const subjValue = escapeYAML(submission.subject || '');
     const topicValue = escapeYAML(submission.topic || '');
 
     const pubDate = `${yyyy}-${mm}-${String(now.getDate()).padStart(2, '0')}`;
@@ -118,9 +125,8 @@ title: "${escapeYAML(submission.title)}"
 pubDate: ${pubDate}
 description: "${descValue}"
 author: "${escapeYAML(submission.author)}"
-tag: "${tagStr}"
 type: "${escapeYAML(submission.type || 'general')}"
-subject: "${subjValue}"
+subjects: ${subjectsYAML}
 topic: "${topicValue}"
 exams: ${examsYAML}
 ---

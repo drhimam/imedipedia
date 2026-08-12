@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import subjects from '../../data/subjects.json';
 ---
 
 <BaseLayout
@@ -115,6 +116,20 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       .image-guide { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: 10px; padding: 1.25rem; font-size: 0.85rem; line-height: 1.6; color: var(--muted); margin-top: 2rem; }
       .image-guide strong { color: var(--accent); }
       .image-guide code { background: rgba(0,0,0,0.1); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.85em; }
+      /* Subject Autocomplete */
+      .subject-autocomplete-wrapper { position: relative; }
+      .subject-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; max-height: 280px; overflow-y: auto; z-index: 10; box-shadow: 0 8px 24px rgba(0,0,0,0.2); margin-top: 4px; }
+      .subject-option { padding: 0.65rem 1rem; cursor: pointer; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s; border-bottom: 1px solid rgba(255,255,255,0.03); }
+      .subject-option:last-child { border-bottom: none; }
+      .subject-option:hover, .subject-option.active { background: rgba(99,102,241,0.12); color: var(--accent); }
+      .subject-option .subject-parent { font-size: 0.7rem; color: var(--muted); background: rgba(255,255,255,0.05); padding: 0.15rem 0.5rem; border-radius: 10px; }
+      .subject-option .highlight { color: var(--accent); font-weight: 700; }
+      .subject-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; min-height: 0; }
+      .subj-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.6rem; background: var(--accent); color: #fff; border-radius: 20px; font-size: 0.8rem; font-weight: 500; animation: chipIn 0.2s ease-out; }
+      @keyframes chipIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      .subj-chip-remove { background: transparent; border: none; color: rgba(255,255,255,0.8); cursor: pointer; font-size: 0.9rem; line-height: 1; padding: 0; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+      .subj-chip-remove:hover { color: #fff; background: rgba(255,255,255,0.2); }
+      .no-subjects-match { padding: 1rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
       @media (max-width: 768px) {
         .dashboard-container { grid-template-columns: 1fr; gap: 1.5rem; }
         .form-grid { grid-template-columns: 1fr; gap: 1rem; }
@@ -192,12 +207,15 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
               <option value="education">Board Review</option>
             </select>
           </div>
-          <div class="form-group">
-            <label for="artTag" class="form-label">Tags *</label>
-            <input type="text" id="artTag" class="form-input" placeholder="e.g., Oncology, Neurology, Immunology" required />
-            <span class="form-hint">Comma-separated tags (e.g., "Oncology, CRISPR, Immunotherapy")</span>
+          <div class="form-group full-width">
+            <label for="subjectSearch" class="form-label">Subjects *</label>
+            <div class="subject-autocomplete-wrapper">
+              <input type="text" id="subjectSearch" class="form-input" placeholder="Search subjects (e.g., 'phy' → Physiology, Physics)..." autocomplete="off" />
+              <div class="subject-dropdown" id="subjectDropdown" style="display:none;"></div>
+            </div>
+            <div class="subject-chips" id="subjectChips"></div>
+            <span class="form-hint">Select one or more subjects from the managed taxonomy</span>
           </div>
-          <div class="form-group"><label for="artSubject" class="form-label">Subject *</label><input type="text" id="artSubject" class="form-input" placeholder="e.g., Oncology" required maxlength="200" /></div>
           <div class="form-group"><label for="artTopic" class="form-label">Topic *</label><input type="text" id="artTopic" class="form-input" placeholder="e.g., Cancer Vaccines" required maxlength="200" /></div>
           <div class="form-group full-width"><label for="artDesc" class="form-label">Short Description / Abstract Summary <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(optional)</span></label><input type="text" id="artDesc" class="form-input" placeholder="A concise summary of the article..." maxlength="1000" /></div>
           <div class="form-group full-width">
@@ -255,7 +273,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
         <p class="panel-desc">Track the review and publication status of your articles.</p>
         <div class="table-container">
           <table class="submissions-table">
-            <thead><tr><th>Article Title</th><th>Tags</th><th>Submitted Date</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Article Title</th><th>Subjects</th><th>Submitted Date</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody id="submissionsTableBody">
               <tr><td colspan="5" class="empty-state">Loading submissions...</td></tr>
             </tbody>
@@ -271,6 +289,10 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   </div>
 
   <slot name="scripts">
+    <script is:inline>
+      // Subject taxonomy embedded at build time (zero D1 reads)
+      window.SUBJECTS = {JSON.stringify(subjects)};
+    </script>
     <script is:inline>
       // --- Auth Gate ---
       var userData = sessionStorage.getItem('user');
@@ -308,6 +330,113 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
             loadSubmissions();
           }
         });
+      });
+
+      // --- Subject Autocomplete ---
+      var selectedSubjects = [];
+      var subjectList = window.SUBJECTS || [];
+
+      function matchSubjects(query, list) {
+        if (!query || query.length < 2) return [];
+        var q = query.toLowerCase();
+        return list
+          .filter(function(s) { return s.name.toLowerCase().indexOf(q) !== -1; })
+          .sort(function(a, b) {
+            var aStarts = a.name.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+            var bStarts = b.name.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+            return aStarts - bStarts || a.name.length - b.name.length;
+          })
+          .slice(0, 15);
+      }
+
+      function highlightMatch(name, query) {
+        var idx = name.toLowerCase().indexOf(query.toLowerCase());
+        if (idx === -1) return escapeHTML(name);
+        return escapeHTML(name.substring(0, idx)) + '<span class="highlight">' + escapeHTML(name.substring(idx, idx + query.length)) + '</span>' + escapeHTML(name.substring(idx + query.length));
+      }
+
+      function renderSubjectChips() {
+        var container = document.getElementById('subjectChips');
+        container.innerHTML = selectedSubjects.map(function(s, i) {
+          return '<span class="subj-chip">' + escapeHTML(s) + '<button type="button" class="subj-chip-remove" onclick="removeSubject(' + i + ')" title="Remove">&times;</button></span>';
+        }).join('');
+      }
+
+      function addSubject(name) {
+        if (selectedSubjects.indexOf(name) === -1) {
+          selectedSubjects.push(name);
+          renderSubjectChips();
+        }
+        document.getElementById('subjectSearch').value = '';
+        document.getElementById('subjectDropdown').style.display = 'none';
+      }
+
+      function removeSubject(index) {
+        selectedSubjects.splice(index, 1);
+        renderSubjectChips();
+      }
+
+      function renderDropdown(matches, query) {
+        var dropdown = document.getElementById('subjectDropdown');
+        if (matches.length === 0) {
+          dropdown.innerHTML = '<div class="no-subjects-match">No matching subjects found</div>';
+          dropdown.style.display = 'block';
+          return;
+        }
+        dropdown.innerHTML = matches.map(function(s) {
+          return '<div class="subject-option" data-name="' + escapeHTML(s.name) + '" onclick="addSubject(\'' + escapeHTML(s.name).replace(/'/g, "\\'") + '\')">' +
+            highlightMatch(s.name, query) +
+            (s.parent ? '<span class="subject-parent">' + escapeHTML(s.parent) + '</span>' : '') +
+            '</div>';
+        }).join('');
+        dropdown.style.display = 'block';
+      }
+
+      // Subject search input handler
+      var subjectSearchEl = document.getElementById('subjectSearch');
+      var subjectDropdownEl = document.getElementById('subjectDropdown');
+      var activeDropdownIndex = -1;
+
+      subjectSearchEl.addEventListener('input', function() {
+        var query = this.value;
+        if (query.length < 2) {
+          subjectDropdownEl.style.display = 'none';
+          return;
+        }
+        var matches = matchSubjects(query, subjectList);
+        renderDropdown(matches, query);
+        activeDropdownIndex = -1;
+      });
+
+      subjectSearchEl.addEventListener('keydown', function(e) {
+        var options = subjectDropdownEl.querySelectorAll('.subject-option');
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeDropdownIndex = Math.min(activeDropdownIndex + 1, options.length - 1);
+          options.forEach(function(o, i) { o.classList.toggle('active', i === activeDropdownIndex); });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeDropdownIndex = Math.max(activeDropdownIndex - 1, 0);
+          options.forEach(function(o, i) { o.classList.toggle('active', i === activeDropdownIndex); });
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (activeDropdownIndex >= 0 && options[activeDropdownIndex]) {
+            addSubject(options[activeDropdownIndex].getAttribute('data-name'));
+          } else if (this.value.trim() && options.length > 0) {
+            addSubject(options[0].getAttribute('data-name'));
+          }
+          activeDropdownIndex = -1;
+        } else if (e.key === 'Escape') {
+          subjectDropdownEl.style.display = 'none';
+          activeDropdownIndex = -1;
+        }
+      });
+
+      // Close dropdown on outside click
+      document.addEventListener('click', function(e) {
+        if (!subjectSearchEl.contains(e.target) && !subjectDropdownEl.contains(e.target)) {
+          subjectDropdownEl.style.display = 'none';
+        }
       });
 
       // --- Alert ---
@@ -368,11 +497,21 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
           var date = new Date(s.created_at * 1000);
           var dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
           var isPublished = s.status === 'published';
-          var tagsDisplay = '';
-          try { var parsed = JSON.parse(s.tag || '[]'); tagsDisplay = Array.isArray(parsed) ? parsed.join(', ') : (s.tag || '—'); } catch(e) { tagsDisplay = s.tag || '—'; }
+          var subjectsDisplay = '';
+          try {
+            // Try subject column first (new format: JSON array)
+            var subjParsed = JSON.parse(s.subject || '[]');
+            if (Array.isArray(subjParsed) && subjParsed.length > 0) {
+              subjectsDisplay = subjParsed.join(', ');
+            } else {
+              // Fallback: old tag column
+              var tagParsed = JSON.parse(s.tag || '[]');
+              subjectsDisplay = Array.isArray(tagParsed) ? tagParsed.join(', ') : (s.tag || '—');
+            }
+          } catch(e) { subjectsDisplay = s.subject || s.tag || '—'; }
           return '<tr>'+
             '<td style="font-weight:600;">' + escapeHTML(s.title) + '</td>'+
-            '<td>' + escapeHTML(tagsDisplay) + '</td>'+
+            '<td>' + escapeHTML(subjectsDisplay) + '</td>'+
             '<td>' + dateStr + '</td>'+
             '<td><span class="badge badge-' + s.status + '">' + s.status + '</span>' +
             (s.status === 'rejected' && s.admin_notes ? '<div style="font-size:0.75rem;color:#ef4444;margin-top:0.25rem;">' + escapeHTML(s.admin_notes) + '</div>' : '') +
@@ -591,9 +730,13 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
         var isEdit = !!editingSubmissionId;
         submitBtn.textContent = isEdit ? 'Updating article...' : 'Uploading images...';
 
-        // Collect tags (comma-separated)
-        var tagsInput = document.getElementById('artTag').value.trim();
-        var tags = tagsInput ? tagsInput.split(',').map(function(t){return t.trim();}).filter(Boolean) : [];
+        // Validate subjects
+        if (selectedSubjects.length === 0) {
+          showAlert('Please select at least one subject.', 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Article for Review';
+          return;
+        }
 
         // Collect exams (comma-separated, optional)
         var examsInput = document.getElementById('artExams').value.trim();
@@ -650,8 +793,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
           title: document.getElementById('artTitle').value.trim(),
           author: document.getElementById('artAuthor').value.trim(),
           type: document.getElementById('artType').value,
-          tag: JSON.stringify(tags),       // Store as JSON array
-          subject: document.getElementById('artSubject').value.trim(),
+          subjects: selectedSubjects,       // Array of subject names
           topic: document.getElementById('artTopic').value.trim(),
           description: document.getElementById('artDesc').value.trim(),
           exams: exams,
@@ -685,6 +827,10 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
             createImageSlot(0);
             // Re-set author
             document.getElementById('artAuthor').value = user.full_name || user.username || '';
+
+            // Clear subject chips
+            selectedSubjects = [];
+            renderSubjectChips();
 
             // Hide edit warning
             var warnBanner = document.getElementById('editWarningBanner');
@@ -735,8 +881,16 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
           if (!data.success) { showAlert(data.error, 'error'); return; }
           var s = data.submission;
           var date = new Date(s.created_at * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-          var tagsDisplay = '';
-          try { var tags = JSON.parse(s.tag || '[]'); tagsDisplay = Array.isArray(tags) ? tags.join(', ') : (s.tag || '—'); } catch(e) { tagsDisplay = s.tag || '—'; }
+          var subjectsDisplay = '';
+          try {
+            var subjParsed = JSON.parse(s.subject || '[]');
+            if (Array.isArray(subjParsed) && subjParsed.length > 0) {
+              subjectsDisplay = subjParsed.join(', ');
+            } else {
+              var tagParsed = JSON.parse(s.tag || '[]');
+              subjectsDisplay = Array.isArray(tagParsed) ? tagParsed.join(', ') : (s.tag || '—');
+            }
+          } catch(e) { subjectsDisplay = s.subject || s.tag || '—'; }
           var modal = document.getElementById('viewModalContent');
           modal.innerHTML =
             '<div class="view-modal-header">' +
@@ -745,7 +899,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
               '<div class="view-modal-meta">' +
                 '<span><strong>Author:</strong> ' + escapeHTML(s.author) + '</span>' +
                 '<span><strong>Type:</strong> ' + escapeHTML(s.type || 'general') + '</span>' +
-                '<span><strong>Tags:</strong> ' + escapeHTML(tagsDisplay) + '</span>' +
+                '<span><strong>Subjects:</strong> ' + escapeHTML(subjectsDisplay) + '</span>' +
                 '<span><strong>Status:</strong> <span class="badge badge-' + s.status + '">' + s.status + '</span></span>' +
                 '<span><strong>Date:</strong> ' + date + '</span>' +
               '</div>' +
@@ -780,7 +934,6 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
           document.getElementById('artTitle').value = s.title || '';
           document.getElementById('artAuthor').value = s.author || '';
           document.getElementById('artType').value = s.type || 'general';
-          document.getElementById('artSubject').value = s.subject || '';
           document.getElementById('artTopic').value = s.topic || '';
           document.getElementById('artDesc').value = s.description || '';
           document.getElementById('artContent').value = s.body || '';
@@ -788,10 +941,31 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
           var examsStr = '';
           try { var ex = JSON.parse(s.exams || '[]'); examsStr = Array.isArray(ex) ? ex.join(', ') : (s.exams || ''); } catch(e) { examsStr = s.exams || ''; }
           document.getElementById('artExams').value = examsStr;
-          // Tags
-          var tagsStr = '';
-          try { var tags = JSON.parse(s.tag || '[]'); tagsStr = Array.isArray(tags) ? tags.join(', ') : (s.tag || ''); } catch(e) { tagsStr = s.tag || ''; }
-          document.getElementById('artTag').value = tagsStr;
+          // Subjects - load from stored JSON (tries subject column first, then falls back to tag column)
+          selectedSubjects = [];
+          try {
+            var subjData = JSON.parse(s.subject || '[]');
+            if (Array.isArray(subjData) && subjData.length > 0) {
+              selectedSubjects = subjData;
+            } else {
+              // Fallback: old tag column
+              var tagData = JSON.parse(s.tag || '[]');
+              selectedSubjects = Array.isArray(tagData) ? tagData : [];
+            }
+          } catch(e) {
+            // Old format: single string
+            if (s.subject && typeof s.subject === 'string' && s.subject.trim()) {
+              selectedSubjects = [s.subject.trim()];
+            } else if (s.tag && typeof s.tag === 'string') {
+              try {
+                var t = JSON.parse(s.tag);
+                selectedSubjects = Array.isArray(t) ? t : [];
+              } catch(e2) {
+                selectedSubjects = s.tag ? s.tag.split(',').map(function(x){return x.trim();}).filter(Boolean) : [];
+              }
+            }
+          }
+          renderSubjectChips();
 
           // Cover image
           coverFileData = null;

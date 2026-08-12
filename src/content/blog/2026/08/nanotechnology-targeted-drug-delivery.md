@@ -3,10 +3,9 @@ title: "Nanoparticle Drug Delivery System Passes Phase I Safety Trials"
 pubDate: 2026-08-06
 description: "Review of polymeric nanoparticle vehicle safety data in targeted chemotherapeutic delivery for metastatic breast cancer."
 author: "Dr. Eleanor Vance"
+subjects: ["Biotech"]
 image: "https://images.unsplash.com/photo-1532187643603-ba119ca4109e?auto=format&fit=crop&q=80&w=600"
-tag: "Biotech"
 type: "update"
-subject: "Biotech"
 topic: "Nanotechnology"
 exams: ["USMLE"]
 ---

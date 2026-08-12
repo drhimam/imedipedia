@@ -12,6 +12,7 @@ const blog = defineCollection({
     tag: z.string().optional(),
     type: z.enum(['general', 'update', 'case', 'education']).default('general'),
     subject: z.string().optional(),
+    subjects: z.array(z.string()).optional(),
     topic: z.string().optional(),
     exams: z.array(z.string()).optional(),
   }),

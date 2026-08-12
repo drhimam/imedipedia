@@ -1,9 +1,10 @@
 ---
-// Admin Dashboard — Applications, Submissions, Articles, Images
+// Admin Dashboard — Applications, Submissions, Articles, Images, Subjects
 // SSR-only: verifies admin session on every request
 export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
+import subjects from '../data/subjects.json';
 const SITE_TITLE = "Admin Dashboard";
 
 // Server-side auth check
@@ -169,6 +170,7 @@ if (Astro.request) {
       <button class="tab-nav-btn" data-main-tab="submissions">Submissions</button>
       <button class="tab-nav-btn" data-main-tab="articles">Articles</button>
       <button class="tab-nav-btn" data-main-tab="images">Images</button>
+      <button class="tab-nav-btn" data-main-tab="subjects">Subjects</button>
     </nav>
 
     <!-- Applications Tab -->
@@ -208,6 +210,39 @@ if (Astro.request) {
         </div>
       </details>
       <div id="imagesTable" style="overflow-x:auto;"></div>
+    </div>
+
+    <!-- Subjects Tab -->
+    <div class="tab-panel" id="tab-subjects">
+      <div id="subjectsStatus" class="alert" style="margin-bottom:1rem;display:none;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.5rem;">
+        <h3 style="font-family:'Outfit',sans-serif;margin:0;font-size:1.2rem;">Managed Subject Taxonomy</h3>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn btn-sm" onclick="addNewSubject()">＋ Add Subject</button>
+          <button class="btn btn-sm btn-secondary" onclick="saveSubjectsToGitHub()">💾 Save to GitHub</button>
+        </div>
+      </div>
+      <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.5rem;">Manage the controlled subject list. Contributors select from these subjects when submitting articles. Changes deploy when you save to GitHub (~2 min).</p>
+      <!-- Add/Edit inline form -->
+      <div id="subjEditRow" style="display:none;border:1px solid var(--accent);border-radius:8px;padding:1rem;margin-bottom:1rem;background:rgba(99,102,241,0.05);">
+        <div style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
+          <div class="form-group" style="flex:1;min-width:200px;">
+            <label class="form-label">Subject Name</label>
+            <input class="form-input" type="text" id="subjEditName" placeholder="e.g., Respiratory Physiology" maxlength="200">
+          </div>
+          <div class="form-group" style="flex:1;min-width:150px;">
+            <label class="form-label">Parent / Group</label>
+            <input class="form-input" type="text" id="subjEditParent" placeholder="e.g., Physiology" maxlength="200" list="parentList">
+            <datalist id="parentList"></datalist>
+          </div>
+          <div style="display:flex;gap:0.5rem;padding-bottom:0.25rem;">
+            <button class="btn btn-sm" id="subjSaveBtn" onclick="saveSubjectEdit()">Save</button>
+            <button class="btn btn-sm btn-secondary" onclick="cancelSubjectEdit()">Cancel</button>
+          </div>
+        </div>
+        <input type="hidden" id="subjEditIndex" value="-1">
+      </div>
+      <div id="subjectsTable" style="overflow-x:auto;"></div>
     </div>
   </main>
 
@@ -254,8 +289,12 @@ if (Astro.request) {
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Tags (comma-separated)</label>
-          <input class="form-input" type="text" id="adminEditTags" placeholder="e.g., Oncology, Neurology">
+          <label class="form-label">Subjects</label>
+          <div style="position:relative;">
+            <input class="form-input" type="text" id="adminEditSubjectSearch" placeholder="Search subjects..." autocomplete="off">
+            <div id="adminEditSubjectDropdown" class="subject-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;max-height:200px;overflow-y:auto;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,0.2);"></div>
+          </div>
+          <div id="adminEditSubjectChips" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;"></div>
         </div>
         <div class="form-group">
           <label class="form-label">Description</label>
@@ -435,6 +474,10 @@ if (Astro.request) {
   .edit-modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.5rem; }
 </style>
 
+<script is:inline>
+  // Subject taxonomy embedded at build time (zero D1 reads)
+  window.ADMIN_SUBJECTS = {JSON.stringify(subjects)};
+</script>
 <script is:inline>
   // ========== ADMIN TOP BAR & SETTINGS ==========
 
@@ -649,6 +692,7 @@ if (Astro.request) {
       else if (tab === 'submissions') loadSubmissions();
       else if (tab === 'articles') loadArticles();
       else if (tab === 'images') loadImages();
+      else if (tab === 'subjects') loadSubjects();
     });
   });
 
@@ -871,8 +915,16 @@ if (Astro.request) {
       if (!data.success) { alert(data.error); return; }
       const s = data.submission;
       const date = new Date(s.created_at*1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      let tagsDisplay = '';
-      try { const tags = JSON.parse(s.tag || '[]'); tagsDisplay = Array.isArray(tags) ? tags.join(', ') : (s.tag || '—'); } catch(e) { tagsDisplay = s.tag || '—'; }
+      let subjectsDisplay = '';
+      try {
+        var subjParsed = JSON.parse(s.subject || '[]');
+        if (Array.isArray(subjParsed) && subjParsed.length > 0) {
+          subjectsDisplay = subjParsed.join(', ');
+        } else {
+          var tagParsed = JSON.parse(s.tag || '[]');
+          subjectsDisplay = Array.isArray(tagParsed) ? tagParsed.join(', ') : (s.tag || '—');
+        }
+      } catch(e) { subjectsDisplay = s.subject || s.tag || '—'; }
       const modal = document.getElementById('adminViewModalContent');
       modal.innerHTML =
         '<div class="view-modal-header">' +
@@ -881,7 +933,7 @@ if (Astro.request) {
           '<div class="view-modal-meta">' +
             '<span><strong>Author:</strong> ' + esc(s.author) + '</span>' +
             '<span><strong>Type:</strong> ' + esc(s.type || 'general') + '</span>' +
-            '<span><strong>Tags:</strong> ' + esc(tagsDisplay) + '</span>' +
+            '<span><strong>Subjects:</strong> ' + esc(subjectsDisplay) + '</span>' +
             '<span><strong>Status:</strong> <span class="badge badge-' + s.status + '">' + s.status + '</span></span>' +
             '<span><strong>Date:</strong> ' + date + '</span>' +
           '</div>' +
@@ -930,10 +982,22 @@ if (Astro.request) {
       document.getElementById('adminEditDescription').value = s.description || '';
       document.getElementById('adminEditBody').value = s.body || '';
 
-      // Tags: parse JSON array to comma-separated
-      let tagsStr = '';
-      try { const tags = JSON.parse(s.tag || '[]'); tagsStr = Array.isArray(tags) ? tags.join(', ') : (s.tag || ''); } catch(e) { tagsStr = s.tag || ''; }
-      document.getElementById('adminEditTags').value = tagsStr;
+      // Subjects: parse JSON array
+      adminEditSelectedSubjects = [];
+      try {
+        var subjData = JSON.parse(s.subject || '[]');
+        if (Array.isArray(subjData) && subjData.length > 0) {
+          adminEditSelectedSubjects = subjData;
+        } else {
+          var tagData = JSON.parse(s.tag || '[]');
+          adminEditSelectedSubjects = Array.isArray(tagData) ? tagData : [];
+        }
+      } catch(e) {
+        if (s.subject && typeof s.subject === 'string' && s.subject.trim()) {
+          adminEditSelectedSubjects = [s.subject.trim()];
+        }
+      }
+      renderAdminEditSubjectChips();
 
       document.getElementById('adminEditStatus').style.display = 'none';
       document.getElementById('adminEditModalOverlay').style.display = 'flex';
@@ -944,14 +1008,16 @@ if (Astro.request) {
 
   function closeAdminEditModal() {
     document.getElementById('adminEditModalOverlay').style.display = 'none';
+    adminEditSelectedSubjects = [];
+    renderAdminEditSubjectChips();
+    document.getElementById('adminEditSubjectSearch').value = '';
+    var dd = document.getElementById('adminEditSubjectDropdown');
+    if (dd) dd.style.display = 'none';
   }
 
   async function saveAdminEdit() {
     const id = document.getElementById('adminEditId').value;
     const statusEl = document.getElementById('adminEditStatus');
-
-    const tagsInput = document.getElementById('adminEditTags').value.trim();
-    const tags = tagsInput ? tagsInput.split(',').map(function(t){return t.trim();}).filter(Boolean) : [];
 
     const payload = {
       title: document.getElementById('adminEditTitle').value.trim(),
@@ -959,7 +1025,7 @@ if (Astro.request) {
       type: document.getElementById('adminEditType').value,
       subject: document.getElementById('adminEditSubject').value.trim(),
       topic: document.getElementById('adminEditTopic').value.trim(),
-      tag: JSON.stringify(tags),
+      subjects: adminEditSelectedSubjects,
       description: document.getElementById('adminEditDescription').value.trim(),
       body: document.getElementById('adminEditBody').value.trim(),
     };
@@ -1078,6 +1144,220 @@ if (Astro.request) {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
     return (bytes/1048576).toFixed(1) + ' MB';
+  }
+
+  // ========== SUBJECT MANAGEMENT ==========
+  var adminSubjects = window.ADMIN_SUBJECTS ? window.ADMIN_SUBJECTS.slice() : [];
+  var adminEditSelectedSubjects = [];
+
+  function loadSubjects() {
+    renderSubjectsTable();
+    refreshParentList();
+  }
+
+  function renderSubjectsTable() {
+    var container = document.getElementById('subjectsTable');
+    // Group by parent
+    var groups = {};
+    adminSubjects.forEach(function(s, i) {
+      var parent = s.parent || 'Uncategorized';
+      if (!groups[parent]) groups[parent] = [];
+      groups[parent].push({ name: s.name, index: i });
+    });
+    var parentNames = Object.keys(groups).sort();
+    var html = '';
+    parentNames.forEach(function(parent) {
+      var items = groups[parent];
+      html += '<h4 style="font-family:Outfit,sans-serif;font-size:1rem;margin:1.5rem 0 0.5rem;color:var(--accent);border-bottom:1px solid var(--border);padding-bottom:0.25rem;">' + esc(parent) + ' <span style="font-weight:400;font-size:0.8rem;color:var(--muted);">(' + items.length + ')</span></h4>';
+      html += '<table class="data-table"><tbody>';
+      items.forEach(function(s) {
+        html += '<tr>' +
+          '<td style="width:40px;font-size:1.2rem;text-align:center;">📚</td>' +
+          '<td><strong>' + esc(s.name) + '</strong></td>' +
+          '<td style="white-space:nowrap;">' +
+            '<button class="action-btn btn-edit-admin" onclick="editSubject(' + s.index + ')" title="Edit">✏️</button>' +
+            '<button class="action-btn btn-delete-sm" onclick="deleteSubject(' + s.index + ')" title="Delete">🗑</button>' +
+          '</td>' +
+          '</tr>';
+      });
+      html += '</tbody></table>';
+    });
+    if (adminSubjects.length === 0) {
+      html = '<p style="color:var(--muted);text-align:center;padding:2rem;">No subjects defined. Click "＋ Add Subject" to create the taxonomy.</p>';
+    }
+    container.innerHTML = html;
+  }
+
+  function refreshParentList() {
+    var datalist = document.getElementById('parentList');
+    var parents = [];
+    adminSubjects.forEach(function(s) { if (s.parent && parents.indexOf(s.parent) === -1) parents.push(s.parent); });
+    datalist.innerHTML = parents.map(function(p) { return '<option value="' + esc(p) + '">'; }).join('');
+  }
+
+  function addNewSubject() {
+    document.getElementById('subjEditName').value = '';
+    document.getElementById('subjEditParent').value = '';
+    document.getElementById('subjEditIndex').value = '-1';
+    document.getElementById('subjEditRow').style.display = 'block';
+    document.getElementById('subjEditName').focus();
+  }
+
+  function editSubject(index) {
+    var s = adminSubjects[index];
+    document.getElementById('subjEditName').value = s.name;
+    document.getElementById('subjEditParent').value = s.parent || '';
+    document.getElementById('subjEditIndex').value = index;
+    document.getElementById('subjEditRow').style.display = 'block';
+    document.getElementById('subjEditName').focus();
+  }
+
+  function saveSubjectEdit() {
+    var name = document.getElementById('subjEditName').value.trim();
+    var parent = document.getElementById('subjEditParent').value.trim();
+    var index = parseInt(document.getElementById('subjEditIndex').value);
+    if (!name) { alert('Subject name is required.'); return; }
+
+    if (index >= 0) {
+      adminSubjects[index] = { name: name, parent: parent || undefined };
+    } else {
+      adminSubjects.push({ name: name, parent: parent || undefined });
+    }
+
+    // Sort by parent then name
+    adminSubjects.sort(function(a, b) {
+      var pa = (a.parent || '').toLowerCase();
+      var pb = (b.parent || '').toLowerCase();
+      if (pa !== pb) return pa < pb ? -1 : 1;
+      return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+    });
+
+    cancelSubjectEdit();
+    renderSubjectsTable();
+    refreshParentList();
+  }
+
+  function cancelSubjectEdit() {
+    document.getElementById('subjEditRow').style.display = 'none';
+    document.getElementById('subjEditIndex').value = '-1';
+  }
+
+  function deleteSubject(index) {
+    if (!confirm('Delete "' + adminSubjects[index].name + '" from the taxonomy?')) return;
+    adminSubjects.splice(index, 1);
+    renderSubjectsTable();
+    refreshParentList();
+  }
+
+  async function saveSubjectsToGitHub() {
+    if (!confirm('Save ' + adminSubjects.length + ' subjects to GitHub? This will trigger a redeployment.')) return;
+    var statusEl = document.getElementById('subjectsStatus');
+    statusEl.textContent = 'Saving...';
+    statusEl.className = 'alert alert-info';
+    statusEl.style.display = 'block';
+
+    try {
+      var resp = await fetch('/api/admin/subjects-save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subjects: adminSubjects })
+      });
+      var data = await resp.json();
+      if (data.success) {
+        statusEl.textContent = data.message;
+        statusEl.className = 'alert alert-success';
+        window.ADMIN_SUBJECTS = adminSubjects.slice();
+      } else {
+        statusEl.textContent = data.error || 'Save failed.';
+        statusEl.className = 'alert alert-error';
+      }
+    } catch(e) {
+      statusEl.textContent = 'Network error: ' + e.message;
+      statusEl.className = 'alert alert-error';
+    }
+  }
+
+  // ========== ADMIN EDIT SUBJECT AUTOCOMPLETE ==========
+  function adminMatchSubjects(query) {
+    if (!query || query.length < 2) return [];
+    var q = query.toLowerCase();
+    return (window.ADMIN_SUBJECTS || []).filter(function(s) {
+      return s.name.toLowerCase().indexOf(q) !== -1;
+    }).sort(function(a, b) {
+      var aStarts = a.name.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      var bStarts = b.name.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      return aStarts - bStarts || a.name.length - b.name.length;
+    }).slice(0, 12);
+  }
+
+  function renderAdminEditSubjectChips() {
+    var container = document.getElementById('adminEditSubjectChips');
+    container.innerHTML = adminEditSelectedSubjects.map(function(s, i) {
+      return '<span class="chip">' + esc(s) + '<button type="button" class="chip-remove" onclick="removeAdminEditSubject(' + i + ')" title="Remove">&times;</button></span>';
+    }).join('');
+  }
+
+  function addAdminEditSubject(name) {
+    if (adminEditSelectedSubjects.indexOf(name) === -1) {
+      adminEditSelectedSubjects.push(name);
+      renderAdminEditSubjectChips();
+    }
+    document.getElementById('adminEditSubjectSearch').value = '';
+    document.getElementById('adminEditSubjectDropdown').style.display = 'none';
+  }
+
+  function removeAdminEditSubject(index) {
+    adminEditSelectedSubjects.splice(index, 1);
+    renderAdminEditSubjectChips();
+  }
+
+  // Initialize subject autocomplete for admin edit modal
+  var adminEditSearchEl = document.getElementById('adminEditSubjectSearch');
+  if (adminEditSearchEl) {
+    var adminEditDropdownEl = document.getElementById('adminEditSubjectDropdown');
+    var adminActiveIdx = -1;
+
+    adminEditSearchEl.addEventListener('input', function() {
+      var query = this.value;
+      if (query.length < 2) {
+        adminEditDropdownEl.style.display = 'none';
+        return;
+      }
+      var matches = adminMatchSubjects(query);
+      if (matches.length === 0) {
+        adminEditDropdownEl.innerHTML = '<div style="padding:0.65rem 1rem;color:var(--muted);font-size:0.85rem;">No matches</div>';
+      } else {
+        adminEditDropdownEl.innerHTML = matches.map(function(s) {
+          return '<div class="subject-option" data-name="' + esc(s.name) + '" style="padding:0.5rem 0.75rem;cursor:pointer;font-size:0.85rem;border-bottom:1px solid rgba(255,255,255,0.03);"' +
+            'onmousedown="event.preventDefault();addAdminEditSubject(\'' + esc(s.name).replace(/'/g, "\\'") + '\')">' +
+            esc(s.name) + (s.parent ? ' <span style="font-size:0.7rem;color:var(--muted);">(' + esc(s.parent) + ')</span>' : '') +
+            '</div>';
+        }).join('');
+      }
+      adminEditDropdownEl.style.display = 'block';
+      adminActiveIdx = -1;
+    });
+
+    adminEditSearchEl.addEventListener('keydown', function(e) {
+      var options = adminEditDropdownEl.querySelectorAll('.subject-option');
+      if (e.key === 'ArrowDown') { e.preventDefault(); adminActiveIdx = Math.min(adminActiveIdx + 1, options.length - 1); options.forEach(function(o, i) { o.style.background = i === adminActiveIdx ? 'rgba(99,102,241,0.12)' : ''; }); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); adminActiveIdx = Math.max(adminActiveIdx - 1, 0); options.forEach(function(o, i) { o.style.background = i === adminActiveIdx ? 'rgba(99,102,241,0.12)' : ''; }); }
+      else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (adminActiveIdx >= 0 && options[adminActiveIdx]) {
+          addAdminEditSubject(options[adminActiveIdx].getAttribute('data-name'));
+        } else if (options.length > 0) {
+          addAdminEditSubject(options[0].getAttribute('data-name'));
+        }
+        adminActiveIdx = -1;
+      }
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!adminEditSearchEl.contains(e.target) && !adminEditDropdownEl.contains(e.target)) {
+        adminEditDropdownEl.style.display = 'none';
+      }
+    });
   }
 
   // Load on page load

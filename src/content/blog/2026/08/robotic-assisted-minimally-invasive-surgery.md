@@ -3,10 +3,9 @@ title: "Next-Gen Robotic Platforms Scale Precision in Minimally Invasive Surgery
 pubDate: 2026-08-07
 description: "Analysis of the integration of tactile haptic feedback and real-time AI spatial tracking in next-generation robotic surgical systems."
 author: "Dr. Marcus Thorne"
+subjects: ["Surgery"]
 image: "https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&q=80&w=600"
-tag: "Surgery"
 type: "update"
-subject: "Surgery"
 topic: "Robotics"
 exams: ["FRCP"]
 ---

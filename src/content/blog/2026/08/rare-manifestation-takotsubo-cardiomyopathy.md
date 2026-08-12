@@ -3,10 +3,9 @@ title: "Atypical Takotsubo Cardiomyopathy Triggered by Mild Physical Stress"
 pubDate: 2026-08-05
 description: "A case study detailing a rare presentation of atypical Takotsubo cardiomyopathy with mid-ventricular ballooning in a male patient after mild exertion."
 author: "Dr. Sarah Jenkins"
+subjects: ["Cardiology"]
 image: "https://images.unsplash.com/photo-1628348068343-c6a848d2b6dd?auto=format&fit=crop&q=80&w=600"
-tag: "Cardiology"
 type: "case"
-subject: "Cardiology"
 topic: "Cardiomyopathy"
 exams: ["USMLE", "FRCP"]
 ---

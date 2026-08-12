@@ -56,7 +56,7 @@ export async function POST({ request, locals }) {
     });
   }
 
-  const { filePath, title, description, tags, body: articleBody, image, type, subject, topic, author } = body;
+  const { filePath, title, description, tags, body: articleBody, image, type, subject, topic, author, subjects } = body;
 
   if (!filePath) {
     return new Response(JSON.stringify({ error: "filePath is required." }), {
@@ -90,10 +90,25 @@ export async function POST({ request, locals }) {
     const existingContent = atob(existing.content);
     const decodedContent = decodeURIComponent(escape(existingContent));
 
-    // Update frontmatter
-    let parsedTags = [];
-    try { parsedTags = typeof tags === 'string' ? JSON.parse(tags) : (Array.isArray(tags) ? tags : []); } catch { parsedTags = []; }
-    const tagStr = parsedTags.length > 0 ? escapeYAML(parsedTags.join(', ')) : '';
+    // Parse subjects from body (new format: JSON array) or fall back to old tags/subject
+    let parsedSubjects = [];
+    if (subjects !== undefined) {
+      if (Array.isArray(subjects)) {
+        parsedSubjects = subjects.map(s => String(s).trim()).filter(Boolean);
+      } else if (typeof subjects === 'string') {
+        try { const p = JSON.parse(subjects); parsedSubjects = Array.isArray(p) ? p.map(s => String(s).trim()).filter(Boolean) : []; } catch { parsedSubjects = []; }
+      }
+    } else {
+      // Fallback: build from old tags + subject fields
+      let oldTags = [];
+      try { oldTags = typeof tags === 'string' ? JSON.parse(tags) : (Array.isArray(tags) ? tags : []); } catch { oldTags = []; }
+      const oldSubject = (subject || '').trim();
+      var seen = {};
+      [].concat(oldTags, oldSubject ? [oldSubject] : []).forEach(function(s) {
+        if (s && !seen[s.toLowerCase()]) { seen[s.toLowerCase()] = true; parsedSubjects.push(s); }
+      });
+    }
+    const subjectsYAML = parsedSubjects.length > 0 ? `["${parsedSubjects.map(s => escapeYAML(s)).join('", "')}"]` : '[]';
 
     const imageValue = image && !image.startsWith('data:') ? escapeYAML(image) : '';
 
@@ -108,9 +123,8 @@ title: "${escapeYAML(title || '')}"
 pubDate: ${pubDate}
 description: "${escapeYAML(description || '')}"
 author: "${escapeYAML(author || '')}"
-tag: "${tagStr}"
 type: "${escapeYAML(type || 'general')}"
-subject: "${escapeYAML(subject || '')}"
+subjects: ${subjectsYAML}
 topic: "${escapeYAML(topic || '')}"
 ---
 

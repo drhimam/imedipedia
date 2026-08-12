@@ -4,7 +4,26 @@ import { getCollection } from 'astro:content';
 
 const posts = await getCollection('blog');
 const sortedPosts = posts.sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
-const tags = Array.from(new Set(posts.map(p => p.data.tag).filter(Boolean)));
+
+// Build subjects list from all posts, handling both old and new formats
+function parsePostSubjects(post) {
+  if (post.data.subjects && Array.isArray(post.data.subjects)) return post.data.subjects;
+  if (post.data.subject && typeof post.data.subject === 'string' && post.data.subject.trim()) return [post.data.subject.trim()];
+  if (post.data.tag && typeof post.data.tag === 'string') {
+    // Old format: comma-separated string like "Radiology, Echocardiography"
+    return post.data.tag.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+const allSubjects = Array.from(new Set(
+  posts.flatMap(p => parsePostSubjects(p)).map(s => s.toLowerCase())
+)).sort();
+// Build display mapping: lowercase -> original casing (use first occurrence)
+const subjectDisplayMap = {};
+posts.flatMap(p => parsePostSubjects(p)).forEach(s => {
+  const key = s.toLowerCase();
+  if (!subjectDisplayMap[key]) subjectDisplayMap[key] = s;
+});
 ---
 
 <BaseLayout
@@ -132,14 +151,14 @@ const tags = Array.from(new Set(posts.map(p => p.data.tag).filter(Boolean)));
     </div>
     <div class="filters-group">
       <button class="filter-chip active" data-tag="all">All Specialties</button>
-      {tags.map(tag => <button class="filter-chip" data-tag={tag}>{tag}</button>)}
+      {allSubjects.map(subj => <button class="filter-chip" data-tag={subj}>{subjectDisplayMap[subj] || subj}</button>)}
       <button class="filter-chip" id="sortOrderBtn" data-order="desc">📅 Newest First</button>
     </div>
   </section>
 
   <main class="grid" id="articlesGrid">
     {sortedPosts.map(post => (
-      <article class="card" data-title={post.data.title.toLowerCase()} data-author={post.data.author.toLowerCase()} data-desc={post.data.description.toLowerCase()} data-tag={post.data.tag || ''} data-date={post.data.pubDate.getTime()}>
+      <article class="card" data-title={post.data.title.toLowerCase()} data-author={post.data.author.toLowerCase()} data-desc={post.data.description.toLowerCase()} data-tag={parsePostSubjects(post).map(s => s.toLowerCase()).join(',')} data-date={post.data.pubDate.getTime()}>
         <div class="card-img-container">
           {post.data.image ? (
             <img src={post.data.image} class="card-img" alt={post.data.title} />
@@ -148,7 +167,7 @@ const tags = Array.from(new Set(posts.map(p => p.data.tag).filter(Boolean)));
           )}
         </div>
         <div class="card-content">
-          {post.data.tag && <span class="card-tag">{post.data.tag}</span>}
+          {parsePostSubjects(post).length > 0 && <span class="card-tag">{parsePostSubjects(post)[0]}</span>}
           <h2 class="card-title"><a href={`/blog/${post.id.replace(/\.md$/, '')}`}>{post.data.title}</a></h2>
           <p class="card-desc">{post.data.description}</p>
           <div class="card-footer">
@@ -181,7 +200,9 @@ const tags = Array.from(new Set(posts.map(p => p.data.tag).filter(Boolean)));
           var dateStr = card.getAttribute('data-date');
           var year = new Date(parseInt(dateStr)).getFullYear().toString();
           var matchesSearch = title.includes(searchQuery) || author.includes(searchQuery) || desc.includes(searchQuery) || tag.includes(searchQuery) || year.includes(searchQuery);
-          var matchesTag = activeTag === 'all' || tag === activeTag.toLowerCase();
+          // Per-subject matching: article's tag attribute is comma-separated subjects
+          var articleSubjects = tag.split(',').filter(Boolean);
+          var matchesTag = activeTag === 'all' || articleSubjects.indexOf(activeTag.toLowerCase()) !== -1;
           card.style.display = (matchesSearch && matchesTag) ? 'flex' : 'none';
         });
       }

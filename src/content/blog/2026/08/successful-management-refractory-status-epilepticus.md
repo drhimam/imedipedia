@@ -3,10 +3,9 @@ title: "Management of Super-Refractory Status Epilepticus (SRSE)"
 pubDate: 2026-08-03
 description: "A clinical report on the successful utilization of the ketogenic diet and continuous infusion anesthetics in resolving super-refractory status epilepticus."
 author: "Dr. Marcus Thorne"
+subjects: ["Neurology"]
 image: "https://images.unsplash.com/photo-1579154204601-01588f351167?auto=format&fit=crop&q=80&w=600"
-tag: "Neurology"
 type: "case"
-subject: "Neurology"
 topic: "Epilepsy"
 exams: ["USMLE", "FRCP"]
 ---

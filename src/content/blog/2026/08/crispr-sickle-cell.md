@@ -3,10 +3,9 @@ title: "CRISPR-Cas9 Gene Therapy Cure for Sickle Cell Disease"
 pubDate: 2026-08-09
 description: "A comprehensive look at the clinical validation of exagamglogene autotemcel, the first CRISPR-based gene editing therapy approved for sickle cell disease."
 author: "Dr. Eleanor Vance"
+subjects: ["Genomics"]
 image: "/images/crispr.png"
-tag: "Genomics"
 type: "general"
-subject: "Genomics"
 topic: "Gene Editing"
 exams: ["USMLE", "FRCP"]
 ---

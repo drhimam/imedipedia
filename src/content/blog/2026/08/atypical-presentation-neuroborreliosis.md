@@ -3,10 +3,9 @@ title: "Lyme Neuroborreliosis Presenting as Bilateral Facial Nerve Palsy"
 pubDate: 2026-08-04
 description: "A diagnostic challenge involving bilateral cranial nerve VII paralysis as the sole clinical manifestation of Lyme neuroborreliosis."
 author: "Dr. Marcus Thorne"
+subjects: ["Neurology"]
 image: "https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&q=80&w=600"
-tag: "Neurology"
 type: "case"
-subject: "Neurology"
 topic: "Infections"
 exams: ["USMLE"]
 ---

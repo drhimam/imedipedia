@@ -3,9 +3,8 @@ title: "Sound Wave Basics – Detailed Study Notes (Echocardiography)"
 pubDate: 2026-08-11
 description: "Study Frequency, Understand High vs Low Frequency trade-off, Study Wavelength, Study Velocity"
 author: "iMedipedia Desk"
-tag: "Radiology"
+subjects: ["Radiology", "Ultrasound Physics"]
 type: "education"
-subject: "Ultrasound Physics"
 topic: "Sound - Basic"
 exams: []
 ---
