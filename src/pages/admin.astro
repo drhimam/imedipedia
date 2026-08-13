@@ -680,7 +680,7 @@ if (Astro.request) {
   .view-modal-meta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: var(--muted); }
   .view-modal-body { background: rgba(0,0,0,0.05); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; font-size: 0.95rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; font-family: inherit; }
   :global([data-theme="light"]) .view-modal-body { background: rgba(0,0,0,0.02); }
-  .view-modal-close { position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .view-modal-close { background: transparent; border: none; color: var(--muted); font-size: 1.4rem; cursor: pointer; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .view-modal-close:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
   .view-modal-header { position: relative; }
   /* Edit Modal form */
@@ -2582,10 +2582,12 @@ if (Astro.request) {
     if (mode === 'edit') {
       modal.innerHTML = `
         <div class="view-modal-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-          <h2 style="margin:0;">✏️ Edit Application</h2>
-          <div style="display:flex;gap:0.5rem;align-items:center;">
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <button class="view-modal-close" onclick="closeAdminViewModal()" title="Close">&times;</button>
+            <h2 style="margin:0;">✏️ Edit Application</h2>
+          </div>
+          <div>
             <button onclick="viewApp(${a.id}, 'view')" class="btn btn-sm btn-secondary">👁 View Mode</button>
-            <button class="view-modal-close" onclick="closeAdminViewModal()">&times;</button>
           </div>
         </div>
         <div id="appEditStatus" class="alert" style="display:none;margin-bottom:1rem;"></div>
@@ -2626,10 +2628,12 @@ if (Astro.request) {
     } else {
       modal.innerHTML = `
         <div class="view-modal-header" style="display:flex;justify-content:space-between;align-items:center;">
-          <h2 style="margin:0;">Application: ${esc(a.name)}</h2>
-          <div style="display:flex;gap:0.5rem;align-items:center;">
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <button class="view-modal-close" onclick="closeAdminViewModal()" title="Close">&times;</button>
+            <h2 style="margin:0;">Application: ${esc(a.name)}</h2>
+          </div>
+          <div>
             <button onclick="viewApp(${a.id}, 'edit')" class="btn btn-sm btn-secondary">✏️ Edit Mode</button>
-            <button class="view-modal-close" onclick="closeAdminViewModal()">&times;</button>
           </div>
         </div>
         <div class="view-modal-meta" style="margin-top:0.75rem;">
@@ -2723,10 +2727,12 @@ if (Astro.request) {
     if (mode === 'edit') {
       modal.innerHTML = `
         <div class="view-modal-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-          <h2 style="margin:0;">✏️ Edit User Profile</h2>
-          <div style="display:flex;gap:0.5rem;align-items:center;">
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <button class="view-modal-close" onclick="closeAdminViewModal()" title="Close">&times;</button>
+            <h2 style="margin:0;">✏️ Edit User Profile</h2>
+          </div>
+          <div>
             <button onclick="viewUser('${u.id}', 'view')" class="btn btn-sm btn-secondary">👁 View Mode</button>
-            <button class="view-modal-close" onclick="closeAdminViewModal()">&times;</button>
           </div>
         </div>
         <div id="userEditStatus" class="alert" style="display:none;margin-bottom:1rem;"></div>
@@ -2796,15 +2802,15 @@ if (Astro.request) {
       modal.innerHTML = `
         <div class="view-modal-header" style="display:flex;justify-content:space-between;align-items:center;">
           <div style="display:flex;align-items:center;gap:0.75rem;">
-            ${u.avatar_url ? `<img src="${esc(u.avatar_url)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
+            <button class="view-modal-close" onclick="closeAdminViewModal()" title="Close">&times;</button>
+            ${u.avatar_url ? `<img src="${esc(u.avatar_url)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
             <div>
               <h2 style="margin:0;">${esc(u.full_name || u.username)}</h2>
               <span style="font-size:0.8rem;color:var(--muted);">@${esc(u.username)} • ID: ${esc(u.id)}</span>
             </div>
           </div>
-          <div style="display:flex;gap:0.5rem;align-items:center;">
+          <div>
             <button onclick="viewUser('${u.id}', 'edit')" class="btn btn-sm btn-secondary">✏️ Edit Mode</button>
-            <button class="view-modal-close" onclick="closeAdminViewModal()">&times;</button>
           </div>
         </div>
         <div class="view-modal-meta" style="margin-top:0.75rem;">
