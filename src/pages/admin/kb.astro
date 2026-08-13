@@ -1,0 +1,385 @@
+---
+// Knowledge Base — evidence documents for RAG grounding
+// SSR-only: verifies admin session on every request
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+const SITE_TITLE = "Knowledge Base";
+
+// Server-side auth check
+if (Astro.request) {
+  const cookieHeader = Astro.request.headers.get("cookie") || "";
+  const match = cookieHeader.match(/session_id=([^;]+)/);
+  const sessionId = match ? match[1] : null;
+
+  if (!sessionId) {
+    return Astro.redirect("/admin/login");
+  }
+
+  try {
+    const db = Astro.locals?.runtime?.env?.D1_DB || Astro.locals?.runtime?.env?.DB;
+    if (db) {
+      const now = Math.floor(Date.now() / 1000);
+      const session = await db.prepare("SELECT * FROM sessions WHERE id = ? AND expires_at > ?")
+        .bind(sessionId, now).first();
+
+      if (!session) {
+        return Astro.redirect("/admin/login");
+      }
+
+      const user = await db.prepare("SELECT * FROM users WHERE id = ?").bind(session.user_id).first();
+      if (!user || (user.role !== 'admin' && user.role !== 'co-admin')) {
+        return Astro.redirect("/admin/login");
+      }
+    }
+  } catch (err) {
+    console.error("KB auth error:", err.message);
+    return Astro.redirect("/admin/login");
+  }
+}
+---
+
+<BaseLayout title={SITE_TITLE}>
+  <header class="admin-topbar">
+    <div class="topbar-left">
+      <span class="topbar-logo">⚕️ iMedipedia</span>
+      <span class="topbar-badge">Knowledge Base</span>
+    </div>
+    <div class="topbar-right">
+      <a class="topbar-btn" href="/admin" title="Back to Admin" style="text-decoration:none;">
+        <span class="tb-btn-icon">🏠</span><span class="tb-btn-label">Admin</span>
+      </a>
+      <a class="topbar-btn" href="/admin/studio" title="Open the full-page AI Studio" style="text-decoration:none;">
+        <span class="tb-btn-icon">✨</span><span class="tb-btn-label">Studio</span>
+      </a>
+      <span class="topbar-divider"></span>
+      <button class="topbar-btn topbar-logout-btn" onclick="doLogout()" title="Logout">
+        <span class="tb-btn-icon">↪️</span><span class="tb-btn-label">Logout</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="main-content" style="max-width:1100px;margin:2rem auto;padding:0 1.5rem;">
+    <header class="portal-header" style="text-align:center;margin-bottom:2rem;">
+      <h1 style="font-family:'Outfit',sans-serif;font-size:2.25rem;font-weight:800;margin-bottom:0.5rem;">📚 Knowledge Base</h1>
+      <p style="color:var(--muted);font-size:1.05rem;max-width:640px;margin:0 auto;">Add evidence sources, then ground your AI-generated articles in them. Sources are chunked, embedded, and searched by similarity.</p>
+    </header>
+
+    <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:1.5rem;" class="kb-grid">
+      <!-- Left: ingest -->
+      <section style="display:flex;flex-direction:column;gap:1rem;">
+        <div style="border:1px solid var(--border);border-radius:12px;padding:1.25rem;">
+          <h2 style="font-family:'Outfit',sans-serif;font-size:1.15rem;margin:0 0 1rem;">Add a source</h2>
+          <div style="display:flex;gap:0.4rem;margin-bottom:1rem;flex-wrap:wrap;" id="kbTypeTabs">
+            <button class="filter-chip active" data-kb-type="text" onclick="setKbType('text')">📝 Paste text</button>
+            <button class="filter-chip" data-kb-type="url" onclick="setKbType('url')">🔗 Web URL</button>
+            <button class="filter-chip" data-kb-type="file" onclick="setKbType('file')">📄 File (.txt/.md)</button>
+            <button class="filter-chip" data-kb-type="search" onclick="setKbType('search')">🔎 Web search</button>
+          </div>
+
+          <div id="kbType-text" class="kb-type-panel">
+            <div class="form-group">
+              <label class="form-label">Title (optional)</label>
+              <input class="form-input" type="text" id="kbTextTitle" placeholder="e.g., Sepsis-3 definitions" maxlength="300">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Text</label>
+              <textarea class="form-input form-textarea" id="kbTextContent" rows="7" placeholder="Paste source text here..."></textarea>
+            </div>
+          </div>
+
+          <div id="kbType-url" class="kb-type-panel" style="display:none;">
+            <div class="form-group">
+              <label class="form-label">URLs (one per line)</label>
+              <textarea class="form-input form-textarea" id="kbUrls" rows="5" placeholder="https://example.com/guideline&#10;https://pubmed.ncbi.nlm.nih.gov/..."></textarea>
+            </div>
+          </div>
+
+          <div id="kbType-file" class="kb-type-panel" style="display:none;">
+            <div class="form-group">
+              <label class="form-label">File (.txt or .md)</label>
+              <input class="form-input" type="file" id="kbFileInput" accept=".txt,.md,.markdown">
+            </div>
+          </div>
+
+          <div id="kbType-search" class="kb-type-panel" style="display:none;">
+            <div class="form-group">
+              <label class="form-label">Search query</label>
+              <input class="form-input" type="text" id="kbSearchQuery" placeholder="e.g., 2024 hypertension guideline updates" maxlength="300">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max results</label>
+              <select class="form-input" id="kbSearchMax">
+                <option value="3">3</option>
+                <option value="5" selected>5</option>
+                <option value="8">8</option>
+                <option value="10">10</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn" id="kbIngestBtn" onclick="ingestSource()" style="width:100%;">＋ Ingest source</button>
+          <div id="kbIngestMsg" class="alert" style="display:none;margin-top:0.75rem;"></div>
+        </div>
+
+        <div style="border:1px solid var(--border);border-radius:12px;padding:1.25rem;">
+          <h2 style="font-family:'Outfit',sans-serif;font-size:1.15rem;margin:0 0 1rem;">Test retrieval</h2>
+          <div class="form-group">
+            <input class="form-input" type="text" id="kbSearchTest" placeholder="Query to test against the KB...">
+          </div>
+          <button class="btn btn-secondary" onclick="testSearch()" style="width:100%;">Search</button>
+          <div id="kbSearchResults" style="margin-top:0.75rem;"></div>
+        </div>
+      </section>
+
+      <!-- Right: sources list -->
+      <section style="border:1px solid var(--border);border-radius:12px;padding:1.25rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+          <h2 style="font-family:'Outfit',sans-serif;font-size:1.15rem;margin:0;">Sources</h2>
+          <button class="btn btn-sm btn-secondary" onclick="loadSources()">↻ Refresh</button>
+        </div>
+        <div id="kbSourcesStatus" class="alert" style="margin-bottom:1rem;display:none;"></div>
+        <div id="kbSourcesList" style="overflow-x:auto;"></div>
+      </section>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .admin-topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.6rem 1rem; background: var(--card-bg);
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(10px); gap: 0.5rem;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+  .topbar-logo { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1rem; white-space: nowrap; }
+  .topbar-badge { background: var(--accent); color: white; padding: 0.15rem 0.5rem; border-radius: 20px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .topbar-right { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+  .topbar-divider { width: 1px; height: 24px; background: var(--border); margin: 0 0.25rem; }
+  .topbar-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600;
+    display: flex; align-items: center; gap: 0.35rem; padding: 0.45rem 0.75rem;
+    transition: all 0.15s; white-space: nowrap; font-family: inherit;
+  }
+  .topbar-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+  .topbar-logout-btn { color: #ef4444; border-color: rgba(239,68,68,0.3); }
+  .topbar-logout-btn:hover { background: #ef4444; color: white; border-color: #ef4444; }
+  .tb-btn-icon { font-size: 1rem; line-height: 1; }
+  .tb-btn-label { font-size: 0.8rem; }
+
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }
+  .form-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .form-input { padding: 0.6rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: rgba(0,0,0,0.08); color: var(--text); font-size: 0.9rem; width: 100%; box-sizing: border-box; }
+  :global([data-theme="light"]) .form-input { background: rgba(255,255,255,0.8); }
+  .form-input:focus { outline: none; border-color: var(--accent); }
+  .form-textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+  .btn { background: var(--accent); color: #fff; border: none; padding: 0.7rem 1.25rem; font-size: 0.9rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.9; }
+  .btn-sm { padding: 0.5rem 1rem; font-size: 0.85rem; }
+  .btn-secondary { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+  .btn-secondary:hover { background: var(--accent); color: white; opacity: 1; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .filter-chip { font-family: inherit; padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: all 0.2s; }
+  .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .alert { padding: 0.6rem 0.75rem; border-radius: 6px; font-size: 0.8rem; }
+  .alert-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #10b981; }
+  .alert-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+  .alert-info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .data-table th { text-align: left; padding: 0.7rem; background: rgba(99,102,241,0.08); border-bottom: 1px solid var(--border); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .data-table td { padding: 0.7rem; border-bottom: 1px solid var(--border); }
+  .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+  .badge-type { background: rgba(99,102,241,0.15); color: #6366f1; }
+  .action-btn { font-family: inherit; padding: 0.3rem 0.6rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.78rem; font-weight: 600; }
+  .btn-delete { background: var(--border); color: var(--text); }
+  .btn-delete:hover { background: #ef4444; color: white; }
+
+  .kb-result { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; margin-bottom: 0.6rem; }
+  .kb-result .score { font-size: 0.7rem; color: var(--muted); }
+  .kb-result blockquote { margin: 0.4rem 0 0; padding-left: 0.75rem; border-left: 3px solid var(--accent); color: var(--text); font-size: 0.85rem; line-height: 1.5; max-height: 140px; overflow-y: auto; }
+
+  @media (max-width: 860px) {
+    .kb-grid { grid-template-columns: 1fr !important; }
+  }
+  @media (max-width: 640px) {
+    .tb-btn-label { display: none; }
+    .tb-btn-icon { font-size: 1.15rem; }
+  }
+</style>
+
+<script is:inline>
+  var kbType = 'text';
+
+  function setKbType(type) {
+    kbType = type;
+    document.querySelectorAll('#kbTypeTabs .filter-chip').forEach(function(c) {
+      c.classList.toggle('active', c.dataset.kbType === type);
+    });
+    document.querySelectorAll('.kb-type-panel').forEach(function(p) {
+      p.style.display = 'none';
+    });
+    document.getElementById('kbType-' + type).style.display = 'block';
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    var d = document.createElement('div');
+    d.textContent = String(str);
+    return d.innerHTML;
+  }
+
+  function showMsg(el, text, kind) {
+    el.textContent = text;
+    el.className = 'alert alert-' + kind;
+    el.style.display = 'block';
+  }
+
+  function doLogout() {
+    if (confirm('Are you sure you want to log out?')) {
+      document.cookie = 'session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      sessionStorage.clear();
+      window.location.href = '/admin/login';
+    }
+  }
+
+  async function ingestSource() {
+    var btn = document.getElementById('kbIngestBtn');
+    var msg = document.getElementById('kbIngestMsg');
+    btn.disabled = true;
+    msg.style.display = 'none';
+
+    var payload = { type: kbType };
+    try {
+      if (kbType === 'text') {
+        var text = document.getElementById('kbTextContent').value;
+        if (!text.trim()) { showMsg(msg, 'Paste some text to ingest.', 'error'); btn.disabled = false; return; }
+        payload.title = document.getElementById('kbTextTitle').value.trim();
+        payload.text = text;
+      } else if (kbType === 'url') {
+        var urls = document.getElementById('kbUrls').value.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
+        if (!urls.length) { showMsg(msg, 'Enter at least one URL.', 'error'); btn.disabled = false; return; }
+        payload.urls = urls;
+      } else if (kbType === 'file') {
+        var fileInput = document.getElementById('kbFileInput');
+        if (!fileInput.files[0]) { showMsg(msg, 'Choose a .txt or .md file.', 'error'); btn.disabled = false; return; }
+        var file = fileInput.files[0];
+        var content = await new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function() { resolve(reader.result); };
+          reader.onerror = function() { reject(reader.error); };
+          reader.readAsText(file);
+        });
+        payload.filename = file.name;
+        payload.title = file.name;
+        payload.content = content;
+      } else if (kbType === 'search') {
+        var query = document.getElementById('kbSearchQuery').value.trim();
+        if (!query) { showMsg(msg, 'Enter a search query.', 'error'); btn.disabled = false; return; }
+        payload.query = query;
+        payload.maxResults = parseInt(document.getElementById('kbSearchMax').value, 10) || 5;
+      }
+
+      var resp = await fetch('/api/admin/kb/ingest', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      var data = await resp.json();
+      if (!data.success) { showMsg(msg, data.error || 'Ingestion failed.', 'error'); btn.disabled = false; return; }
+
+      var summary = data.ingested.map(function(i) {
+        if (i.alreadyExists) return i.title + ' (already exists)';
+        return i.title + ' (' + i.chunks + ' chunks)';
+      }).join('\n');
+      showMsg(msg, 'Ingested:\n' + summary, 'success');
+
+      // Reset inputs
+      if (kbType === 'text') { document.getElementById('kbTextContent').value = ''; document.getElementById('kbTextTitle').value = ''; }
+      if (kbType === 'url') { document.getElementById('kbUrls').value = ''; }
+      if (kbType === 'file') { document.getElementById('kbFileInput').value = ''; }
+      if (kbType === 'search') { document.getElementById('kbSearchQuery').value = ''; }
+
+      loadSources();
+    } catch (e) {
+      showMsg(msg, 'Error: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function loadSources() {
+    var container = document.getElementById('kbSourcesList');
+    var status = document.getElementById('kbSourcesStatus');
+    container.innerHTML = '<p style="color:var(--muted);">Loading...</p>';
+    try {
+      var resp = await fetch('/api/admin/kb/sources');
+      var data = await resp.json();
+      if (!data.success) { container.innerHTML = '<p class="alert alert-error">' + esc(data.error || 'Failed.') + '</p>'; return; }
+      if (!data.sources.length) {
+        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem;">No sources yet. Add one on the left.</p>';
+        return;
+      }
+      container.innerHTML = '<table class="data-table"><thead><tr>' +
+        '<th>Title</th><th>Type</th><th>Chunks</th><th>Embedded</th><th>Added</th><th></th>' +
+        '</tr></thead><tbody>' + data.sources.map(function(s) {
+          var title = s.title;
+          if (s.sourceUrl) title = '<a href="' + esc(s.sourceUrl) + '" target="_blank" style="color:var(--accent);">' + esc(title) + '</a>';
+          else title = esc(title);
+          return '<tr>' +
+            '<td><strong>' + title + '</strong></td>' +
+            '<td><span class="badge badge-type">' + esc(s.type) + '</span></td>' +
+            '<td>' + s.chunkCount + '</td>' +
+            '<td>' + s.embeddedCount + (s.embeddedCount < s.chunkCount ? ' <span title="Some chunks have no embedding" style="color:#f59e0b;">⚠️</span>' : '') + '</td>' +
+            '<td>' + new Date(s.createdAt * 1000).toLocaleDateString() + '</td>' +
+            '<td><button class="action-btn btn-delete" onclick="deleteSource(' + s.id + ')">Delete</button></td>' +
+            '</tr>';
+        }).join('') + '</tbody></table>';
+      status.style.display = 'none';
+    } catch (e) {
+      container.innerHTML = '<p class="alert alert-error">Error: ' + esc(e.message) + '</p>';
+    }
+  }
+
+  async function deleteSource(id) {
+    if (!confirm('Delete this source and all its chunks? This cannot be undone.')) return;
+    try {
+      var resp = await fetch('/api/admin/kb/sources?id=' + id, { method: 'DELETE' });
+      var data = await resp.json();
+      if (!data.success) { alert(data.error || 'Delete failed.'); return; }
+      loadSources();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  async function testSearch() {
+    var query = document.getElementById('kbSearchTest').value.trim();
+    var results = document.getElementById('kbSearchResults');
+    if (!query) { results.innerHTML = ''; return; }
+    results.innerHTML = '<p style="color:var(--muted);">Searching...</p>';
+    try {
+      var resp = await fetch('/api/admin/kb/search', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query, topK: 5 })
+      });
+      var data = await resp.json();
+      if (!data.success) { results.innerHTML = '<p class="alert alert-error">' + esc(data.error) + '</p>'; return; }
+      if (!data.results.length) { results.innerHTML = '<p style="color:var(--muted);">No matching chunks.</p>'; return; }
+      results.innerHTML = data.results.map(function(r) {
+        return '<div class="kb-result">' +
+          '<div style="display:flex;justify-content:space-between;gap:0.5rem;">' +
+            '<strong>' + esc(r.title || '(untitled)') + '</strong>' +
+            '<span class="score">' + (r.score * 100).toFixed(1) + '% match</span>' +
+          '</div>' +
+          '<blockquote>' + esc(r.text.slice(0, 500)) + '</blockquote>' +
+          '</div>';
+      }).join('');
+    } catch (e) {
+      results.innerHTML = '<p class="alert alert-error">Error: ' + esc(e.message) + '</p>';
+    }
+  }
+
+  loadSources();
+</script>

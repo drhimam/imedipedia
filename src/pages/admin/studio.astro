@@ -49,6 +49,7 @@ if (Astro.request) {
       <span class="st-badge" id="stTypeBadge">Research Digest</span>
     </div>
     <div class="st-topbar-right">
+      <a href="/admin/kb" class="st-back" title="Manage evidence sources for grounded generation">📚 Knowledge Base</a>
       <span class="st-status" id="stStatus"></span>
     </div>
   </header>
@@ -124,6 +125,16 @@ if (Astro.request) {
         <div class="st-field">
           <label class="st-label">Fine-tune instructions <span class="st-hint">(optional)</span></label>
           <textarea id="stFineTune" class="st-input st-textarea" rows="3" placeholder="Additional fine-tuning: tone, length, audience, sections to emphasize, style…"></textarea>
+        </div>
+
+        <div class="st-field">
+          <label class="st-check" style="margin-bottom:0.4rem;">
+            <input type="checkbox" id="stGround" onchange="toggleGround()"> Ground in Knowledge Base (evidence-based)
+          </label>
+          <span class="st-hint">Retrieves the most relevant sources from the <a href="/admin/kb" style="color:var(--accent);">Knowledge Base</a> and cites them [1], [2]… in the article.</span>
+          <div id="stGroundOpts" style="display:none; margin-top:0.6rem;">
+            <input id="stGroundQuery" class="st-input" type="text" placeholder="Optional retrieval query (defaults to title + topic)" maxlength="300">
+          </div>
         </div>
 
         <div class="st-field" id="stCaseField" style="display:none;">
@@ -486,6 +497,11 @@ if (Astro.request) {
     catch (e) { alert('AI error: ' + e.message); return null; }
   }
 
+  function toggleGround() {
+    var checked = document.getElementById('stGround').checked;
+    document.getElementById('stGroundOpts').style.display = checked ? 'block' : 'none';
+  }
+
   // --- Full multi-step generation (body → refined title + TL;DR) ---
   async function generateArticle() {
     var title = document.getElementById('stTitle').value.trim();
@@ -514,6 +530,9 @@ if (Astro.request) {
           caseNotes: document.getElementById('stCaseNotes').value.trim(),
           guidelineVersion: document.getElementById('stGuidelineVersion').value.trim(),
           comparePrevious: document.getElementById('stComparePrevious').checked,
+          ground: document.getElementById('stGround').checked,
+          groundQuery: document.getElementById('stGroundQuery').value.trim(),
+          topK: 5,
         })
       });
       var data = await resp.json();
@@ -524,7 +543,10 @@ if (Astro.request) {
       document.getElementById('stDescription').value = data.description || '';
       savedSubmissionId = null;
       savedSubmissionHash = '';
-      showStatus('Generated title, TL;DR, and body. Review & edit, then preview or save.', true);
+      var groundedMsg = (data.sources && data.sources.length)
+        ? ' Grounded in ' + data.sources.length + ' KB source(s).'
+        : (document.getElementById('stGround').checked ? ' (No matching KB sources found — generated without grounding.)' : '');
+      showStatus('Generated title, TL;DR, and body.' + groundedMsg + ' Review & edit, then preview or save.', true);
     } catch (e) {
       showStatus('Error: ' + e.message, false);
     } finally {

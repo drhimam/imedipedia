@@ -92,3 +92,27 @@ CREATE TABLE IF NOT EXISTS totp_secrets (
     created_at INTEGER NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Knowledge Base Sources (evidence documents for RAG grounding)
+CREATE TABLE IF NOT EXISTS kb_sources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,            -- text | url | file | search
+    title TEXT DEFAULT '',
+    source_url TEXT DEFAULT '',
+    content_hash TEXT NOT NULL,
+    meta TEXT DEFAULT '{}',
+    created_by TEXT,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+-- Knowledge Base Chunks (embedding stored as JSON array in D1 for cosine retrieval)
+CREATE TABLE IF NOT EXISTS kb_chunks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_id INTEGER NOT NULL,
+    chunk_index INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    token_count INTEGER DEFAULT 0,
+    embedding TEXT DEFAULT '',     -- JSON array of floats
+    FOREIGN KEY (source_id) REFERENCES kb_sources(id) ON DELETE CASCADE
+);

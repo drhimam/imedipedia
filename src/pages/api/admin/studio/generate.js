@@ -1,6 +1,7 @@
 export const prerender = false;
 
 import { chatCompletion } from '../../../../lib/ai.js';
+import { retrieveChunks } from '../../../../lib/kb.js';
 
 // --- Auth ---
 async function getSessionUser(db, request) {
@@ -40,8 +41,26 @@ const TYPE_SYSTEM = {
     "questions with answers and explanations.",
 };
 
+function buildSourcesContext(sources) {
+  if (!Array.isArray(sources) || !sources.length) return '';
+  const lines = ['\nGROUNDING SOURCES (evidence to base the article on):'];
+  sources.forEach((s, i) => {
+    const label = s.title
+      ? `${s.title}${s.sourceUrl ? ' (' + s.sourceUrl + ')' : ''}`
+      : (s.sourceUrl || `Source ${i + 1}`);
+    lines.push(`\n[${i + 1}] ${label}\n${s.text}`);
+  });
+  lines.push(
+    '\nCiting rules: Ground factual claims in the sources above. When a claim comes from a source, ' +
+    'cite it inline with a bracketed number like [1] or [2] immediately after the relevant sentence. ' +
+    'Do NOT invent citations, statistics, or study identifiers beyond what the sources provide. ' +
+    'If the sources do not cover a point, write it as established general knowledge without a citation.'
+  );
+  return lines.join('\n');
+}
+
 function buildUserPrompt(input) {
-  const { type, title, topic, subjects, exams, brief, fineTune, caseNotes, guidelineVersion, comparePrevious } = input;
+  const { type, title, topic, subjects, exams, brief, fineTune, caseNotes, guidelineVersion, comparePrevious, sources } = input;
 
   const subjectsList = (Array.isArray(subjects) ? subjects : []).filter(Boolean).join(', ') || 'General Medicine';
   const examsList = (Array.isArray(exams) ? exams : []).filter(Boolean).join(', ') || '';
@@ -73,6 +92,9 @@ function buildUserPrompt(input) {
   if (examsList && type !== 'education') lines.push(`Relevant exams: ${examsList}.`);
   if (brief && brief.trim()) lines.push(`Editorial brief: ${brief.trim()}.`);
   if (fineTune && fineTune.trim()) lines.push(`Additional fine-tuning instructions: ${fineTune.trim()}.`);
+
+  const sourcesCtx = buildSourcesContext(sources);
+  if (sourcesCtx) lines.push(sourcesCtx);
 
   if (type === 'update') {
     lines.push('\nUse this Markdown structure:');
@@ -155,11 +177,30 @@ export async function POST({ request, locals }) {
   const env = locals.runtime?.env || {};
 
   try {
+    // Retrieve grounding chunks when evidence mode is on.
+    let sources = [];
+    if (input.ground) {
+      const query = (input.groundQuery || '').trim()
+        || [input.title, input.topic, input.brief].filter(Boolean).join(' ');
+      if (query) {
+        sources = await retrieveChunks(env, db, query, Math.min(Math.max(parseInt(input.topK, 10) || 5, 1), 10));
+      }
+    }
+
     const system = TYPE_SYSTEM[type];
-    const userPrompt = buildUserPrompt({ ...input, type });
+    const userPrompt = buildUserPrompt({ ...input, type, sources });
 
     // 1. Body
-    const body = await chatCompletion(env, { system, user: userPrompt, temperature: 0.7 });
+    let body = await chatCompletion(env, { system, user: userPrompt, temperature: 0.7 });
+
+    // Append a References section when grounded in KB evidence.
+    if (sources.length) {
+      const refs = sources.map((s, i) => {
+        const label = s.title ? s.title : (s.sourceUrl || `Source ${i + 1}`);
+        return `${i + 1}. ${s.sourceUrl ? `[${label}](${s.sourceUrl})` : label}`;
+      }).join('\n');
+      body = body.trim() + '\n\n## References\n\n' + refs;
+    }
 
     // 2. Refined title + TL;DR in parallel (both derive from the finished body)
     const [refinedTitle, description] = await Promise.all([
@@ -189,6 +230,7 @@ export async function POST({ request, locals }) {
       title: cleanTitle,
       description: cleanDescription,
       body: body.trim(),
+      sources: sources.map((s) => ({ title: s.title, sourceUrl: s.sourceUrl, score: s.score })),
     }), {
       status: 200, headers: { "Content-Type": "application/json" }
     });
