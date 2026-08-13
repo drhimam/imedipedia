@@ -76,3 +76,41 @@ export async function GET({ request, locals }) {
     });
   }
 }
+
+export async function PUT({ request, locals }) {
+  const db = locals.runtime?.env?.D1_DB || locals.runtime?.env?.DB;
+  if (!db) return new Response(JSON.stringify({ error: "Database binding missing." }), { status: 500 });
+  const user = await getSessionUser(db, request);
+  if (!user || !isAdmin(user)) return new Response(JSON.stringify({ error: "Forbidden." }), { status: 403 });
+
+  try {
+    const { id, full_name, email, role } = await request.json();
+    if (!id) return new Response(JSON.stringify({ error: "User ID required." }), { status: 400 });
+
+    await db.prepare(
+      "UPDATE users SET full_name = ?, email = ?, role = ? WHERE id = ?"
+    ).bind(full_name || '', email || '', role || 'user', id).run();
+
+    return new Response(JSON.stringify({ success: true, message: "User updated successfully." }), { status: 200 });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+  }
+}
+
+export async function DELETE({ request, locals }) {
+  const db = locals.runtime?.env?.D1_DB || locals.runtime?.env?.DB;
+  if (!db) return new Response(JSON.stringify({ error: "Database binding missing." }), { status: 500 });
+  const user = await getSessionUser(db, request);
+  if (!user || !isAdmin(user)) return new Response(JSON.stringify({ error: "Forbidden." }), { status: 403 });
+
+  try {
+    const { id } = await request.json();
+    if (!id) return new Response(JSON.stringify({ error: "User ID required." }), { status: 400 });
+
+    await db.prepare("DELETE FROM users WHERE id = ?").bind(id).run();
+    return new Response(JSON.stringify({ success: true, message: "User deleted." }), { status: 200 });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+  }
+}
+

@@ -507,6 +507,89 @@ if (Astro.request) {
         </div>
       </form>
     </div>
+  <!-- Edit Application Modal -->
+  <div class="view-modal-overlay" id="appEditModalOverlay" style="display:none;">
+    <div class="view-modal" style="max-width:600px;">
+      <div class="view-modal-header">
+        <button type="button" class="view-modal-close" onclick="closeAppEditModal()">&times;</button>
+        <h2>✏️ Edit Application</h2>
+      </div>
+      <div id="appEditStatus" class="alert" style="display:none;margin-bottom:1rem;"></div>
+      <form id="appEditForm" class="edit-modal-form" style="margin-top:1rem;" onsubmit="return false;">
+        <input type="hidden" id="appEditId">
+        <div class="form-group">
+          <label class="form-label">Applicant Name *</label>
+          <input type="text" class="form-input" id="appEditName" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" class="form-input" id="appEditEmail" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-input" id="appEditStatusVal">
+            <option value="pending">pending</option>
+            <option value="accepted">accepted</option>
+            <option value="rejected">rejected</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Writing Experience</label>
+          <input type="text" class="form-input" id="appEditExperience">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Portfolio Links</label>
+          <input type="text" class="form-input" id="appEditLinks">
+        </div>
+        <div class="form-group">
+          <label class="form-label">About Me</label>
+          <textarea class="form-input form-textarea" id="appEditAbout" style="min-height:100px;"></textarea>
+        </div>
+        <div class="edit-modal-actions">
+          <button type="button" class="topbar-btn" onclick="closeAppEditModal()" style="padding:0.6rem 1.25rem;">Cancel</button>
+          <button type="button" class="btn" id="appEditSaveBtn" onclick="saveAppEdit()">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit User Modal -->
+  <div class="view-modal-overlay" id="userEditModalOverlay" style="display:none;">
+    <div class="view-modal" style="max-width:550px;">
+      <div class="view-modal-header">
+        <button type="button" class="view-modal-close" onclick="closeUserEditModal()">&times;</button>
+        <h2>✏️ Edit User Profile</h2>
+      </div>
+      <div id="userEditStatus" class="alert" style="display:none;margin-bottom:1rem;"></div>
+      <form id="userEditForm" class="edit-modal-form" style="margin-top:1rem;" onsubmit="return false;">
+        <input type="hidden" id="userEditId">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" class="form-input" id="userEditUsername" disabled>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-input" id="userEditFullName">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="userEditEmail">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <select class="form-input" id="userEditRole">
+            <option value="admin">admin</option>
+            <option value="co-admin">co-admin</option>
+            <option value="contributor">contributor</option>
+            <option value="user">user</option>
+          </select>
+        </div>
+        <div class="edit-modal-actions">
+          <button type="button" class="topbar-btn" onclick="closeUserEditModal()" style="padding:0.6rem 1.25rem;">Cancel</button>
+          <button type="button" class="btn" id="userEditSaveBtn" onclick="saveUserEdit()">Save Changes</button>
+        </div>
+      </form>
+    </div>
   </div>
 
 </BaseLayout>
@@ -1020,6 +1103,8 @@ if (Astro.request) {
             <div class="dropdown">
               <button onclick="toggleDropdown('app-drop-${a.id}')" class="dropdown-btn">⋮</button>
               <div id="app-drop-${a.id}" class="dropdown-content">
+                <button onclick="viewApp('${appDataStr}')">👁 View</button>
+                <button onclick="editApp('${appDataStr}')">✏️ Edit</button>
                 ${a.status==='pending' ? `
                   <button onclick="reviewApp(${a.id},'accept')">✅ Accept</button>
                   <button onclick="reviewApp(${a.id},'reject')">❌ Reject</button>
@@ -2438,6 +2523,8 @@ if (Astro.request) {
             <div class="dropdown">
               <button onclick="toggleDropdown('user-drop-${u.id}')" class="dropdown-btn">⋮</button>
               <div id="user-drop-${u.id}" class="dropdown-content">
+                <button onclick="viewUser('${uDataStr}')">👁 View</button>
+                <button onclick="editUser('${uDataStr}')">✏️ Edit</button>
                 <button onclick="openEmailModal('${esc(u.email)}')">✉️ Send Email</button>
                 <button onclick="downloadUserAsText('${uDataStr}')">📄 Download Text</button>
                 <button onclick="downloadUserAsPdf('${uDataStr}')">📑 Download PDF</button>
@@ -2558,6 +2645,170 @@ if (Astro.request) {
           dropdowns[i].classList.remove('show');
         }
       }
+    }
+  };
+
+  // --- Application & User View / Edit Logic ---
+  window.viewApp = function(dataStr) {
+    const a = JSON.parse(decodeURIComponent(dataStr));
+    const modal = document.getElementById('adminViewModalContent');
+    const date = new Date(a.created_at * 1000).toLocaleDateString();
+    modal.innerHTML = `
+      <div class="view-modal-header">
+        <button class="view-modal-close" onclick="closeAdminViewModal()">&times;</button>
+        <h2>Application: ${esc(a.name)}</h2>
+        <div class="view-modal-meta">
+          <span><strong>Email:</strong> ${esc(a.email)}</span>
+          <span><strong>Status:</strong> <span class="badge badge-${a.status}">${a.status}</span></span>
+          <span><strong>Date:</strong> ${date}</span>
+        </div>
+        <div style="margin-top:1rem;">
+          <h4>About Me</h4>
+          <p style="color:var(--text);margin-bottom:0.75rem;">${esc(a.about_me || 'N/A').replace(/\n/g, '<br>')}</p>
+          <h4>Writing Experience</h4>
+          <p style="color:var(--text);margin-bottom:0.75rem;">${esc(a.writing_experience || 'N/A').replace(/\n/g, '<br>')}</p>
+          <h4>Portfolio Links</h4>
+          <p style="color:var(--text);">${esc(a.portfolio_links || 'N/A').replace(/\n/g, '<br>')}</p>
+        </div>
+      </div>`;
+    document.getElementById('adminViewModalOverlay').style.display = 'flex';
+  };
+
+  window.editApp = function(dataStr) {
+    const a = JSON.parse(decodeURIComponent(dataStr));
+    document.getElementById('appEditId').value = a.id;
+    document.getElementById('appEditName').value = a.name || '';
+    document.getElementById('appEditEmail').value = a.email || '';
+    document.getElementById('appEditStatusVal').value = a.status || 'pending';
+    document.getElementById('appEditExperience').value = a.writing_experience || '';
+    document.getElementById('appEditLinks').value = a.portfolio_links || '';
+    document.getElementById('appEditAbout').value = a.about_me || '';
+    document.getElementById('appEditStatus').style.display = 'none';
+    document.getElementById('appEditModalOverlay').style.display = 'flex';
+  };
+
+  window.closeAppEditModal = function() {
+    document.getElementById('appEditModalOverlay').style.display = 'none';
+  };
+
+  window.saveAppEdit = async function() {
+    const id = document.getElementById('appEditId').value;
+    const name = document.getElementById('appEditName').value.trim();
+    const email = document.getElementById('appEditEmail').value.trim();
+    const status = document.getElementById('appEditStatusVal').value;
+    const writing_experience = document.getElementById('appEditExperience').value.trim();
+    const portfolio_links = document.getElementById('appEditLinks').value.trim();
+    const about_me = document.getElementById('appEditAbout').value.trim();
+
+    if (!id || !name || !email) {
+      alert('Name and Email are required.');
+      return;
+    }
+
+    const btn = document.getElementById('appEditSaveBtn');
+    const statusEl = document.getElementById('appEditStatus');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    statusEl.style.display = 'none';
+
+    try {
+      const resp = await fetch('/api/admin/applications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name, email, status, writing_experience, portfolio_links, about_me })
+      });
+      const data = await resp.json();
+      statusEl.style.display = 'block';
+      if (data.success) {
+        statusEl.className = 'alert alert-success';
+        statusEl.textContent = data.message || 'Saved successfully.';
+        setTimeout(() => { closeAppEditModal(); loadApplications(); }, 800);
+      } else {
+        statusEl.className = 'alert alert-error';
+        statusEl.textContent = data.error || 'Failed to save.';
+      }
+    } catch(e) {
+      statusEl.style.display = 'block';
+      statusEl.className = 'alert alert-error';
+      statusEl.textContent = 'Error: ' + e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save Changes';
+    }
+  };
+
+  window.viewUser = function(dataStr) {
+    const u = JSON.parse(decodeURIComponent(dataStr));
+    const modal = document.getElementById('adminViewModalContent');
+    modal.innerHTML = `
+      <div class="view-modal-header">
+        <button class="view-modal-close" onclick="closeAdminViewModal()">&times;</button>
+        <h2>User Profile: ${esc(u.username)}</h2>
+        <div class="view-modal-meta">
+          <span><strong>Full Name:</strong> ${esc(u.full_name || 'N/A')}</span>
+          <span><strong>Email:</strong> ${esc(u.email || 'N/A')}</span>
+          <span><strong>Role:</strong> <span class="badge badge-pending">${esc(u.role)}</span></span>
+          <span><strong>MFA Enabled:</strong> ${u.mfa_enabled ? '✅ Yes' : '❌ No'}</span>
+        </div>
+      </div>`;
+    document.getElementById('adminViewModalOverlay').style.display = 'flex';
+  };
+
+  window.editUser = function(dataStr) {
+    const u = JSON.parse(decodeURIComponent(dataStr));
+    document.getElementById('userEditId').value = u.id;
+    document.getElementById('userEditUsername').value = u.username || '';
+    document.getElementById('userEditFullName').value = u.full_name || '';
+    document.getElementById('userEditEmail').value = u.email || '';
+    document.getElementById('userEditRole').value = u.role || 'user';
+    document.getElementById('userEditStatus').style.display = 'none';
+    document.getElementById('userEditModalOverlay').style.display = 'flex';
+  };
+
+  window.closeUserEditModal = function() {
+    document.getElementById('userEditModalOverlay').style.display = 'none';
+  };
+
+  window.saveUserEdit = async function() {
+    const id = document.getElementById('userEditId').value;
+    const full_name = document.getElementById('userEditFullName').value.trim();
+    const email = document.getElementById('userEditEmail').value.trim();
+    const role = document.getElementById('userEditRole').value;
+
+    if (!id) {
+      alert('User ID is required.');
+      return;
+    }
+
+    const btn = document.getElementById('userEditSaveBtn');
+    const statusEl = document.getElementById('userEditStatus');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    statusEl.style.display = 'none';
+
+    try {
+      const resp = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, full_name, email, role })
+      });
+      const data = await resp.json();
+      statusEl.style.display = 'block';
+      if (data.success) {
+        statusEl.className = 'alert alert-success';
+        statusEl.textContent = data.message || 'User updated successfully.';
+        setTimeout(() => { closeUserEditModal(); loadUsers(); }, 800);
+      } else {
+        statusEl.className = 'alert alert-error';
+        statusEl.textContent = data.error || 'Failed to update user.';
+      }
+    } catch(e) {
+      statusEl.style.display = 'block';
+      statusEl.className = 'alert alert-error';
+      statusEl.textContent = 'Error: ' + e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save Changes';
     }
   };
 

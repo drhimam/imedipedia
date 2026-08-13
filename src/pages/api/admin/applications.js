@@ -87,3 +87,41 @@ export async function GET({ request, locals }) {
     });
   }
 }
+
+export async function PUT({ request, locals }) {
+  const db = locals.runtime?.env?.D1_DB || locals.runtime?.env?.DB;
+  if (!db) return new Response(JSON.stringify({ error: "Database binding missing." }), { status: 500 });
+  const user = await getSessionUser(db, request);
+  if (!user || !isAdmin(user)) return new Response(JSON.stringify({ error: "Forbidden." }), { status: 403 });
+
+  try {
+    const { id, name, email, status, writing_experience, portfolio_links, about_me } = await request.json();
+    if (!id) return new Response(JSON.stringify({ error: "Application ID required." }), { status: 400 });
+
+    await db.prepare(
+      "UPDATE applications SET name = ?, email = ?, status = ?, writing_experience = ?, portfolio_links = ?, about_me = ? WHERE id = ?"
+    ).bind(name || '', email || '', status || 'pending', writing_experience || '', portfolio_links || '', about_me || '', id).run();
+
+    return new Response(JSON.stringify({ success: true, message: "Application updated successfully." }), { status: 200 });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+  }
+}
+
+export async function DELETE({ request, locals }) {
+  const db = locals.runtime?.env?.D1_DB || locals.runtime?.env?.DB;
+  if (!db) return new Response(JSON.stringify({ error: "Database binding missing." }), { status: 500 });
+  const user = await getSessionUser(db, request);
+  if (!user || !isAdmin(user)) return new Response(JSON.stringify({ error: "Forbidden." }), { status: 403 });
+
+  try {
+    const { id } = await request.json();
+    if (!id) return new Response(JSON.stringify({ error: "Application ID required." }), { status: 400 });
+
+    await db.prepare("DELETE FROM applications WHERE id = ?").bind(id).run();
+    return new Response(JSON.stringify({ success: true, message: "Application deleted." }), { status: 200 });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+  }
+}
+
