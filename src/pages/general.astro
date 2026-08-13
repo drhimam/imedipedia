@@ -157,6 +157,17 @@ if (activeSubject && activeTopic) {
 
   <div class="layout">
     <main class="left-panel">
+      <div class="weekly-digest-banner" style="background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08)); border: 1px solid var(--accent); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 1.6rem;">📬</span>
+          <div>
+            <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 1.1rem; color: var(--text);">Weekly Clinical Digest</h3>
+            <p style="margin: 0.2rem 0 0 0; font-size: 0.85rem; color: var(--muted);">Curated weekly clinical research summaries & board review pearls.</p>
+          </div>
+        </div>
+        <a href="/general?subject=Weekly+Digest" class="btn btn-sm" style="text-decoration: none; white-space: nowrap; padding: 0.5rem 1rem;">Browse Digests &rarr;</a>
+      </div>
+
       {selectedPost && Content ? (
         <article class="article-view">
           <header class="article-header">

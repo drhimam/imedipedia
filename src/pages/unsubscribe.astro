@@ -1,0 +1,56 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+export const prerender = false;
+
+const { searchParams } = Astro.url;
+const token = searchParams.get('token');
+
+let message = '';
+let isSuccess = false;
+
+if (token) {
+  const db = Astro.locals.runtime?.env?.D1_DB || Astro.locals.runtime?.env?.DB;
+  if (db) {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const sub = await db.prepare("SELECT * FROM subscribers WHERE unsubscribe_token = ?").bind(token).first();
+      if (sub) {
+        await db.prepare("UPDATE subscribers SET unsubscribed_at = ? WHERE unsubscribe_token = ?").bind(now, token).run();
+        message = `You (${sub.email}) have been successfully unsubscribed from the iMedipedia Weekly Digest.`;
+        isSuccess = true;
+      } else {
+        message = 'Invalid or expired unsubscribe token.';
+      }
+    } catch (e) {
+      message = 'An error occurred while processing your request.';
+    }
+  } else {
+    message = 'Database unavailable.';
+  }
+} else {
+  message = 'No unsubscribe token provided.';
+}
+---
+
+<BaseLayout title="Unsubscribe - iMedipedia Digest" currentPage="unsubscribe">
+  <div style="max-width: 600px; margin: 4rem auto; padding: 2rem 1.5rem; text-align: center;">
+    <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 3rem 2rem;">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">{isSuccess ? '📬' : '⚠️'}</div>
+      <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.8rem; margin-bottom: 1rem; color: var(--text);">
+        {isSuccess ? 'Unsubscribed Successfully' : 'Unsubscribe Digest'}
+      </h1>
+      <p style="color: var(--muted); font-size: 1.05rem; line-height: 1.6; margin-bottom: 2rem;">
+        {message}
+      </p>
+      {isSuccess && (
+        <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem;">
+          We're sorry to see you go! If you ever wish to re-subscribe, you can easily sign up again from our homepage footer.
+        </p>
+      )}
+      <a href="/" class="btn" style="display: inline-block; text-decoration: none; padding: 0.75rem 1.75rem;">
+        Return to Home Page
+      </a>
+    </div>
+  </div>
+</BaseLayout>

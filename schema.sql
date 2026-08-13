@@ -116,3 +116,26 @@ CREATE TABLE IF NOT EXISTS kb_chunks (
     embedding TEXT DEFAULT '',     -- JSON array of floats
     FOREIGN KEY (source_id) REFERENCES kb_sources(id) ON DELETE CASCADE
 );
+
+-- Subscribers Table
+CREATE TABLE IF NOT EXISTS subscribers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    name TEXT DEFAULT '',
+    subscribed_at INTEGER NOT NULL,
+    unsubscribe_token TEXT NOT NULL UNIQUE,
+    unsubscribed_at INTEGER
+);
+
+-- Newsletters Table
+CREATE TABLE IF NOT EXISTS newsletters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    issue_number INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body_md TEXT NOT NULL,
+    status TEXT DEFAULT 'draft',   -- draft | sent
+    sent_at INTEGER,
+    created_at INTEGER NOT NULL
+);
+

@@ -754,10 +754,52 @@ const { title, description, currentPage } = Astro.props;
         <div>
           <h4 class="footer-heading">Subscribe to Digest</h4>
           <p class="footer-text" style="font-size: 0.85rem;">Get weekly clinical summaries and board questions straight to your inbox.</p>
-          <form class="footer-subscribe-form" onsubmit="event.preventDefault(); alert('Subscribed successfully!'); this.reset();">
-            <input type="email" placeholder="professional@email.com" class="footer-input" required style="outline: none;" />
-            <button type="submit" class="footer-btn">Join</button>
+          <form class="footer-subscribe-form" onsubmit="handleFooterSubscribe(event)">
+            <input type="email" id="footerEmailInput" placeholder="professional@email.com" class="footer-input" required style="outline: none;" />
+            <button type="submit" id="footerSubscribeBtn" class="footer-btn">Join</button>
           </form>
+          <p id="footerSubscribeStatus" style="display:none;font-size:0.8rem;margin-top:0.5rem;"></p>
+          <script is:inline>
+            async function handleFooterSubscribe(e) {
+              e.preventDefault();
+              const input = document.getElementById('footerEmailInput');
+              const btn = document.getElementById('footerSubscribeBtn');
+              const status = document.getElementById('footerSubscribeStatus');
+              const email = input ? input.value.trim() : '';
+              if (!email) return;
+
+              if (btn) { btn.disabled = true; btn.textContent = '...'; }
+              if (status) status.style.display = 'none';
+
+              try {
+                const resp = await fetch('/api/subscribe', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email })
+                });
+                const data = await resp.json();
+                if (status) {
+                  status.style.display = 'block';
+                  if (data.success) {
+                    status.style.color = '#10b981';
+                    status.textContent = '✅ ' + (data.message || 'Subscribed successfully!');
+                    if (input) input.value = '';
+                  } else {
+                    status.style.color = '#ef4444';
+                    status.textContent = '❌ ' + (data.error || 'Failed to subscribe.');
+                  }
+                }
+              } catch(err) {
+                if (status) {
+                  status.style.display = 'block';
+                  status.style.color = '#ef4444';
+                  status.textContent = '❌ Error submitting subscription.';
+                }
+              } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Join'; }
+              }
+            }
+          </script>
         </div>
       </div>
 

@@ -290,6 +290,48 @@ export function buildPasswordResetEmail({ name, resetUrl }) {
   });
 }
 
+export function buildNewsletterWelcomeEmail({ email, unsubscribeUrl }) {
+  const content = `
+    <h2 style="margin:0 0 8px;color:${TEXT_COLOR};font-size:22px;">Welcome to the iMedipedia Digest! 📬</h2>
+    <p style="margin:0 0 16px;color:${MUTED_COLOR};font-size:15px;line-height:1.6;">
+      Thank you for subscribing to the iMedipedia Weekly Research Digest! You are now set to receive our curated clinical updates, board review questions, and medical summaries straight to your inbox.
+    </p>
+
+    ${buildInfoBox(`
+      <strong>Subscribed Email:</strong> ${escapeHTML(email)}<br>
+      You will receive our weekly clinical digest every week.
+    `, 'success')}
+
+    <p style="margin:24px 0 0;font-size:12px;color:${MUTED_COLOR};text-align:center;">
+      Changed your mind? You can <a href="${escapeHTML(unsubscribeUrl)}" style="color:${BRAND_COLOR};text-decoration:underline;">unsubscribe at any time</a>.
+    </p>
+  `;
+  return buildEmail({
+    subject: 'Welcome to iMedipedia Weekly Research Digest',
+    preview: 'You are now subscribed to receive weekly clinical summaries from iMedipedia.',
+    content,
+  });
+}
+
+export function buildNewsletterEmail({ title, subject, htmlBody, unsubscribeUrl }) {
+  const content = `
+    <h2 style="margin:0 0 12px;color:${TEXT_COLOR};font-size:24px;line-height:1.3;">${escapeHTML(title)}</h2>
+    <div style="font-size:15px;line-height:1.7;color:${TEXT_COLOR};margin-bottom:24px;">
+      ${htmlBody}
+    </div>
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;">
+    <p style="margin:0;font-size:12px;color:${MUTED_COLOR};text-align:center;">
+      You received this email because you subscribed to the iMedipedia Weekly Digest.<br>
+      <a href="${escapeHTML(unsubscribeUrl)}" style="color:${BRAND_COLOR};text-decoration:underline;">Unsubscribe from this newsletter</a>
+    </p>
+  `;
+  return buildEmail({
+    subject,
+    preview: title,
+    content,
+  });
+}
+
 function escapeHTML(str) {
   if (!str) return '';
   return String(str)
@@ -301,3 +343,4 @@ function escapeHTML(str) {
 }
 
 export { escapeHTML };
+

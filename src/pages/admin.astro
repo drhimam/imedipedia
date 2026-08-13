@@ -181,6 +181,7 @@ if (Astro.request) {
       <button class="tab-nav-btn" data-main-tab="articles">Articles</button>
       <button class="tab-nav-btn" data-main-tab="images">Images</button>
       <button class="tab-nav-btn" data-main-tab="users">Users</button>
+      <button class="tab-nav-btn" data-main-tab="newsletters">Newsletters</button>
       <button class="tab-nav-btn" data-main-tab="subjects">Subjects</button>
       <button class="tab-nav-btn" data-main-tab="exams">Exams</button>
     </nav>
@@ -228,6 +229,38 @@ if (Astro.request) {
     <div class="tab-panel" id="tab-users">
       <div id="usersStatus" class="alert alert-info" style="margin-bottom:1rem;display:none;"></div>
       <div id="usersTable" style="overflow-x:auto;"></div>
+    </div>
+
+    <!-- Newsletters Tab -->
+    <div class="tab-panel" id="tab-newsletters">
+      <div id="newslettersStatus" class="alert alert-info" style="margin-bottom:1rem;display:none;"></div>
+      
+      <!-- Metrics Row -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:1rem;margin-bottom:1.5rem;">
+        <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center;">
+          <span style="font-size:0.85rem;color:var(--muted);text-transform:uppercase;font-weight:600;">Active Subscribers</span>
+          <h2 id="activeSubCount" style="font-size:2rem;margin:0.5rem 0 0 0;color:var(--accent);">0</h2>
+        </div>
+        <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center;">
+          <span style="font-size:0.85rem;color:var(--muted);text-transform:uppercase;font-weight:600;">Total Signups</span>
+          <h2 id="totalSubCount" style="font-size:2rem;margin:0.5rem 0 0 0;">0</h2>
+        </div>
+        <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center;">
+          <span style="font-size:0.85rem;color:var(--muted);text-transform:uppercase;font-weight:600;">Unsubscribed</span>
+          <h2 id="unsubCount" style="font-size:2rem;margin:0.5rem 0 0 0;color:#ef4444;">0</h2>
+        </div>
+      </div>
+
+      <!-- Action Bar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+        <h3 style="font-family:'Outfit',sans-serif;margin:0;font-size:1.3rem;">Weekly Digest Issues</h3>
+        <button class="btn btn-sm" id="generateDigestBtn" onclick="generateWeeklyDigest()">✨ Generate New Issue (AI)</button>
+      </div>
+
+      <div id="newslettersTable" style="overflow-x:auto;margin-bottom:2.5rem;"></div>
+
+      <h3 style="font-family:'Outfit',sans-serif;margin:0 0 1rem 0;font-size:1.2rem;">Subscriber Directory</h3>
+      <div id="subscribersTable" style="overflow-x:auto;"></div>
     </div>
 
     <!-- Subjects Tab -->
@@ -918,6 +951,7 @@ if (Astro.request) {
       else if (tab === 'articles') loadArticles();
       else if (tab === 'images') loadImages();
       else if (tab === 'users') loadUsers();
+      else if (tab === 'newsletters') loadNewsletters();
       else if (tab === 'subjects') loadSubjects();
       else if (tab === 'exams') loadExams();
     });
@@ -2904,6 +2938,135 @@ if (Astro.request) {
     } finally {
       btn.disabled = false;
       btn.textContent = 'Save Changes';
+    }
+  };
+
+  // --- Newsletter Functions ---
+  async function loadNewsletters() {
+    const tableDiv = document.getElementById('newslettersTable');
+    const subsDiv = document.getElementById('subscribersTable');
+    const statusEl = document.getElementById('newslettersStatus');
+    if (!tableDiv || !subsDiv) return;
+
+    tableDiv.innerHTML = '<p style="color:var(--muted);">Loading newsletter issues...</p>';
+    subsDiv.innerHTML = '<p style="color:var(--muted);">Loading subscribers...</p>';
+
+    try {
+      const resp = await fetch('/api/admin/newsletter/list');
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        tableDiv.innerHTML = `<p class="alert alert-error">${esc(data.error || 'Failed to load newsletters.')}</p>`;
+        return;
+      }
+
+      // Update metrics
+      document.getElementById('activeSubCount').textContent = data.stats?.active || 0;
+      document.getElementById('totalSubCount').textContent = data.stats?.total || 0;
+      document.getElementById('unsubCount').textContent = data.stats?.unsubscribed || 0;
+
+      // Render Newsletters Table
+      const issues = data.newsletters || [];
+      if (issues.length === 0) {
+        tableDiv.innerHTML = '<p style="color:var(--muted);">No digest issues created yet. Click "Generate New Issue" above!</p>';
+      } else {
+        let html = `<table class="data-table"><thead><tr>
+          <th>Issue #</th><th>Title</th><th>Subject</th><th>Status</th><th>Created</th><th>Actions</th>
+        </tr></thead><tbody>`;
+
+        issues.forEach(iss => {
+          html += `<tr>
+            <td><strong>#${iss.issue_number}</strong></td>
+            <td><strong class="truncate" style="max-width:220px;">${esc(iss.title)}</strong></td>
+            <td><span class="truncate" style="max-width:250px;">${esc(iss.subject)}</span></td>
+            <td><span class="badge badge-${iss.status === 'sent' ? 'approved' : 'pending'}">${iss.status}</span></td>
+            <td>${new Date(iss.created_at * 1000).toLocaleDateString()}</td>
+            <td>
+              <div class="dropdown">
+                <button onclick="toggleDropdown('nl-drop-${iss.id}')" class="dropdown-btn">⋮</button>
+                <div id="nl-drop-${iss.id}" class="dropdown-content">
+                  <button onclick="sendNewsletter(${iss.id})">📧 Send to Subscribers (SES)</button>
+                  <button onclick="publishNewsletter(${iss.id})">🚀 Publish to /general</button>
+                </div>
+              </div>
+            </td>
+          </tr>`;
+        });
+        html += `</tbody></table>`;
+        tableDiv.innerHTML = html;
+      }
+
+      // Render Subscribers Table
+      const subs = data.subscribers || [];
+      if (subs.length === 0) {
+        subsDiv.innerHTML = '<p style="color:var(--muted);">No subscribers yet.</p>';
+      } else {
+        let sHtml = `<table class="data-table"><thead><tr>
+          <th>Email</th><th>Name</th><th>Subscribed Date</th><th>Status</th>
+        </tr></thead><tbody>`;
+
+        subs.forEach(s => {
+          const isUnsub = !!s.unsubscribed_at;
+          sHtml += `<tr>
+            <td><strong>${esc(s.email)}</strong></td>
+            <td>${esc(s.name || 'N/A')}</td>
+            <td>${new Date(s.subscribed_at * 1000).toLocaleDateString()}</td>
+            <td><span class="badge badge-${isUnsub ? 'rejected' : 'approved'}">${isUnsub ? 'Unsubscribed' : 'Active'}</span></td>
+          </tr>`;
+        });
+        sHtml += `</tbody></table>`;
+        subsDiv.innerHTML = sHtml;
+      }
+
+    } catch (e) {
+      tableDiv.innerHTML = `<p class="alert alert-error">Error: ${esc(e.message)}</p>`;
+    }
+  }
+
+  window.generateWeeklyDigest = async function() {
+    const btn = document.getElementById('generateDigestBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '✨ Synthesizing Digest...'; }
+
+    try {
+      const resp = await fetch('/api/admin/newsletter/generate', { method: 'POST' });
+      const data = await resp.json();
+      alert(data.message || data.error);
+      loadNewsletters();
+    } catch(e) {
+      alert('Error: ' + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '✨ Generate New Issue (AI)'; }
+    }
+  };
+
+  window.sendNewsletter = async function(id) {
+    if (!confirm('Send this digest issue via AWS SES batch to all active subscribers?')) return;
+    try {
+      const resp = await fetch('/api/admin/newsletter/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newsletterId: id })
+      });
+      const data = await resp.json();
+      alert(data.message || data.error);
+      loadNewsletters();
+    } catch(e) {
+      alert('Error: ' + e.message);
+    }
+  };
+
+  window.publishNewsletter = async function(id) {
+    if (!confirm('Publish this digest issue as a blog post on /general?')) return;
+    try {
+      const resp = await fetch('/api/admin/newsletter/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newsletterId: id })
+      });
+      const data = await resp.json();
+      alert(data.message || data.error);
+    } catch(e) {
+      alert('Error: ' + e.message);
     }
   };
 
