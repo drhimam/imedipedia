@@ -41,6 +41,35 @@ const TYPE_SYSTEM = {
     "questions with answers and explanations.",
 };
 
+/**
+ * Build a context block from inline Studio attachments (text, URLs, files, YouTube, etc.).
+ * This is injected BEFORE grounding sources in the prompt.
+ */
+function buildContextBlock(contextItems) {
+  if (!Array.isArray(contextItems) || !contextItems.length) return '';
+  const MAX_TOTAL = 200000;
+  const MAX_PER_ITEM = 50000;
+  let totalChars = 0;
+
+  const lines = ['\nCONTEXT PROVIDED BY THE AUTHOR (reference material for this article):'];
+  for (let i = 0; i < contextItems.length; i++) {
+    const item = contextItems[i];
+    const label = item.title || `Context ${i + 1}`;
+    let content = (item.content || '').slice(0, MAX_PER_ITEM);
+    if (totalChars + content.length > MAX_TOTAL) {
+      content = content.slice(0, MAX_TOTAL - totalChars);
+    }
+    if (!content) break;
+    lines.push(`\n--- ${label} ---\n${content}`);
+    totalChars += content.length;
+  }
+  lines.push(
+    '\nUse the above context as reference material when writing the article. ' +
+    'Draw on it where relevant, but write the article in your own professional voice.'
+  );
+  return lines.join('\n');
+}
+
 function buildSourcesContext(sources) {
   if (!Array.isArray(sources) || !sources.length) return '';
   const lines = ['\nGROUNDING SOURCES (evidence to base the article on):'];
@@ -60,7 +89,7 @@ function buildSourcesContext(sources) {
 }
 
 function buildUserPrompt(input) {
-  const { type, title, topic, subjects, exams, brief, fineTune, caseNotes, guidelineVersion, comparePrevious, sources } = input;
+  const { type, title, topic, subjects, exams, brief, fineTune, caseNotes, guidelineVersion, comparePrevious, sources, context } = input;
 
   const subjectsList = (Array.isArray(subjects) ? subjects : []).filter(Boolean).join(', ') || 'General Medicine';
   const examsList = (Array.isArray(exams) ? exams : []).filter(Boolean).join(', ') || '';
@@ -92,6 +121,9 @@ function buildUserPrompt(input) {
   if (examsList && type !== 'education') lines.push(`Relevant exams: ${examsList}.`);
   if (brief && brief.trim()) lines.push(`Editorial brief: ${brief.trim()}.`);
   if (fineTune && fineTune.trim()) lines.push(`Additional fine-tuning instructions: ${fineTune.trim()}.`);
+
+  const contextCtx = buildContextBlock(context);
+  if (contextCtx) lines.push(contextCtx);
 
   const sourcesCtx = buildSourcesContext(sources);
   if (sourcesCtx) lines.push(sourcesCtx);

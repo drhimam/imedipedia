@@ -162,9 +162,30 @@ declare module 'astro:content' {
   collection: "blog";
   data: any
 } & { render(): Render[".md"] };
+"2026/08/cell-injury.md": {
+	id: "2026/08/cell-injury.md";
+  slug: "2026/08/cell-injury";
+  body: string;
+  collection: "blog";
+  data: any
+} & { render(): Render[".md"] };
+"2026/08/cellular-adaptation-in-pathology-board-review-of-atrophy-hypertrophy-hyperplasia.md": {
+	id: "2026/08/cellular-adaptation-in-pathology-board-review-of-atrophy-hypertrophy-hyperplasia.md";
+  slug: "2026/08/cellular-adaptation-in-pathology-board-review-of-atrophy-hypertrophy-hyperplasia";
+  body: string;
+  collection: "blog";
+  data: any
+} & { render(): Render[".md"] };
 "2026/08/crispr-sickle-cell.md": {
 	id: "2026/08/crispr-sickle-cell.md";
   slug: "2026/08/crispr-sickle-cell";
+  body: string;
+  collection: "blog";
+  data: any
+} & { render(): Render[".md"] };
+"2026/08/electromagnetic-radiation-and-ct-physics-for-frcr-part-1.md": {
+	id: "2026/08/electromagnetic-radiation-and-ct-physics-for-frcr-part-1.md";
+  slug: "2026/08/electromagnetic-radiation-and-ct-physics-for-frcr-part-1";
   body: string;
   collection: "blog";
   data: any
@@ -204,6 +225,20 @@ declare module 'astro:content' {
   collection: "blog";
   data: any
 } & { render(): Render[".md"] };
+"2026/08/physical-properties-of-ultrasound-a-board-review-for-ardms-and-frcr-exams.md": {
+	id: "2026/08/physical-properties-of-ultrasound-a-board-review-for-ardms-and-frcr-exams.md";
+  slug: "2026/08/physical-properties-of-ultrasound-a-board-review-for-ardms-and-frcr-exams";
+  body: string;
+  collection: "blog";
+  data: any
+} & { render(): Render[".md"] };
+"2026/08/piezoelectric-effect-a-cme-board-review-for-sonography-and-radiology.md": {
+	id: "2026/08/piezoelectric-effect-a-cme-board-review-for-sonography-and-radiology.md";
+  slug: "2026/08/piezoelectric-effect-a-cme-board-review-for-sonography-and-radiology";
+  body: string;
+  collection: "blog";
+  data: any
+} & { render(): Render[".md"] };
 "2026/08/rare-manifestation-takotsubo-cardiomyopathy.md": {
 	id: "2026/08/rare-manifestation-takotsubo-cardiomyopathy.md";
   slug: "2026/08/rare-manifestation-takotsubo-cardiomyopathy";
@@ -214,6 +249,13 @@ declare module 'astro:content' {
 "2026/08/robotic-assisted-minimally-invasive-surgery.md": {
 	id: "2026/08/robotic-assisted-minimally-invasive-surgery.md";
   slug: "2026/08/robotic-assisted-minimally-invasive-surgery";
+  body: string;
+  collection: "blog";
+  data: any
+} & { render(): Render[".md"] };
+"2026/08/single-transducer-probe-physics-types-and-clinical-applications.md": {
+	id: "2026/08/single-transducer-probe-physics-types-and-clinical-applications.md";
+  slug: "2026/08/single-transducer-probe-physics-types-and-clinical-applications";
   body: string;
   collection: "blog";
   data: any

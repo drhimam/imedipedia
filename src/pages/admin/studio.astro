@@ -116,7 +116,72 @@ if (Astro.request) {
         <div class="st-field" id="stCompareField" style="display:none;">
           <label class="st-check"><input type="checkbox" id="stComparePrevious"> Compare vs previous version</label>
         </div>
+      </section>
 
+      <section class="st-card">
+        <h3 class="st-card-title">📎 Context <span class="st-hint" style="text-transform:none;font-weight:400;">(attach source material for this article)</span></h3>
+
+        <!-- Attached items list -->
+        <div id="stContextList" class="st-context-list"></div>
+        <div id="stContextStats" class="st-context-stats" style="display:none;"></div>
+
+        <!-- Source type tabs -->
+        <div class="st-context-tabs" id="stContextTabs">
+          <button class="st-ctx-tab active" data-ctx-type="text" onclick="setCtxTab('text')">📝 Text</button>
+          <button class="st-ctx-tab" data-ctx-type="file" onclick="setCtxTab('file')">📄 File</button>
+          <button class="st-ctx-tab" data-ctx-type="url" onclick="setCtxTab('url')">🔗 URL</button>
+          <button class="st-ctx-tab" data-ctx-type="youtube" onclick="setCtxTab('youtube')">🎬 YouTube</button>
+        </div>
+
+        <!-- Text panel -->
+        <div id="stCtxPanel-text" class="st-ctx-panel">
+          <div class="st-field" style="margin-bottom:0.5rem;">
+            <input id="stCtxTextTitle" class="st-input" type="text" placeholder="Title (optional)" maxlength="200">
+          </div>
+          <div class="st-field" style="margin-bottom:0.5rem;">
+            <textarea id="stCtxTextContent" class="st-input st-textarea" rows="4" placeholder="Paste reference text, notes, or transcript here…"></textarea>
+          </div>
+          <button class="st-btn st-btn-sm" onclick="addTextContext()">+ Add text</button>
+        </div>
+
+        <!-- File panel -->
+        <div id="stCtxPanel-file" class="st-ctx-panel" style="display:none;">
+          <div class="st-field" style="margin-bottom:0.5rem;">
+            <label class="st-btn st-btn-secondary st-btn-sm" for="stCtxFileInput" style="cursor:pointer;text-align:center;display:inline-block;">📄 Choose file…</label>
+            <input type="file" id="stCtxFileInput" accept=".txt,.md,.pdf,.docx,.pptx,.doc,.xls,.xlsx,image/*" style="display:none;" onchange="handleFileContext(this)">
+            <span class="st-hint" style="display:block;margin-top:0.4rem;">Supports: .txt, .md, .pdf, .docx, .pptx, and images (PNG/JPEG/AVIF)</span>
+          </div>
+          <div id="stCtxFileStatus" class="st-ctx-file-status" style="display:none;"></div>
+        </div>
+
+        <!-- URL panel -->
+        <div id="stCtxPanel-url" class="st-ctx-panel" style="display:none;">
+          <div class="st-field" style="margin-bottom:0.5rem;">
+            <div style="display:flex;gap:0.5rem;">
+              <input id="stCtxUrlInput" class="st-input" type="url" placeholder="https://example.com/article" style="flex:1;">
+              <button class="st-btn st-btn-sm" onclick="addUrlContext()" id="stCtxUrlBtn">🔗 Fetch</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- YouTube panel -->
+        <div id="stCtxPanel-youtube" class="st-ctx-panel" style="display:none;">
+          <div class="st-field" style="margin-bottom:0.5rem;">
+            <div style="display:flex;gap:0.5rem;">
+              <input id="stCtxYtInput" class="st-input" type="url" placeholder="https://youtube.com/watch?v=..." style="flex:1;">
+              <button class="st-btn st-btn-sm" onclick="addYouTubeContext()" id="stCtxYtBtn">🎬 Fetch</button>
+            </div>
+          </div>
+          <div id="stCtxYtFallback" class="st-ctx-fallback" style="display:none;">
+            <div class="st-ctx-fallback-msg">⚠️ Could not fetch the transcript automatically. Paste it manually below:</div>
+            <textarea id="stCtxYtManual" class="st-input st-textarea" rows="4" placeholder="Paste the YouTube transcript here…"></textarea>
+            <button class="st-btn st-btn-sm" onclick="addYtManualContext()" style="margin-top:0.4rem;">+ Add transcript</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="st-card">
+        <h3 class="st-card-title">Details <span class="st-hint" style="text-transform:none;font-weight:400;">(continued)</span></h3>
         <div class="st-field">
           <label class="st-label">Brief / instructions</label>
           <textarea id="stBrief" class="st-input st-textarea" rows="3" placeholder="Optional editorial guidance for the AI…"></textarea>
@@ -328,6 +393,51 @@ if (Astro.request) {
   .article-body hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
   .article-body img { max-width: 100%; border-radius: 8px; }
 
+  /* ===== Context attachments ===== */
+  .st-context-list { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }
+  .st-context-item {
+    display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.65rem;
+    background: rgba(13, 148, 136, 0.06); border: 1px solid rgba(13, 148, 136, 0.15);
+    border-radius: 8px; font-size: 0.82rem; transition: all 0.15s;
+  }
+  .st-context-item:hover { border-color: var(--accent); }
+  .st-context-icon { font-size: 1rem; flex-shrink: 0; }
+  .st-context-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .st-context-chars { font-size: 0.7rem; color: var(--muted); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .st-context-remove {
+    background: transparent; border: none; color: var(--muted); cursor: pointer;
+    font-size: 1rem; line-height: 1; padding: 0; width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center; border-radius: 50%;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .st-context-remove:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+
+  .st-context-tabs { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .st-ctx-tab {
+    background: rgba(0,0,0,0.08); border: 1px solid var(--border); color: var(--muted);
+    padding: 0.35rem 0.65rem; border-radius: 6px; cursor: pointer; font-size: 0.78rem;
+    font-weight: 600; font-family: inherit; transition: all 0.15s;
+  }
+  .st-ctx-tab:hover { border-color: var(--accent); color: var(--text); }
+  .st-ctx-tab.active { background: rgba(13, 148, 136, 0.08); border-color: var(--accent); color: var(--accent); }
+
+  .st-ctx-panel { margin-bottom: 0.5rem; }
+
+  .st-context-stats {
+    font-size: 0.72rem; color: var(--muted); padding: 0.4rem 0.65rem;
+    background: rgba(0,0,0,0.04); border-radius: 6px; margin-bottom: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .st-context-stats.st-ctx-warn { color: #f59e0b; background: rgba(245,158,11,0.08); }
+
+  .st-ctx-fallback { margin-top: 0.5rem; }
+  .st-ctx-fallback-msg {
+    font-size: 0.8rem; color: #f59e0b; margin-bottom: 0.5rem; font-weight: 500;
+    padding: 0.5rem 0.65rem; background: rgba(245,158,11,0.08); border-radius: 6px;
+    border: 1px solid rgba(245,158,11,0.2);
+  }
+  .st-ctx-file-status { font-size: 0.8rem; padding: 0.4rem 0.65rem; border-radius: 6px; margin-bottom: 0.5rem; }
+
   @media (max-width: 900px) {
     .st-main { grid-template-columns: 1fr; }
     .st-config { position: static; }
@@ -502,6 +612,253 @@ if (Astro.request) {
     document.getElementById('stGroundOpts').style.display = checked ? 'block' : 'none';
   }
 
+  // ========== CONTEXT ATTACHMENTS ==========
+  var studioContext = [];
+  var ctxIdCounter = 0;
+  var CTX_MAX_PER_ITEM = 50000;
+  var CTX_MAX_TOTAL = 200000;
+
+  var CTX_ICONS = { text: '📝', file: '📄', url: '🔗', youtube: '🎬' };
+
+  function ctxTotalChars() {
+    var total = 0;
+    for (var i = 0; i < studioContext.length; i++) total += studioContext[i].charCount;
+    return total;
+  }
+
+  function renderContextList() {
+    var container = document.getElementById('stContextList');
+    if (!studioContext.length) {
+      container.innerHTML = '';
+      document.getElementById('stContextStats').style.display = 'none';
+      return;
+    }
+    container.innerHTML = studioContext.map(function(item) {
+      var icon = CTX_ICONS[item.type] || '📎';
+      var chars = item.charCount >= 1000
+        ? (item.charCount / 1000).toFixed(1) + 'K chars'
+        : item.charCount + ' chars';
+      return '<div class="st-context-item">' +
+        '<span class="st-context-icon">' + icon + '</span>' +
+        '<span class="st-context-title">' + esc(item.title) + '</span>' +
+        '<span class="st-context-chars">' + chars + '</span>' +
+        '<button class="st-context-remove" onclick="removeContext(\'' + item.id + '\')" title="Remove">&times;</button>' +
+        '</div>';
+    }).join('');
+
+    // Stats bar
+    var total = ctxTotalChars();
+    var tokens = Math.ceil(total / 4);
+    var statsEl = document.getElementById('stContextStats');
+    statsEl.textContent = studioContext.length + ' item' + (studioContext.length > 1 ? 's' : '') +
+      ' · ~' + total.toLocaleString() + ' chars (est. ~' + tokens.toLocaleString() + ' tokens)';
+    statsEl.className = 'st-context-stats' + (total > CTX_MAX_TOTAL * 0.8 ? ' st-ctx-warn' : '');
+    statsEl.style.display = '';
+  }
+
+  function addContextItem(item) {
+    if (!item.content || !item.content.trim()) { showStatus('No content to add.', false); return; }
+    var content = item.content;
+    if (content.length > CTX_MAX_PER_ITEM) {
+      content = content.slice(0, CTX_MAX_PER_ITEM);
+      showStatus('Content truncated to ' + CTX_MAX_PER_ITEM.toLocaleString() + ' chars.', true);
+    }
+    var total = ctxTotalChars();
+    if (total + content.length > CTX_MAX_TOTAL) {
+      var remain = CTX_MAX_TOTAL - total;
+      if (remain <= 0) { showStatus('Context limit reached (' + CTX_MAX_TOTAL.toLocaleString() + ' chars). Remove items to add more.', false); return; }
+      content = content.slice(0, remain);
+      showStatus('Content truncated to fit the ' + CTX_MAX_TOTAL.toLocaleString() + ' char limit.', true);
+    }
+    ctxIdCounter++;
+    studioContext.push({
+      id: 'ctx-' + ctxIdCounter,
+      type: item.type || 'text',
+      title: (item.title || 'Untitled').slice(0, 200),
+      content: content,
+      charCount: content.length,
+    });
+    renderContextList();
+  }
+
+  function removeContext(id) {
+    studioContext = studioContext.filter(function(c) { return c.id !== id; });
+    renderContextList();
+  }
+
+  // --- Context tab switching ---
+  function setCtxTab(type) {
+    document.querySelectorAll('.st-ctx-tab').forEach(function(t) {
+      t.classList.toggle('active', t.getAttribute('data-ctx-type') === type);
+    });
+    ['text', 'file', 'url', 'youtube'].forEach(function(t) {
+      var panel = document.getElementById('stCtxPanel-' + t);
+      if (panel) panel.style.display = t === type ? '' : 'none';
+    });
+  }
+
+  // --- Text context ---
+  function addTextContext() {
+    var title = document.getElementById('stCtxTextTitle').value.trim();
+    var content = document.getElementById('stCtxTextContent').value.trim();
+    if (!content) { showStatus('Paste some text to add as context.', false); return; }
+    addContextItem({ type: 'text', title: title || 'Pasted text', content: content });
+    document.getElementById('stCtxTextTitle').value = '';
+    document.getElementById('stCtxTextContent').value = '';
+    showStatus('Text context added.', true);
+  }
+
+  // --- File context ---
+  async function handleFileContext(input) {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    var statusEl = document.getElementById('stCtxFileStatus');
+    var name = file.name || 'file';
+    var ext = name.split('.').pop().toLowerCase();
+
+    // Plain text files: read client-side
+    if (ext === 'txt' || ext === 'md' || ext === 'markdown') {
+      statusEl.textContent = 'Reading ' + name + '…';
+      statusEl.style.display = '';
+      statusEl.style.color = 'var(--muted)';
+      try {
+        var text = await new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function() { resolve(reader.result); };
+          reader.onerror = function() { reject(new Error('Could not read file')); };
+          reader.readAsText(file);
+        });
+        addContextItem({ type: 'file', title: name, content: text });
+        statusEl.textContent = '✅ ' + name + ' added.';
+        statusEl.style.color = '#10b981';
+      } catch (e) {
+        statusEl.textContent = '❌ ' + e.message;
+        statusEl.style.color = '#ef4444';
+      }
+    } else {
+      // PDFs, DOCX, PPTX, images → send to Mistral OCR via API
+      if (file.size > 20 * 1024 * 1024) {
+        statusEl.textContent = '❌ File too large (max 20MB for OCR).';
+        statusEl.style.display = '';
+        statusEl.style.color = '#ef4444';
+        input.value = '';
+        return;
+      }
+      statusEl.textContent = '⏳ Processing ' + name + ' with Mistral OCR…';
+      statusEl.style.display = '';
+      statusEl.style.color = 'var(--muted)';
+      try {
+        var dataUri = await new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function() { resolve(reader.result); };
+          reader.onerror = function() { reject(new Error('Could not read file')); };
+          reader.readAsDataURL(file);
+        });
+        var resp = await fetch('/api/admin/studio/extract-content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'ocr', filename: name, content: dataUri }),
+        });
+        var data = await resp.json();
+        if (!resp.ok || data.error) throw new Error(data.error || 'OCR failed (' + resp.status + ')');
+        addContextItem({ type: 'file', title: data.title || name, content: data.text });
+        statusEl.textContent = '✅ ' + name + ' processed (' + (data.charCount || 0).toLocaleString() + ' chars).';
+        statusEl.style.color = '#10b981';
+      } catch (e) {
+        statusEl.textContent = '❌ ' + e.message;
+        statusEl.style.color = '#ef4444';
+      }
+    }
+    input.value = '';
+  }
+
+  // --- URL context ---
+  async function addUrlContext() {
+    var url = document.getElementById('stCtxUrlInput').value.trim();
+    if (!url) { showStatus('Enter a URL to fetch.', false); return; }
+    var btn = document.getElementById('stCtxUrlBtn');
+    btn.disabled = true;
+    var orig = btn.textContent;
+    btn.textContent = '⏳ Fetching…';
+    try {
+      var resp = await fetch('/api/admin/studio/extract-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'url', url: url }),
+      });
+      var data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || 'Fetch failed (' + resp.status + ')');
+      addContextItem({ type: 'url', title: data.title || url, content: data.text });
+      document.getElementById('stCtxUrlInput').value = '';
+      showStatus('URL content added (' + (data.charCount || 0).toLocaleString() + ' chars).', true);
+    } catch (e) {
+      showStatus('URL error: ' + e.message, false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  }
+
+  // --- YouTube context ---
+  var lastYtVideoId = '';
+
+  function extractYtId(url) {
+    if (!url) return '';
+    var m = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/) ||
+            url.match(/[?&]v=([a-zA-Z0-9_-]{11})/) ||
+            url.match(/\/(?:embed|v)\/([a-zA-Z0-9_-]{11})/) ||
+            url.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : '';
+  }
+
+  async function addYouTubeContext() {
+    var url = document.getElementById('stCtxYtInput').value.trim();
+    var videoId = extractYtId(url);
+    if (!videoId) { showStatus('Could not parse a YouTube video ID from the URL.', false); return; }
+    lastYtVideoId = videoId;
+
+    var btn = document.getElementById('stCtxYtBtn');
+    btn.disabled = true;
+    var orig = btn.textContent;
+    btn.textContent = '⏳ Fetching…';
+    document.getElementById('stCtxYtFallback').style.display = 'none';
+
+    try {
+      var resp = await fetch('/api/admin/studio/extract-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'youtube', videoId: videoId }),
+      });
+      var data = await resp.json();
+      if (data.fallback) {
+        // Show fallback paste area
+        document.getElementById('stCtxYtFallback').style.display = '';
+        showStatus(data.error || 'Could not fetch transcript — paste it manually.', false);
+      } else if (!resp.ok || data.error) {
+        throw new Error(data.error || 'Failed (' + resp.status + ')');
+      } else {
+        addContextItem({ type: 'youtube', title: data.title || ('YouTube: ' + videoId), content: data.text });
+        document.getElementById('stCtxYtInput').value = '';
+        showStatus('YouTube transcript added (' + (data.charCount || 0).toLocaleString() + ' chars).', true);
+      }
+    } catch (e) {
+      document.getElementById('stCtxYtFallback').style.display = '';
+      showStatus('YouTube error: ' + e.message + ' — paste the transcript manually below.', false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  }
+
+  function addYtManualContext() {
+    var text = document.getElementById('stCtxYtManual').value.trim();
+    if (!text) { showStatus('Paste the transcript text first.', false); return; }
+    addContextItem({ type: 'youtube', title: 'YouTube: ' + (lastYtVideoId || 'manual'), content: text });
+    document.getElementById('stCtxYtManual').value = '';
+    document.getElementById('stCtxYtFallback').style.display = 'none';
+    showStatus('Manual YouTube transcript added.', true);
+  }
+
   // --- Full multi-step generation (body → refined title + TL;DR) ---
   async function generateArticle() {
     var title = document.getElementById('stTitle').value.trim();
@@ -517,6 +874,11 @@ if (Astro.request) {
     showStatus('Generating body, then refining title + TL;DR…', true);
 
     try {
+      // Build context payload from studioContext array
+      var contextPayload = studioContext.map(function(c) {
+        return { type: c.type, title: c.title, content: c.content };
+      });
+
       var resp = await fetch('/api/admin/studio/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -533,6 +895,7 @@ if (Astro.request) {
           ground: document.getElementById('stGround').checked,
           groundQuery: document.getElementById('stGroundQuery').value.trim(),
           topK: 5,
+          context: contextPayload,
         })
       });
       var data = await resp.json();
@@ -546,7 +909,8 @@ if (Astro.request) {
       var groundedMsg = (data.sources && data.sources.length)
         ? ' Grounded in ' + data.sources.length + ' KB source(s).'
         : (document.getElementById('stGround').checked ? ' (No matching KB sources found — generated without grounding.)' : '');
-      showStatus('Generated title, TL;DR, and body.' + groundedMsg + ' Review & edit, then preview or save.', true);
+      var contextMsg = contextPayload.length ? ' Using ' + contextPayload.length + ' context attachment(s).' : '';
+      showStatus('Generated title, TL;DR, and body.' + contextMsg + groundedMsg + ' Review & edit, then preview or save.', true);
     } catch (e) {
       showStatus('Error: ' + e.message, false);
     } finally {

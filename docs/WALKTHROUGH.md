@@ -25,6 +25,7 @@
 15. [Development Guide](#15-development-guide)
 16. [Knowledge Base & RAG Grounding (Phase 2)](#16-knowledge-base--rag-grounding-phase-2)
 17. [Verifying the RAG Implementation](#17-verifying-the-rag-implementation)
+18. [Studio Context Attachments](#18-studio-context-attachments)
 
 ---
 
@@ -589,10 +590,15 @@ All admin endpoints require session + admin/co-admin role.
 All studio endpoints require admin/co-admin.
 
 #### `POST /api/admin/studio/generate`
-- **Body:** `{ type, title, topic, subjects[], exams[], brief, fineTune?, caseNotes?, guidelineVersion?, comparePrevious?, ground?, groundQuery?, topK? }`
-- **Action:** Multi-step pipeline — generates the article body (type-specific prompt), then refines the title and writes a 2–3 sentence TL;DR in parallel. When `ground: true`, it first retrieves the top-K KB chunks via `retrieveChunks()` and injects them as numbered `[1]`, `[2]`… sources with citing rules; it then appends a `## References` section to the body.
+- **Body:** `{ type, title, topic, subjects[], exams[], brief, fineTune?, caseNotes?, guidelineVersion?, comparePrevious?, ground?, groundQuery?, topK?, context? }`
+- **Action:** Multi-step pipeline — generates the article body (type-specific prompt), then refines the title and writes a 2–3 sentence TL;DR in parallel. If `context` array is provided (from the Context Attachments UI), it injects the combined text into the prompt. When `ground: true`, it first retrieves the top-K KB chunks via `retrieveChunks()` and injects them as numbered `[1]`, `[2]`… sources with citing rules; it then appends a `## References` section to the body.
 - **Response:** `{ title, description, body, sources: [{ title, sourceUrl, score }] }`
-- **Notes:** `sources` is empty when grounding is off or no chunks match. `topK` defaults to 5 (capped 1–10).
+- **Notes:** `sources` is empty when grounding is off or no chunks match. `topK` defaults to 5 (capped 1–10). Context is capped at 50K chars per item, 200K total.
+
+#### `POST /api/admin/studio/extract-content`
+- **Body:** `{ type: "url"|"youtube"|"ocr", url?, videoId?, filename?, content? }`
+- **Action:** Unified endpoint for extracting text for the Studio Context feature. Extracts plain text from web pages (reusing KB logic), fetches YouTube transcripts (via free youtube-transcript.ai API), and performs OCR on PDFs/DOCX/PPTX and images (via Mistral Document AI API).
+- **Response:** `{ success: true, title, text, charCount }` (or `{ fallback: true }` for YouTube errors).
 
 #### `POST /api/admin/studio/cover`
 - **Body:** `{ prompt?, title?, topic? }`
@@ -667,7 +673,7 @@ All KB endpoints require admin/co-admin.
 |------|-------|-----------|------|-------------|
 | Admin Login | `/admin/login` | Static | None | Username + password login form |
 | Admin Dashboard | `/admin` | SSR (auth check) | admin/co-admin | 6 tabs: Applications, Submissions, Articles, Images, Subjects, Exams |
-| AI Studio | `/admin/studio` | SSR (auth check) | admin/co-admin | Full-page article generation, cover image, evidence grounding |
+| AI Studio | `/admin/studio` | SSR (auth check) | admin/co-admin | Full-page article generation, cover image, inline Context attachments, evidence grounding |
 | Knowledge Base | `/admin/kb` | SSR (auth check) | admin/co-admin | Manage RAG evidence sources (ingest, search, delete) |
 
 #### Admin Dashboard Features:
@@ -1272,6 +1278,45 @@ After pushing to `master` and letting Cloudflare Pages deploy:
 1. Confirm the **schema** was applied to the remote D1 (step 17.1) — the KB page will return "D1 … binding is missing" only if the binding is absent, but the tables must exist or ingest will 500 with "no such table: kb_sources".
 2. Confirm **secrets** are set in Cloudflare Pages → Settings → Environment variables (`TAVILY_API_KEY` if using web search; `AI_EMBEDDING_MODEL_NAME` only if overriding the default).
 3. Repeat 17.2–17.4 against the live site.
+
+---
+
+## 18. Studio Context Attachments
+
+The Context Attachments feature provides a lightweight alternative to the full RAG Knowledge Base, allowing admins to quickly attach reference material directly to an article generation session in the AI Studio.
+
+### 18.1 Features Implemented
+
+1. **New UI Section ("📎 Context")**
+   - Added right above the "Brief / instructions" field in the AI Studio sidebar.
+   - Includes 4 tabs for source ingestion: 📝 **Text**, 📄 **File**, 🔗 **URL**, and 🎬 **YouTube**.
+   - Includes a dynamic stats bar that tracks the number of items, total character count, and estimated tokens.
+   - Turns amber to warn when approaching the 200,000 character limit.
+
+2. **Unified Extraction API (`extract-content.js`)**
+   - **URL Tab**: Fetches the webpage and cleanly extracts the text, reusing the robust extraction logic from the KB pipeline.
+   - **YouTube Tab**: Fetches the video's transcript instantly using the free `youtube-transcript.ai` API. No API key needed.
+     - *Fallback mechanism*: If a video lacks captions or the service is down, a manual paste area smoothly appears to let you paste it yourself.
+   - **File Tab (PDF/DOCX/Images)**: Client-side parsing for `.txt` and `.md`. For PDFs, Office documents, and images, it sends the file to the **Mistral Document AI** API, which returns highly structured, accurate Markdown (preserving tables and layout).
+
+3. **LLM Prompt Injection**
+   - All attached items are bundled into a `CONTEXT PROVIDED BY THE AUTHOR` block.
+   - This context block is injected directly into the LLM prompt *before* any RAG grounding sources.
+   - You can use Context Attachments entirely on their own, or in tandem with KB Grounding.
+
+### 18.2 Configuration Needed
+
+To enable the PDF/DOCX/Image extraction via the **File Tab**, you must provide a Mistral API key.
+
+1. Get an API key from the [Mistral Console](https://console.mistral.ai/).
+2. Add it to your Cloudflare Pages environment variables (and your local `.dev.vars`) as:
+   `MISTRAL_API_KEY = "your_key_here"`
+
+> **Note:** If you don't configure the Mistral API key, the OCR processing will simply return a clean error asking you to set it. The Text, URL, and YouTube tabs will continue to work perfectly fine without it.
+
+### 18.3 Architecture Highlights
+- **Zero Database Load:** The inline context is session-only. It is not saved to D1, nor is it embedded or chunked.
+- **Client-Side Limits:** Hard-capped at 50,000 characters per item and 200,000 characters total to protect LLM context window limits and control API costs.
 
 ---
 
