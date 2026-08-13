@@ -135,6 +135,7 @@ if (Astro.request) {
       <section class="st-card">
         <h3 class="st-card-title">Cover Image</h3>
         <button class="st-btn st-btn-secondary" id="stCoverBtn" onclick="generateCover()">✨ Generate cover</button>
+        <button class="st-btn st-btn-sm" id="stUploadCoverBtn" onclick="uploadCover()" style="display:none; margin-left:0.5rem;">⬆ Upload to storage</button>
         <div id="stCoverPreview" class="st-cover-preview" style="display:none;">
           <img id="stCoverImg" alt="Cover preview">
           <button class="st-link-btn" onclick="removeCover()">Remove</button>
@@ -324,6 +325,8 @@ if (Astro.request) {
   var studioSubjects = [];
   var studioExams = [];
   var coverUrl = '';
+  var pendingCoverDataUri = '';
+  var pendingCoverType = '';
   var currentUser = 'iMedipedia Editorial Board';
 
   var TYPE_META = {
@@ -532,7 +535,7 @@ if (Astro.request) {
     if (result) document.getElementById('stDescription').value = result.trim().slice(0, 600);
   }
 
-  // --- Cover image: server generates → client encodes AVIF → R2 upload ---
+  // --- Cover image: server generates → display locally → manual upload to R2 ---
   async function generateCover() {
     var btn = document.getElementById('stCoverBtn');
     var title = document.getElementById('stTitle').value.trim();
@@ -549,19 +552,21 @@ if (Astro.request) {
       var data = await resp.json();
       if (!resp.ok || data.error) throw new Error(data.error || ('Failed (' + resp.status + ')'));
 
-      var encoded = await toAvifDataUri(data.imageData);
+      // Display the generated image immediately (before any upload).
+      pendingCoverDataUri = '';
+      pendingCoverType = '';
+      coverUrl = '';
+      showCover(data.imageData);
 
-      var up = await fetch('/api/images/upload', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file: encoded.dataUri, name: title || topic || 'cover', folder: 'covers' })
-      });
-      var upData = await up.json();
-      if (!upData.success) throw new Error(upData.error || 'Upload failed');
-
-      coverUrl = upData.url;
-      document.getElementById('stCoverImg').src = coverUrl;
-      document.getElementById('stCoverPreview').style.display = '';
-      showStatus('Cover generated (' + (encoded.type || 'image') + ') and uploaded.', true);
+      // Prepare a small, upload-ready version in the background.
+      try {
+        var encoded = await toAvifDataUri(data.imageData);
+        pendingCoverDataUri = encoded.dataUri;
+        pendingCoverType = encoded.type;
+        showStatus('Cover ready — click "Upload to storage" to save it.', true);
+      } catch (encErr) {
+        showStatus('Cover shown, but could not compress it for upload: ' + encErr.message, false);
+      }
     } catch (e) {
       showStatus('Cover error: ' + e.message, false);
     } finally {
@@ -570,10 +575,47 @@ if (Astro.request) {
     }
   }
 
+  function showCover(src) {
+    document.getElementById('stCoverImg').src = src;
+    document.getElementById('stCoverPreview').style.display = '';
+    document.getElementById('stUploadCoverBtn').style.display = '';
+  }
+
+  async function uploadCover() {
+    if (!pendingCoverDataUri) { showStatus('Generate a cover first.', false); return; }
+    var btn = document.getElementById('stUploadCoverBtn');
+    var title = document.getElementById('stTitle').value.trim();
+    var topic = document.getElementById('stTopic').value.trim();
+    btn.disabled = true;
+    var orig = btn.textContent;
+    btn.textContent = '⬆ Uploading…';
+
+    try {
+      var up = await fetch('/api/images/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: pendingCoverDataUri, name: title || topic || 'cover', folder: 'covers' })
+      });
+      var upData = await up.json();
+      if (!upData.success) throw new Error(upData.error || 'Upload failed');
+
+      coverUrl = upData.url;
+      document.getElementById('stCoverImg').src = coverUrl;
+      showStatus('Cover uploaded to storage.', true);
+    } catch (e) {
+      showStatus('Upload error: ' + e.message, false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  }
+
   function removeCover() {
     coverUrl = '';
+    pendingCoverDataUri = '';
+    pendingCoverType = '';
     document.getElementById('stCoverImg').src = '';
     document.getElementById('stCoverPreview').style.display = 'none';
+    document.getElementById('stUploadCoverBtn').style.display = 'none';
   }
 
   function loadImage(src) {
