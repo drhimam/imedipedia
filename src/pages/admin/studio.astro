@@ -136,6 +136,22 @@ if (Astro.request) {
         <h3 class="st-card-title">Cover Image</h3>
         <button class="st-btn st-btn-secondary" id="stCoverBtn" onclick="generateCover()">✨ Generate cover</button>
         <button class="st-btn st-btn-sm" id="stUploadCoverBtn" onclick="uploadCover()" style="display:none; margin-left:0.5rem;">⬆ Upload to storage</button>
+
+        <div class="st-field" style="margin-top:0.9rem;">
+          <label class="st-label">Upload from device</label>
+          <label class="st-btn st-btn-secondary st-btn-sm" for="stCoverFile" style="cursor:pointer; text-align:center;">🖼 Choose image…</label>
+          <input type="file" id="stCoverFile" accept="image/*" style="display:none;" onchange="uploadCoverFromFile(this)">
+        </div>
+
+        <div class="st-field">
+          <label class="st-label">Or paste an image URL</label>
+          <div style="display:flex; gap:0.5rem;">
+            <input type="url" id="stCoverUrlInput" class="st-input" placeholder="https://…/image.webp" style="flex:1;">
+            <button class="st-btn st-btn-secondary st-btn-sm" onclick="useCoverUrl()">Use URL</button>
+          </div>
+          <span class="st-hint">The URL is saved to the <code>image:</code> frontmatter and rendered as the article cover.</span>
+        </div>
+
         <div id="stCoverPreview" class="st-cover-preview" style="display:none;">
           <img id="stCoverImg" alt="Cover preview">
           <button class="st-link-btn" onclick="removeCover()">Remove</button>
@@ -557,6 +573,7 @@ if (Astro.request) {
       pendingCoverType = '';
       coverUrl = '';
       showCover(data.imageData);
+      document.getElementById('stUploadCoverBtn').style.display = '';
 
       // Prepare a small, upload-ready version in the background.
       try {
@@ -578,7 +595,17 @@ if (Astro.request) {
   function showCover(src) {
     document.getElementById('stCoverImg').src = src;
     document.getElementById('stCoverPreview').style.display = '';
-    document.getElementById('stUploadCoverBtn').style.display = '';
+  }
+
+  // Upload a compressed data URI to R2 under the 'covers' folder and return its public URL.
+  async function uploadCoverToR2(dataUri, name) {
+    var up = await fetch('/api/images/upload', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: dataUri, name: name || 'cover', folder: 'covers' })
+    });
+    var upData = await up.json();
+    if (!upData.success) throw new Error(upData.error || 'Upload failed');
+    return upData.url;
   }
 
   async function uploadCover() {
@@ -591,14 +618,7 @@ if (Astro.request) {
     btn.textContent = '⬆ Uploading…';
 
     try {
-      var up = await fetch('/api/images/upload', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file: pendingCoverDataUri, name: title || topic || 'cover', folder: 'covers' })
-      });
-      var upData = await up.json();
-      if (!upData.success) throw new Error(upData.error || 'Upload failed');
-
-      coverUrl = upData.url;
+      coverUrl = await uploadCoverToR2(pendingCoverDataUri, title || topic || 'cover');
       document.getElementById('stCoverImg').src = coverUrl;
       showStatus('Cover uploaded to storage.', true);
     } catch (e) {
@@ -609,6 +629,45 @@ if (Astro.request) {
     }
   }
 
+  // Upload a cover chosen from the user's device.
+  async function uploadCoverFromFile(input) {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { showStatus('Please choose an image file.', false); input.value = ''; return; }
+    if (file.size > 10 * 1024 * 1024) { showStatus('File too large (max 10MB).', false); input.value = ''; return; }
+
+    showStatus('Processing image…', true);
+    try {
+      var dataUri = await blobToDataUri(file);
+      var encoded = await toAvifDataUri(dataUri);
+      coverUrl = await uploadCoverToR2(encoded.dataUri, (file.name || 'cover').replace(/\.[^.]+$/, ''));
+      pendingCoverDataUri = '';
+      pendingCoverType = '';
+      showCover(coverUrl);
+      document.getElementById('stUploadCoverBtn').style.display = 'none';
+      showStatus('Cover uploaded from device.', true);
+    } catch (e) {
+      showStatus('Upload error: ' + e.message, false);
+    } finally {
+      input.value = '';
+    }
+  }
+
+  // Use a pasted/external image URL directly as the cover (no upload needed).
+  function useCoverUrl() {
+    var input = document.getElementById('stCoverUrlInput');
+    var url = input.value.trim();
+    if (!url) { showStatus('Paste an image URL first.', false); return; }
+    if (!/^https?:\/\//i.test(url)) { showStatus('Enter a valid http(s) image URL.', false); return; }
+
+    coverUrl = url;
+    pendingCoverDataUri = '';
+    pendingCoverType = '';
+    showCover(url);
+    document.getElementById('stUploadCoverBtn').style.display = 'none';
+    showStatus('Cover set from URL — it will be embedded directly as the cover.', true);
+  }
+
   function removeCover() {
     coverUrl = '';
     pendingCoverDataUri = '';
@@ -616,6 +675,8 @@ if (Astro.request) {
     document.getElementById('stCoverImg').src = '';
     document.getElementById('stCoverPreview').style.display = 'none';
     document.getElementById('stUploadCoverBtn').style.display = 'none';
+    var urlInput = document.getElementById('stCoverUrlInput');
+    if (urlInput) urlInput.value = '';
   }
 
   function loadImage(src) {
