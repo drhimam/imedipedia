@@ -49,7 +49,7 @@ export async function GET({ request, locals }) {
 
     // Use Git Trees API to get all files recursively
     const resp = await fetch(
-      `https://api.github.com/repos/${repo}/git/trees/main?recursive=1`,
+      `https://api.github.com/repos/${repo}/git/trees/master?recursive=1`,
       { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "User-Agent": "iMedipedia" } }
     );
 
@@ -66,7 +66,7 @@ export async function GET({ request, locals }) {
         name: item.path.split('/').pop(),
         path: item.path,
         sha: item.sha,
-        url: `https://github.com/${repo}/blob/main/${item.path}`
+        url: `https://github.com/${repo}/blob/master/${item.path}`
       }));
 
     if (q) {
