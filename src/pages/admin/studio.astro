@@ -605,26 +605,34 @@ if (Astro.request) {
 
   async function toAvifDataUri(dataUri) {
     var img = await loadImage(dataUri);
-    var maxW = 1200;
-    var scale = Math.min(1, maxW / img.naturalWidth);
-    var w = Math.round(img.naturalWidth * scale);
-    var h = Math.round(img.naturalHeight * scale);
-    var canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    var ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, w, h);
+    // Stay safely under the 1MB upload limit while keeping the best quality.
+    var MAX_BYTES = 900 * 1024;
+    var maxSizes = [1200, 1000, 800, 640];
+    var formats = ['image/avif', 'image/webp', 'image/png'];
+    var qualities = [0.7, 0.55, 0.4];
 
-    var types = ['image/avif', 'image/webp', 'image/png'];
-    for (var i = 0; i < types.length; i++) {
-      try {
-        var blob = await canvasToBlob(canvas, types[i], 0.7);
-        if (blob && blob.size > 0) {
-          return { dataUri: await blobToDataUri(blob), type: blob.type || types[i] };
+    for (var s = 0; s < maxSizes.length; s++) {
+      var scale = Math.min(1, maxSizes[s] / img.naturalWidth);
+      var w = Math.max(1, Math.round(img.naturalWidth * scale));
+      var h = Math.max(1, Math.round(img.naturalHeight * scale));
+      var canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+
+      for (var f = 0; f < formats.length; f++) {
+        for (var q = 0; q < qualities.length; q++) {
+          try {
+            var blob = await canvasToBlob(canvas, formats[f], qualities[q]);
+            if (blob && blob.size > 0 && blob.size <= MAX_BYTES) {
+              return { dataUri: await blobToDataUri(blob), type: blob.type || formats[f] };
+            }
+          } catch (e) {}
         }
-      } catch (e) {}
+      }
     }
-    throw new Error('Could not encode cover image (AVIF/WebP unsupported in this browser).');
+    throw new Error('Could not compress the cover below 1MB. Try regenerating it.');
   }
 
   // --- Copy markdown ---
