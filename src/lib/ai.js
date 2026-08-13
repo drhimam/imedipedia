@@ -120,8 +120,12 @@ export async function embed(env, text) {
  * Generate a cover image via the image API configured in env.
  * Returns `{ data, mime }` when the provider returns b64_json, or
  * `{ url }` when it returns a hosted URL.
+ *
+ * Cost-conscious defaults: low quality, landscape, WebP at 50% compression.
+ * (Requires gpt-image-1 / gpt-image-2 or a compatible model that accepts
+ * `quality`, `output_format`, and `output_compression`.)
  */
-export async function generateImage(env, prompt, { size = '1024x1024' } = {}) {
+export async function generateImage(env, prompt, opts = {}) {
   const baseUrl = env.AI_IMAGE_BASE_URL;
   const model = env.AI_IMAGE_MODEL_NAME;
   const apiKey = env.AI_IMAGE_API_KEY;
@@ -130,13 +134,23 @@ export async function generateImage(env, prompt, { size = '1024x1024' } = {}) {
     throw new Error('Image generation is not configured (set AI_IMAGE_BASE_URL + AI_IMAGE_MODEL_NAME).');
   }
 
+  const size = opts.size || env.AI_IMAGE_SIZE || '1536x1024'; // landscape
+  const quality = opts.quality || env.AI_IMAGE_QUALITY || 'low';
+  const outputFormat = opts.output_format || env.AI_IMAGE_OUTPUT_FORMAT || 'webp';
+  const rawCompression = opts.output_compression ?? env.AI_IMAGE_COMPRESSION ?? 50;
+
+  const payload = { model, prompt, n: 1, size, quality, output_format: outputFormat };
+  if (rawCompression !== null && rawCompression !== undefined && rawCompression !== '') {
+    payload.output_compression = Number(rawCompression);
+  }
+
   const resp = await fetch(`${baseUrl.replace(/\/+$/, '')}/images/generations`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey || ''}`,
     },
-    body: JSON.stringify({ model, prompt, n: 1, size }),
+    body: JSON.stringify(payload),
   });
 
   if (!resp.ok) {
@@ -147,7 +161,7 @@ export async function generateImage(env, prompt, { size = '1024x1024' } = {}) {
   const data = await resp.json();
   const item = data.data?.[0];
   if (item?.b64_json) {
-    return { data: item.b64_json, mime: 'image/png' };
+    return { data: item.b64_json, mime: `image/${outputFormat}` };
   }
   if (item?.url) {
     return { url: item.url };

@@ -69,7 +69,7 @@ export async function POST({ request, locals }) {
   const env = locals.runtime?.env || {};
 
   try {
-    const generated = await generateImage(env, buildCoverPrompt(input), { size: '1024x1024' });
+    const generated = await generateImage(env, buildCoverPrompt(input));
 
     // Provider returned a hosted URL — fetch it and convert to a data URI.
     if (generated.url) {
