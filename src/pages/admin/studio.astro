@@ -343,6 +343,8 @@ if (Astro.request) {
   var coverUrl = '';
   var pendingCoverDataUri = '';
   var pendingCoverType = '';
+  var savedSubmissionId = null;
+  var savedSubmissionHash = '';
   var currentUser = 'iMedipedia Editorial Board';
 
   var TYPE_META = {
@@ -520,6 +522,8 @@ if (Astro.request) {
       document.getElementById('stBody').value = data.body || '';
       document.getElementById('stTitle').value = data.title || title;
       document.getElementById('stDescription').value = data.description || '';
+      savedSubmissionId = null;
+      savedSubmissionHash = '';
       showStatus('Generated title, TL;DR, and body. Review & edit, then preview or save.', true);
     } catch (e) {
       showStatus('Error: ' + e.message, false);
@@ -780,19 +784,45 @@ if (Astro.request) {
     }
   }
 
-  // --- Save as submission ---
+  // --- Save as submission (create once, then update the same record) ---
+  function submissionSignature() {
+    var fields = [
+      document.getElementById('stTitle').value.trim(),
+      document.getElementById('stTopic').value.trim(),
+      document.getElementById('stDescription').value.trim(),
+      document.getElementById('stBody').value.trim(),
+      currentType,
+      coverUrl,
+      studioSubjects.slice().sort().join('|'),
+      studioExams.slice().sort().join('|'),
+    ];
+    return JSON.stringify(fields);
+  }
+
   async function saveSubmission() {
     var title = document.getElementById('stTitle').value.trim();
     var body = document.getElementById('stBody').value.trim();
     if (!title || !body) { alert('Generate (or write) both a title and body first.'); return; }
+
+    var sig = submissionSignature();
+
+    // No changes since the last save → don't create a duplicate.
+    if (savedSubmissionId && sig === savedSubmissionHash) {
+      alert('This article is already saved. No changes were made.');
+      return;
+    }
+
+    var isUpdate = !!savedSubmissionId;
     var btn = document.getElementById('stSaveBtn');
     btn.disabled = true;
     var orig = btn.textContent;
-    btn.textContent = 'Saving…';
+    btn.textContent = isUpdate ? 'Updating…' : 'Saving…';
 
     try {
-      var resp = await fetch('/api/submissions/create', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      var url = isUpdate ? ('/api/submissions/' + savedSubmissionId) : '/api/submissions/create';
+      var resp = await fetch(url, {
+        method: isUpdate ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title,
           topic: document.getElementById('stTopic').value.trim(),
@@ -805,11 +835,17 @@ if (Astro.request) {
         })
       });
       var data = await resp.json();
-      if (data.success) {
-        showStatus('Saved as a pending submission — review in Admin → Submissions.', true);
+      if (!resp.ok || data.error) throw new Error(data.error || ('Failed (' + resp.status + ')'));
+
+      if (isUpdate) {
+        alert('Submission updated with your changes.');
+        showStatus('Submission updated.', true);
       } else {
-        showStatus(data.error || 'Save failed.', false);
+        savedSubmissionId = data.id || null;
+        alert('Article saved as a pending submission.');
+        showStatus('Saved as a pending submission — review in Admin → Submissions.', true);
       }
+      savedSubmissionHash = sig;
     } catch (e) {
       showStatus('Save error: ' + e.message, false);
     } finally {

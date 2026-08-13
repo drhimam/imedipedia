@@ -43,7 +43,11 @@ function normalizeExams(value) {
 
 function sanitize(str, maxLen = 100000) {
   if (!str || typeof str !== 'string') return '';
-  return str.replace(/<[^>]*>/g, '').trim().substring(0, maxLen);
+  return str
+    .replace(/<[^>]*>/g, '')  // Strip HTML tags
+    .replace(/```[\s\S]*?```/g, '') // Strip code blocks to prevent injection
+    .trim()
+    .substring(0, maxLen);
 }
 
 /**
