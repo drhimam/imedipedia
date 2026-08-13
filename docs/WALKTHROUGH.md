@@ -1296,23 +1296,20 @@ The Context Attachments feature provides a lightweight alternative to the full R
 2. **Unified Extraction API (`extract-content.js`)**
    - **URL Tab**: Fetches the webpage and cleanly extracts the text, reusing the robust extraction logic from the KB pipeline.
    - **YouTube Tab**: Fetches the video's transcript instantly using the free `youtube-transcript.ai` API. No API key needed.
-     - *Fallback mechanism*: If a video lacks captions or the service is down, a manual paste area smoothly appears to let you paste it yourself.
-   - **File Tab (PDF/DOCX/Images)**: Client-side parsing for `.txt` and `.md`. For PDFs, Office documents, and images, it sends the file to the **Mistral Document AI** API, which returns highly structured, accurate Markdown (preserving tables and layout).
-
-3. **LLM Prompt Injection**
+   - **File Tab (PDF/DOCX/Images)**: Client-side parsing for `.txt`, `.md`, standard PDFs (via `pdf.js`), and Word documents (via `mammoth.js`). For images or scanned documents (when "Use OCR" is checked), it sends the file to the **Mistral Document AI** API, which returns highly structured, accurate Markdown.3. **LLM Prompt Injection**
    - All attached items are bundled into a `CONTEXT PROVIDED BY THE AUTHOR` block.
    - This context block is injected directly into the LLM prompt *before* any RAG grounding sources.
    - You can use Context Attachments entirely on their own, or in tandem with KB Grounding.
 
 ### 18.2 Configuration Needed
 
-To enable the PDF/DOCX/Image extraction via the **File Tab**, you must provide a Mistral API key.
+To enable the image and scanned document OCR extraction via the **File Tab**, you must provide a Mistral API key.
 
 1. Get an API key from the [Mistral Console](https://console.mistral.ai/).
 2. Add it to your Cloudflare Pages environment variables (and your local `.dev.vars`) as:
    `MISTRAL_API_KEY = "your_key_here"`
 
-> **Note:** If you don't configure the Mistral API key, the OCR processing will simply return a clean error asking you to set it. The Text, URL, and YouTube tabs will continue to work perfectly fine without it.
+> **Note:** If you don't configure the Mistral API key, the OCR processing will simply return a clean error asking you to set it. The Text, URL, YouTube, and local PDF/DOCX parsing will continue to work perfectly fine without it.
 
 ### 18.3 Architecture Highlights
 - **Zero Database Load:** The inline context is session-only. It is not saved to D1, nor is it embedded or chunked.

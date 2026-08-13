@@ -149,7 +149,8 @@ if (Astro.request) {
           <div class="st-field" style="margin-bottom:0.5rem;">
             <label class="st-btn st-btn-secondary st-btn-sm" for="stCtxFileInput" style="cursor:pointer;text-align:center;display:inline-block;">📄 Choose file…</label>
             <input type="file" id="stCtxFileInput" accept=".txt,.md,.pdf,.docx,.pptx,.doc,.xls,.xlsx,image/*" style="display:none;" onchange="handleFileContext(this)">
-            <span class="st-hint" style="display:block;margin-top:0.4rem;">Supports: .txt, .md, .pdf, .docx, .pptx, and images (PNG/JPEG/AVIF)</span>
+            <label class="st-check" style="margin-left:1rem;display:inline-flex;align-items:center;font-size:0.8rem;color:var(--muted);"><input type="checkbox" id="stCtxUseOcr" style="margin-right:0.3rem;"> Use OCR (Scanned Document)</label>
+            <span class="st-hint" style="display:block;margin-top:0.4rem;">Supports: .txt, .md, .pdf, .docx, and images (PNG/JPEG/AVIF). PDFs/Docs process locally unless OCR is checked.</span>
           </div>
           <div id="stCtxFileStatus" class="st-ctx-file-status" style="display:none;"></div>
         </div>
@@ -450,6 +451,9 @@ if (Astro.request) {
   }
 </style>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
 <script define:vars={{ subjects: subjects, exams: exams }}>
   // Subject + exam taxonomies embedded at build time (zero D1 reads)
   window.ADMIN_SUBJECTS = subjects;
@@ -713,8 +717,11 @@ if (Astro.request) {
     var file = input.files && input.files[0];
     if (!file) return;
     var statusEl = document.getElementById('stCtxFileStatus');
+    var useOcr = document.getElementById('stCtxUseOcr').checked;
     var name = file.name || 'file';
     var ext = name.split('.').pop().toLowerCase();
+    var type = file.type || '';
+    var isImage = type.startsWith('image/');
 
     // Plain text files: read client-side
     if (ext === 'txt' || ext === 'md' || ext === 'markdown') {
@@ -735,8 +742,60 @@ if (Astro.request) {
         statusEl.textContent = '❌ ' + e.message;
         statusEl.style.color = '#ef4444';
       }
+    } else if (!useOcr && !isImage && ext === 'pdf') {
+      // PDF: process client-side
+      statusEl.textContent = 'Reading PDF ' + name + '…';
+      statusEl.style.display = '';
+      statusEl.style.color = 'var(--muted)';
+      try {
+        if (!window.pdfjsLib) throw new Error('PDF library not loaded.');
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        var arrayBuffer = await new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function() { resolve(reader.result); };
+          reader.onerror = function() { reject(new Error('Could not read file')); };
+          reader.readAsArrayBuffer(file);
+        });
+        var pdf = await window.pdfjsLib.getDocument(arrayBuffer).promise;
+        var fullText = '';
+        for (var i = 1; i <= pdf.numPages; i++) {
+          var page = await pdf.getPage(i);
+          var textContent = await page.getTextContent();
+          fullText += textContent.items.map(function(s) { return s.str; }).join(' ') + '\n\n';
+        }
+        if (!fullText.trim()) throw new Error('No readable text found. If this is a scanned document, check "Use OCR".');
+        addContextItem({ type: 'file', title: name, content: fullText });
+        statusEl.textContent = '✅ ' + name + ' added (' + fullText.length.toLocaleString() + ' chars).';
+        statusEl.style.color = '#10b981';
+      } catch (e) {
+        statusEl.textContent = '❌ ' + e.message;
+        statusEl.style.color = '#ef4444';
+      }
+    } else if (!useOcr && !isImage && ext === 'docx') {
+      // DOCX: process client-side
+      statusEl.textContent = 'Reading DOCX ' + name + '…';
+      statusEl.style.display = '';
+      statusEl.style.color = 'var(--muted)';
+      try {
+        if (!window.mammoth) throw new Error('DOCX library not loaded.');
+        var arrayBuffer = await new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function() { resolve(reader.result); };
+          reader.onerror = function() { reject(new Error('Could not read file')); };
+          reader.readAsArrayBuffer(file);
+        });
+        var result = await window.mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+        var fullText = result.value || '';
+        if (!fullText.trim()) throw new Error('No readable text found.');
+        addContextItem({ type: 'file', title: name, content: fullText });
+        statusEl.textContent = '✅ ' + name + ' added (' + fullText.length.toLocaleString() + ' chars).';
+        statusEl.style.color = '#10b981';
+      } catch (e) {
+        statusEl.textContent = '❌ ' + e.message;
+        statusEl.style.color = '#ef4444';
+      }
     } else {
-      // PDFs, DOCX, PPTX, images → send to Mistral OCR via API
+      // Images, checked OCR documents, or unsupported files → send to Mistral OCR API
       if (file.size > 20 * 1024 * 1024) {
         statusEl.textContent = '❌ File too large (max 20MB for OCR).';
         statusEl.style.display = '';
