@@ -180,6 +180,7 @@ if (Astro.request) {
       <button class="tab-nav-btn" data-main-tab="submissions">Submissions</button>
       <button class="tab-nav-btn" data-main-tab="articles">Articles</button>
       <button class="tab-nav-btn" data-main-tab="images">Images</button>
+      <button class="tab-nav-btn" data-main-tab="users">Users</button>
       <button class="tab-nav-btn" data-main-tab="subjects">Subjects</button>
       <button class="tab-nav-btn" data-main-tab="exams">Exams</button>
     </nav>
@@ -221,6 +222,12 @@ if (Astro.request) {
         </div>
       </details>
       <div id="imagesTable" style="overflow-x:auto;"></div>
+    </div>
+
+    <!-- Users Tab -->
+    <div class="tab-panel" id="tab-users">
+      <div id="usersStatus" class="alert alert-info" style="margin-bottom:1rem;display:none;"></div>
+      <div id="usersTable" style="overflow-x:auto;"></div>
     </div>
 
     <!-- Subjects Tab -->
@@ -472,6 +479,36 @@ if (Astro.request) {
       </form>
     </div>
   </div>
+  <!-- Bulk Email Modal -->
+  <div class="view-modal-overlay" id="emailModalOverlay" style="display:none;">
+    <div class="view-modal" style="max-width:600px;">
+      <div class="view-modal-header">
+        <button type="button" class="view-modal-close" onclick="closeEmailModal()">&times;</button>
+        <h2 id="emailModalTitle">Send Email</h2>
+      </div>
+      <div id="emailModalStatus" class="alert" style="display:none;margin-bottom:1rem;"></div>
+      <form id="emailForm" class="edit-modal-form" style="margin-top:1rem;">
+        <input type="hidden" id="emailTo" value="">
+        <div class="form-group">
+          <label class="form-label">Recipients</label>
+          <input type="text" class="form-input" id="emailRecipientsDisplay" disabled>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subject</label>
+          <input type="text" class="form-input" id="emailSubject" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Body (HTML allowed)</label>
+          <textarea class="form-input form-textarea" id="emailBody" style="min-height:200px;" required></textarea>
+        </div>
+        <div class="edit-modal-actions">
+          <button type="button" class="topbar-btn" onclick="closeEmailModal()" style="padding:0.6rem 1.25rem;">Cancel</button>
+          <button type="button" class="btn" id="emailSendBtn" onclick="sendBulkEmail()">Send Email</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </BaseLayout>
 
 <style>
@@ -612,6 +649,29 @@ if (Astro.request) {
   .btn-edit-admin:hover { background: rgba(59,130,246,0.1); border-color: #3b82f6; }
   .copy-tooltip { position: relative; }
   .img-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+  
+  /* Dropdown Menus & Table Controls */
+  .table-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+  .table-search { padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: rgba(0,0,0,0.08); color: var(--text); font-size: 0.9rem; min-width: 250px; }
+  :global([data-theme="light"]) .table-search { background: rgba(255,255,255,0.8); }
+  .table-search:focus { outline: none; border-color: var(--accent); }
+  
+  .pagination-ctrl { display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end; margin-top: 1rem; }
+  .page-btn { padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+  .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .page-info { font-size: 0.85rem; color: var(--muted); }
+
+  .dropdown { position: relative; display: inline-block; }
+  .dropdown-btn { background: transparent; border: none; cursor: pointer; font-size: 1.2rem; padding: 0.2rem 0.5rem; border-radius: 4px; color: var(--muted); }
+  .dropdown-btn:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+  :global([data-theme="light"]) .dropdown-btn:hover { background: rgba(0,0,0,0.05); }
+  .dropdown-content { display: none; position: absolute; right: 0; background-color: var(--card-bg); min-width: 140px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 10; border-radius: 6px; border: 1px solid var(--border); overflow: hidden; }
+  .dropdown-content button, .dropdown-content a { color: var(--text); padding: 0.6rem 1rem; text-decoration: none; display: block; background: transparent; border: none; width: 100%; text-align: left; font-size: 0.85rem; font-family: inherit; cursor: pointer; }
+  .dropdown-content button:hover, .dropdown-content a:hover { background-color: rgba(99,102,241,0.1); color: var(--accent); }
+  .dropdown.show .dropdown-content { display: block; }
+  .truncate { max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: middle; }
+
   /* Admin View Modal */
   .view-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 998; display: flex; align-items: center; justify-content: center; animation: modalFadeIn 0.2s ease-out; }
   @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -858,44 +918,160 @@ if (Astro.request) {
       else if (tab === 'submissions') loadSubmissions();
       else if (tab === 'articles') loadArticles();
       else if (tab === 'images') loadImages();
+      else if (tab === 'users') loadUsers();
       else if (tab === 'subjects') loadSubjects();
       else if (tab === 'exams') loadExams();
     });
   });
 
-  // --- Applications ---
+  // Global Dropdown Handler
+  window.onclick = function(event) {
+    if (!event.target.matches('.dropdown-btn')) {
+      var dropdowns = document.getElementsByClassName("dropdown-content");
+      for (var i = 0; i < dropdowns.length; i++) {
+        var openDropdown = dropdowns[i];
+        if (openDropdown.parentElement.classList.contains('show')) {
+          openDropdown.parentElement.classList.remove('show');
+        }
+      }
+    }
+  }
+  function toggleDropdown(id) {
+    var el = document.getElementById(id);
+    if(el) el.classList.toggle("show");
+  }
+
+  // Generic text/pdf download utility
+  function downloadTextFile(filename, content) {
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
+    element.setAttribute('download', filename);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  }
+  function generatePdfFromHtml(title, htmlContent) {
+    const win = window.open('', '', 'height=700,width=700');
+    win.document.write(`<html><head><title>${title}</title><style>body{font-family:sans-serif;padding:2rem;line-height:1.6;} h1{border-bottom:1px solid #ccc;padding-bottom:10px;}</style></head><body>`);
+    win.document.write(htmlContent);
+    win.document.write('</body></html>');
+    win.document.close();
+    win.setTimeout(() => { win.print(); }, 500);
+  }
+
+  let currentAppPage = 1;
+  let currentAppSearch = '';
+
+  window.handleAppSearch = function() {
+    currentAppSearch = document.getElementById('appSearch').value;
+    currentAppPage = 1;
+    loadApplications();
+  };
+  window.changeAppPage = function(delta) {
+    currentAppPage += delta;
+    loadApplications();
+  };
+
   async function loadApplications() {
     const container = document.getElementById('applicationsTable');
     const status = document.getElementById('applicationsStatus');
+    
+    // Set up controls wrapper if missing
+    if (!document.getElementById('appControls')) {
+      const controls = document.createElement('div');
+      controls.id = 'appControls';
+      controls.className = 'table-controls';
+      controls.innerHTML = `<input type="text" id="appSearch" class="table-search" placeholder="Search applications..." value="${esc(currentAppSearch)}" onkeyup="if(event.key==='Enter') handleAppSearch()">`;
+      container.parentElement.insertBefore(controls, container);
+    }
+
     container.innerHTML = '<p style="color:var(--muted);">Loading...</p>';
     try {
-      const resp = await fetch('/api/admin/applications');
+      const params = new URLSearchParams();
+      if (currentAppSearch) params.set('q', currentAppSearch);
+      params.set('page', currentAppPage);
+      params.set('limit', 10);
+      
+      const resp = await fetch('/api/admin/applications?' + params.toString());
       const data = await resp.json();
+      
       if (!data.applications?.length) {
         container.innerHTML = '<p style="color:var(--muted);">No applications found.</p>';
         return;
       }
-      container.innerHTML = `<table class="data-table"><thead><tr>
+      
+      const p = data.pagination || { totalPages: 1, page: 1 };
+      
+      let html = `<table class="data-table"><thead><tr>
         <th>Name</th><th>Email</th><th>Experience</th><th>Status</th><th>Date</th><th>Actions</th>
-      </tr></thead><tbody>${data.applications.map(a => `
+      </tr></thead><tbody>`;
+      
+      data.applications.forEach(a => {
+        let appDataStr = encodeURIComponent(JSON.stringify(a));
+        html += `
         <tr>
-          <td><strong>${esc(a.name)}</strong></td>
-          <td>${esc(a.email)}</td>
+          <td><strong class="truncate" style="max-width:150px;" title="${esc(a.name)}">${esc(a.name)}</strong></td>
+          <td><span class="truncate" style="max-width:150px;" title="${esc(a.email)}">${esc(a.email)}</span></td>
           <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.writing_experience || '')}</td>
           <td><span class="badge badge-${a.status}">${a.status}</span></td>
           <td>${new Date(a.created_at*1000).toLocaleDateString()}</td>
-          <td>${a.status==='pending' ? `
-            <button class="action-btn btn-approve" onclick="reviewApp(${a.id},'accept')">Accept</button>
-            <button class="action-btn btn-reject" onclick="reviewApp(${a.id},'reject')">Reject</button>
-          ` : `<button class="action-btn" disabled style="opacity:0.5;">Reviewed</button>`}</td>
-        </tr>
-      `).join('')}</tbody></table>`;
+          <td>
+            <div class="dropdown">
+              <button onclick="toggleDropdown('app-drop-${a.id}')" class="dropdown-btn">⋮</button>
+              <div id="app-drop-${a.id}" class="dropdown-content">
+                ${a.status==='pending' ? `
+                  <button onclick="reviewApp(${a.id},'accept')">✅ Accept</button>
+                  <button onclick="reviewApp(${a.id},'reject')">❌ Reject</button>
+                ` : `<button disabled style="opacity:0.5;cursor:default;">Reviewed</button>`}
+                <button onclick="downloadAppAsText('${appDataStr}')">📄 Download Text</button>
+                <button onclick="downloadAppAsPdf('${appDataStr}')">📑 Download PDF</button>
+                <button onclick="deleteApp(${a.id})" style="color:#ef4444;">🗑 Delete</button>
+              </div>
+            </div>
+          </td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      
+      // Pagination controls
+      html += `<div class="pagination-ctrl">
+        <button class="page-btn" onclick="changeAppPage(-1)" ${p.page <= 1 ? 'disabled' : ''}>&larr; Prev</button>
+        <span class="page-info">Page ${p.page} of ${p.totalPages}</span>
+        <button class="page-btn" onclick="changeAppPage(1)" ${p.page >= p.totalPages ? 'disabled' : ''}>Next &rarr;</button>
+      </div>`;
+      
+      container.innerHTML = html;
       status.style.display = 'none';
     } catch (e) {
       status.textContent = 'Failed to load applications: ' + e.message;
       status.className = 'alert alert-error';
       status.style.display = 'block';
     }
+  }
+
+  window.downloadAppAsText = function(dataStr) {
+    const a = JSON.parse(decodeURIComponent(dataStr));
+    const content = `Applicant: ${a.name}\nEmail: ${a.email}\nStatus: ${a.status}\n\nAbout Me:\n${a.about_me}\n\nExperience:\n${a.writing_experience}\n\nLinks:\n${a.portfolio_links}`;
+    downloadTextFile(`Application-${a.name.replace(/\\s+/g, '_')}.txt`, content);
+  };
+  
+  window.downloadAppAsPdf = function(dataStr) {
+    const a = JSON.parse(decodeURIComponent(dataStr));
+    const content = `<h1>Applicant: ${esc(a.name)}</h1><p><strong>Email:</strong> ${esc(a.email)}</p><p><strong>Status:</strong> ${a.status}</p><h3>About Me</h3><p>${esc(a.about_me).replace(/\\n/g, '<br>')}</p><h3>Experience</h3><p>${esc(a.writing_experience).replace(/\\n/g, '<br>')}</p><h3>Links</h3><p>${esc(a.portfolio_links).replace(/\\n/g, '<br>')}</p>`;
+    generatePdfFromHtml(`Application: ${a.name}`, content);
+  };
+
+  async function deleteApp(id) {
+    if(!confirm('Delete this application forever?')) return;
+    try {
+      const resp = await fetch('/api/admin/applications', {
+        method: 'DELETE', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ id })
+      });
+      alert((await resp.json()).message || 'Deleted');
+      loadApplications();
+    } catch(e) { alert('Error: '+e.message); }
   }
 
   async function reviewApp(id, action) {
@@ -914,38 +1090,87 @@ if (Astro.request) {
   }
 
   // --- Submissions ---
+  let currentSubPage = 1;
+  let currentSubSearch = '';
+
+  window.handleSubSearch = function() {
+    currentSubSearch = document.getElementById('subSearch').value;
+    currentSubPage = 1;
+    loadSubmissions();
+  };
+  window.changeSubPage = function(delta) {
+    currentSubPage += delta;
+    loadSubmissions();
+  };
+
   async function loadSubmissions() {
     const container = document.getElementById('submissionsTable');
+    
+    if (!document.getElementById('subControls')) {
+      const controls = document.createElement('div');
+      controls.id = 'subControls';
+      controls.className = 'table-controls';
+      controls.innerHTML = `<input type="text" id="subSearch" class="table-search" placeholder="Search submissions..." value="${esc(currentSubSearch)}" onkeyup="if(event.key==='Enter') handleSubSearch()">`;
+      container.parentElement.insertBefore(controls, container);
+    }
+
     container.innerHTML = '<p style="color:var(--muted);">Loading...</p>';
     try {
-      const resp = await fetch('/api/admin/submissions');
+      const params = new URLSearchParams();
+      if (currentSubSearch) params.set('q', currentSubSearch);
+      params.set('page', currentSubPage);
+      params.set('limit', 10);
+
+      const resp = await fetch('/api/admin/submissions?' + params.toString());
       const data = await resp.json();
+      
       if (!data.submissions?.length) {
         container.innerHTML = '<p style="color:var(--muted);">No submissions found.</p>';
         return;
       }
-      container.innerHTML = `<table class="data-table"><thead><tr>
+      
+      const p = data.pagination || { totalPages: 1, page: 1 };
+      
+      let html = `<table class="data-table"><thead><tr>
         <th>Title</th><th>Author</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th>
-      </tr></thead><tbody>${data.submissions.map(s => `
+      </tr></thead><tbody>`;
+      
+      data.submissions.forEach(s => {
+        html += `
         <tr>
-          <td><strong>${esc(s.title)}</strong></td>
-          <td>${esc(s.author || s.author_name || '')}</td>
+          <td><strong class="truncate" style="max-width:200px;" title="${esc(s.title)}">${esc(s.title)}</strong></td>
+          <td><span class="truncate" style="max-width:120px;" title="${esc(s.author || s.author_name || '')}">${esc(s.author || s.author_name || '')}</span></td>
           <td>${esc(s.type || 'general')}</td>
           <td><span class="badge badge-${s.status === 'published' ? 'approved' : s.status}">${s.status}</span></td>
           <td>${new Date(s.created_at*1000).toLocaleDateString()}</td>
           <td>
-            <button class="action-btn btn-view-admin" onclick="viewAdminSubmission(${s.id})" title="View">👁</button>
-            <button class="action-btn btn-edit-admin" onclick="editAdminSubmission(${s.id})" title="Edit">✏️</button>
-            ${s.status==='pending' ? `
-              <button class="action-btn btn-approve" onclick="reviewSub(${s.id},'approve')">Approve</button>
-              <button class="action-btn btn-reject" onclick="reviewSub(${s.id},'reject')">Reject</button>
-            ` : s.status==='approved' ? `
-              <button class="action-btn btn-publish" onclick="publishArticle(${s.id})">Publish</button>
-            ` : ''}
-            <button class="action-btn btn-delete-sm" onclick="deleteAdminSubmission(${s.id})" title="Delete">🗑</button>
+            <div class="dropdown">
+              <button onclick="toggleDropdown('sub-drop-${s.id}')" class="dropdown-btn">⋮</button>
+              <div id="sub-drop-${s.id}" class="dropdown-content">
+                <button onclick="viewAdminSubmission(${s.id})">👁 View</button>
+                <button onclick="editAdminSubmission(${s.id})">✏️ Edit</button>
+                <button onclick="window.open('/preview/${s.slug}', '_blank')">🌐 Web Preview</button>
+                ${s.status==='pending' ? `
+                  <button onclick="reviewSub(${s.id},'approve')">✅ Approve</button>
+                  <button onclick="reviewSub(${s.id},'reject')">❌ Reject</button>
+                ` : s.status==='approved' ? `
+                  <button onclick="publishArticle(${s.id})" style="color:#6366f1;">🚀 Publish</button>
+                ` : ''}
+                <button onclick="deleteAdminSubmission(${s.id})" style="color:#ef4444;">🗑 Delete</button>
+              </div>
+            </div>
           </td>
-        </tr>
-      `).join('')}</tbody></table>`;
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      
+      html += `<div class="pagination-ctrl">
+        <button class="page-btn" onclick="changeSubPage(-1)" ${p.page <= 1 ? 'disabled' : ''}>&larr; Prev</button>
+        <span class="page-info">Page ${p.page} of ${p.totalPages}</span>
+        <button class="page-btn" onclick="changeSubPage(1)" ${p.page >= p.totalPages ? 'disabled' : ''}>Next &rarr;</button>
+      </div>`;
+      
+      container.innerHTML = html;
     } catch (e) {
       container.innerHTML = `<p class="alert alert-error">Error: ${esc(e.message)}</p>`;
     }
@@ -982,29 +1207,78 @@ if (Astro.request) {
   }
 
   // --- Articles ---
+  let currentArtPage = 1;
+  let currentArtSearch = '';
+
+  window.handleArtSearch = function() {
+    currentArtSearch = document.getElementById('artSearch').value;
+    currentArtPage = 1;
+    loadArticles();
+  };
+  window.changeArtPage = function(delta) {
+    currentArtPage += delta;
+    loadArticles();
+  };
+
   async function loadArticles() {
     const container = document.getElementById('articlesTable');
+    
+    if (!document.getElementById('artControls')) {
+      const controls = document.createElement('div');
+      controls.id = 'artControls';
+      controls.className = 'table-controls';
+      controls.innerHTML = `<input type="text" id="artSearch" class="table-search" placeholder="Search articles..." value="${esc(currentArtSearch)}" onkeyup="if(event.key==='Enter') handleArtSearch()">`;
+      container.parentElement.insertBefore(controls, container);
+    }
+
     container.innerHTML = '<p style="color:var(--muted);">Loading...</p>';
     try {
-      const resp = await fetch('/api/admin/articles');
+      const params = new URLSearchParams();
+      if (currentArtSearch) params.set('q', currentArtSearch);
+      params.set('page', currentArtPage);
+      params.set('limit', 10);
+
+      const resp = await fetch('/api/admin/articles?' + params.toString());
       const data = await resp.json();
+      
       if (!data.articles?.length) {
         container.innerHTML = '<p style="color:var(--muted);">No published articles found.</p>';
         return;
       }
-      container.innerHTML = `<table class="data-table"><thead><tr>
+      
+      const p = data.pagination || { totalPages: 1, page: 1 };
+      
+      let html = `<table class="data-table"><thead><tr>
         <th>File</th><th>Path</th><th>Actions</th>
-      </tr></thead><tbody>${data.articles.map(a => `
+      </tr></thead><tbody>`;
+      
+      data.articles.forEach(a => {
+        html += `
         <tr>
-          <td><strong>${esc(a.name)}</strong></td>
-          <td style="font-family:monospace;font-size:0.85rem;">${esc(a.path)}</td>
-          <td style="white-space:nowrap;">
-            <button class="action-btn btn-edit-admin" onclick="editPublishedArticle('${esc(a.path).replace(/'/g, "\\'")}', '${esc(a.name).replace(/'/g, "\\'")}')">Edit</button>
-            <a href="${esc(a.url)}" target="_blank" class="action-btn btn-publish" style="text-decoration:none;">View on GitHub</a>
+          <td><strong class="truncate" style="max-width:250px;" title="${esc(a.name)}">${esc(a.name)}</strong></td>
+          <td style="font-family:monospace;font-size:0.85rem;" class="truncate" style="max-width:200px;" title="${esc(a.path)}">${esc(a.path)}</td>
+          <td>
+            <div class="dropdown">
+              <button onclick="toggleDropdown('art-drop-${a.sha}')" class="dropdown-btn">⋮</button>
+              <div id="art-drop-${a.sha}" class="dropdown-content">
+                <button onclick="editPublishedArticle('${esc(a.path).replace(/'/g, "\\'")}', '${esc(a.name).replace(/'/g, "\\'")}')">✏️ Edit</button>
+                <button onclick="window.open('${esc(a.url)}', '_blank')">🌐 View on GitHub</button>
+              </div>
+            </div>
           </td>
-        </tr>
-      `).join('')}</tbody></table>`;
-      if (data.message) container.innerHTML += `<p style="color:var(--muted);margin-top:0.5rem;">${esc(data.message)}</p>`;
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      
+      html += `<div class="pagination-ctrl">
+        <button class="page-btn" onclick="changeArtPage(-1)" ${p.page <= 1 ? 'disabled' : ''}>&larr; Prev</button>
+        <span class="page-info">Page ${p.page} of ${p.totalPages}</span>
+        <button class="page-btn" onclick="changeArtPage(1)" ${p.page >= p.totalPages ? 'disabled' : ''}>Next &rarr;</button>
+      </div>`;
+      
+      if (data.message) html += `<p style="color:var(--muted);margin-top:0.5rem;">${esc(data.message)}</p>`;
+      
+      container.innerHTML = html;
     } catch (e) {
       container.innerHTML = `<p class="alert alert-error">Error: ${esc(e.message)}</p>`;
     }
@@ -1012,36 +1286,83 @@ if (Astro.request) {
 
   // --- Images ---
   let currentImageFolder = 'all';
+  let currentImgPage = 1;
+  let currentImgSearch = '';
+
+  window.handleImgSearch = function() {
+    currentImgSearch = document.getElementById('imgSearch').value;
+    currentImgPage = 1;
+    loadImages();
+  };
+  window.changeImgPage = function(delta) {
+    currentImgPage += delta;
+    loadImages();
+  };
 
   async function loadImages(folder = currentImageFolder) {
+    currentImageFolder = folder;
     const container = document.getElementById('imagesTable');
-    const status = document.getElementById('imagesStatus');
+    
+    if (!document.getElementById('imgControls')) {
+      const controls = document.createElement('div');
+      controls.id = 'imgControls';
+      controls.className = 'table-controls';
+      controls.innerHTML = `<input type="text" id="imgSearch" class="table-search" placeholder="Search images..." value="${esc(currentImgSearch)}" onkeyup="if(event.key==='Enter') handleImgSearch()">`;
+      container.parentElement.insertBefore(controls, container);
+    }
+
     container.innerHTML = '<p style="color:var(--muted);">Loading...</p>';
     try {
       const params = new URLSearchParams();
       if (folder && folder !== 'all') params.set('folder', folder);
-      const resp = await fetch(`/api/admin/images?${params}`);
+      if (currentImgSearch) params.set('q', currentImgSearch);
+      params.set('page', currentImgPage);
+      params.set('limit', 10);
+      
+      const resp = await fetch(`/api/admin/images?${params.toString()}`);
       const data = await resp.json();
+      
       if (!data.images?.length) {
         container.innerHTML = '<p style="color:var(--muted);">No images found.</p>';
         return;
       }
-      container.innerHTML = `<table class="data-table"><thead><tr>
-        <th></th><th>Name</th><th>Key</th><th>Folder</th><th>Size</th><th>Date</th><th>Actions</th>
-      </tr></thead><tbody>${data.images.map(img => `
+      
+      const p = data.pagination || { totalPages: 1, page: 1 };
+      
+      let html = `<table class="data-table"><thead><tr>
+        <th>Name</th><th>Key</th><th>Folder</th><th>Size</th><th>Date</th><th>Actions</th>
+      </tr></thead><tbody>`;
+      
+      data.images.forEach(img => {
+        html += `
         <tr>
-          <td><img src="${esc(img.url)}" class="img-thumb" alt="" loading="lazy" onerror="this.style.display='none'"></td>
-          <td><strong>${esc(img.name)}</strong></td>
+          <td><strong class="truncate" style="max-width:150px;" title="${esc(img.name)}">${esc(img.name)}</strong></td>
           <td style="font-family:monospace;font-size:0.8rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(img.key)}</td>
           <td><span class="badge badge-pending">${esc(img.folder)}</span></td>
           <td>${formatSize(img.size_bytes)}</td>
           <td>${new Date(img.created_at*1000).toLocaleDateString()}</td>
           <td>
-            <button class="action-btn btn-copy" onclick="copyImageUrl('${esc(img.url).replace(/'/g, "\\'")}')">Copy URL</button>
-            <button class="action-btn btn-delete" onclick="deleteImage(${img.id},'${esc(img.key).replace(/'/g, "\\'")}')">Delete</button>
+            <div class="dropdown">
+              <button onclick="toggleDropdown('img-drop-${img.id}')" class="dropdown-btn">⋮</button>
+              <div id="img-drop-${img.id}" class="dropdown-content">
+                <button onclick="window.open('${esc(img.url)}', '_blank')">👁 View Image</button>
+                <button onclick="copyImageUrl('${esc(img.url).replace(/'/g, "\\'")}')">🔗 Copy URL</button>
+                <button onclick="copyImageUrl('![${esc(img.name).replace(/'/g, "\\'")}](${esc(img.url).replace(/'/g, "\\'")})')">📝 Copy MD Inline</button>
+                <button onclick="deleteImage(${img.id},'${esc(img.key).replace(/'/g, "\\'")}')" style="color:#ef4444;">🗑 Delete</button>
+              </div>
+            </div>
           </td>
-        </tr>
-      `).join('')}</tbody></table>`;
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      
+      html += `<div class="pagination-ctrl">
+        <button class="page-btn" onclick="changeImgPage(-1)" ${p.page <= 1 ? 'disabled' : ''}>&larr; Prev</button>
+        <span class="page-info">Page ${p.page} of ${p.totalPages}</span>
+        <button class="page-btn" onclick="changeImgPage(1)" ${p.page >= p.totalPages ? 'disabled' : ''}>Next &rarr;</button>
+      </div>`;
+      
+      container.innerHTML = html;
     } catch (e) {
       container.innerHTML = `<p class="alert alert-error">Error: ${esc(e.message)}</p>`;
     }
@@ -2054,6 +2375,171 @@ if (Astro.request) {
       statusEl.className = 'alert alert-error';
     }
   }
+
+  // --- Users ---
+  let currentUserPage = 1;
+  let currentUserSearch = '';
+
+  window.handleUserSearch = function() {
+    currentUserSearch = document.getElementById('userSearch').value;
+    currentUserPage = 1;
+    loadUsers();
+  };
+  window.changeUserPage = function(delta) {
+    currentUserPage += delta;
+    loadUsers();
+  };
+
+  async function loadUsers() {
+    const container = document.getElementById('usersTable');
+    
+    if (!document.getElementById('userControls')) {
+      const controls = document.createElement('div');
+      controls.id = 'userControls';
+      controls.className = 'table-controls';
+      controls.innerHTML = `
+        <input type="text" id="userSearch" class="table-search" placeholder="Search users..." value="${esc(currentUserSearch)}" onkeyup="if(event.key==='Enter') handleUserSearch()">
+        <button class="btn btn-sm" onclick="openEmailModal('all')">✉️ Email All Contributors</button>
+      `;
+      container.parentElement.insertBefore(controls, container);
+    }
+
+    container.innerHTML = '<p style="color:var(--muted);">Loading...</p>';
+    try {
+      const params = new URLSearchParams();
+      if (currentUserSearch) params.set('q', currentUserSearch);
+      params.set('page', currentUserPage);
+      params.set('limit', 10);
+
+      const resp = await fetch('/api/admin/users?' + params.toString());
+      const data = await resp.json();
+      
+      if (!data.users?.length) {
+        container.innerHTML = '<p style="color:var(--muted);">No users found.</p>';
+        return;
+      }
+      
+      const p = data.pagination || { totalPages: 1, page: 1 };
+      
+      let html = `<table class="data-table"><thead><tr>
+        <th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>MFA</th><th>Actions</th>
+      </tr></thead><tbody>`;
+      
+      data.users.forEach(u => {
+        let uDataStr = encodeURIComponent(JSON.stringify(u));
+        html += `
+        <tr>
+          <td><strong>${esc(u.username)}</strong></td>
+          <td>${esc(u.full_name || '')}</td>
+          <td>${esc(u.email || '')}</td>
+          <td><span class="badge badge-pending">${esc(u.role)}</span></td>
+          <td>${u.mfa_enabled ? '✅' : '❌'}</td>
+          <td>
+            <div class="dropdown">
+              <button onclick="toggleDropdown('user-drop-${u.id}')" class="dropdown-btn">⋮</button>
+              <div id="user-drop-${u.id}" class="dropdown-content">
+                <button onclick="openEmailModal('${esc(u.email)}')">✉️ Send Email</button>
+                <button onclick="downloadUserAsText('${uDataStr}')">📄 Download Text</button>
+                <button onclick="downloadUserAsPdf('${uDataStr}')">📑 Download PDF</button>
+                <button onclick="deleteUser('${u.id}', '${esc(u.username)}')">🗑 Delete</button>
+              </div>
+            </div>
+          </td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      
+      html += `<div class="pagination-ctrl">
+        <button class="page-btn" onclick="changeUserPage(-1)" ${p.page <= 1 ? 'disabled' : ''}>&larr; Prev</button>
+        <span class="page-info">Page ${p.page} of ${p.totalPages}</span>
+        <button class="page-btn" onclick="changeUserPage(1)" ${p.page >= p.totalPages ? 'disabled' : ''}>Next &rarr;</button>
+      </div>`;
+      
+      container.innerHTML = html;
+    } catch (e) {
+      container.innerHTML = `<p class="alert alert-error">Error: ${esc(e.message)}</p>`;
+    }
+  }
+
+  window.downloadUserAsText = function(dataStr) {
+    const u = JSON.parse(decodeURIComponent(dataStr));
+    const content = `User Profile\n\nUsername: ${u.username}\nFull Name: ${u.full_name}\nEmail: ${u.email}\nRole: ${u.role}\nMFA Enabled: ${u.mfa_enabled ? 'Yes' : 'No'}`;
+    downloadTextFile(`User-${u.username}.txt`, content);
+  };
+  
+  window.downloadUserAsPdf = function(dataStr) {
+    const u = JSON.parse(decodeURIComponent(dataStr));
+    const content = `<h1>User Profile: ${esc(u.username)}</h1><p><strong>Full Name:</strong> ${esc(u.full_name)}</p><p><strong>Email:</strong> ${esc(u.email)}</p><p><strong>Role:</strong> ${esc(u.role)}</p><p><strong>MFA Enabled:</strong> ${u.mfa_enabled ? 'Yes' : 'No'}</p>`;
+    generatePdfFromHtml(`User Profile: ${u.username}`, content);
+  };
+
+  async function deleteUser(id, username) {
+    if(!confirm(`Delete user ${username}?`)) return;
+    try {
+      const resp = await fetch('/api/admin/users', {
+        method: 'DELETE', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ id })
+      });
+      alert((await resp.json()).message || 'Deleted');
+      loadUsers();
+    } catch(e) { alert('Error: '+e.message); }
+  }
+
+  window.openEmailModal = function(to) {
+    document.getElementById('emailTo').value = to;
+    document.getElementById('emailRecipientsDisplay').value = to === 'all' ? 'All Contributors' : to;
+    document.getElementById('emailSubject').value = '';
+    document.getElementById('emailBody').value = '';
+    document.getElementById('emailModalStatus').style.display = 'none';
+    document.getElementById('emailModalOverlay').style.display = 'flex';
+  };
+
+  window.closeEmailModal = function() {
+    document.getElementById('emailModalOverlay').style.display = 'none';
+  };
+
+  window.sendBulkEmail = async function() {
+    const to = document.getElementById('emailTo').value;
+    const subject = document.getElementById('emailSubject').value.trim();
+    const htmlBody = document.getElementById('emailBody').value.trim();
+    
+    if (!to || !subject || !htmlBody) {
+      alert("All fields are required.");
+      return;
+    }
+    
+    const btn = document.getElementById('emailSendBtn');
+    const status = document.getElementById('emailModalStatus');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    status.style.display = 'none';
+    
+    try {
+      const resp = await fetch('/api/admin/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, subject, htmlBody })
+      });
+      const data = await resp.json();
+      
+      status.style.display = 'block';
+      if (data.success || resp.ok) {
+        status.className = 'alert alert-success';
+        status.textContent = data.message || 'Email sent successfully.';
+        setTimeout(closeEmailModal, 1500);
+      } else {
+        status.className = 'alert alert-error';
+        status.textContent = data.error || 'Failed to send email.';
+      }
+    } catch(e) {
+      status.style.display = 'block';
+      status.className = 'alert alert-error';
+      status.textContent = 'Error: ' + e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Send Email';
+    }
+  };
 
   // Load on page load
   loadUserInfo();

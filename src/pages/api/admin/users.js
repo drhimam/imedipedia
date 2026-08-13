@@ -33,40 +33,29 @@ export async function GET({ request, locals }) {
 
   try {
     const url = new URL(request.url);
-    const status = url.searchParams.get('status') || '';
     const q = (url.searchParams.get('q') || '').trim();
     const page = Math.max(1, parseInt(url.searchParams.get('page')) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit')) || 10));
     const offset = (page - 1) * limit;
 
-    let query = 'SELECT * FROM applications';
-    let countQuery = 'SELECT COUNT(*) as total FROM applications';
+    let query = 'SELECT id, username, full_name, email, role, mfa_enabled FROM users';
+    let countQuery = 'SELECT COUNT(*) as total FROM users';
     const params = [];
     const countParams = [];
 
-    const conditions = [];
-    if (status) {
-      conditions.push('status = ?');
-      params.push(status);
-      countParams.push(status);
-    }
     if (q) {
-      conditions.push('(name LIKE ? OR email LIKE ?)');
-      const likeQuery = `%${q}%`;
-      params.push(likeQuery, likeQuery);
-      countParams.push(likeQuery, likeQuery);
-    }
-
-    if (conditions.length > 0) {
-      const whereClause = ' WHERE ' + conditions.join(' AND ');
+      const whereClause = ' WHERE username LIKE ? OR full_name LIKE ? OR email LIKE ?';
       query += whereClause;
       countQuery += whereClause;
+      const likeQuery = `%${q}%`;
+      params.push(likeQuery, likeQuery, likeQuery);
+      countParams.push(likeQuery, likeQuery, likeQuery);
     }
 
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    query += ' ORDER BY username ASC LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
-    const [countResult, apps] = await Promise.all([
+    const [countResult, usersRes] = await Promise.all([
       db.prepare(countQuery).bind(...countParams).first(),
       db.prepare(query).bind(...params).all(),
     ]);
@@ -75,14 +64,14 @@ export async function GET({ request, locals }) {
     const totalPages = Math.ceil(total / limit);
 
     return new Response(JSON.stringify({
-      applications: apps.results || [],
+      users: usersRes.results || [],
       pagination: { total, page, limit, totalPages }
     }), {
       status: 200, headers: { "Content-Type": "application/json" }
     });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: `Failed to list applications: ${err.message}` }), {
+    return new Response(JSON.stringify({ error: `Database error: ${err.message}` }), {
       status: 500, headers: { "Content-Type": "application/json" }
     });
   }

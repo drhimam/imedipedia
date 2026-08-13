@@ -34,21 +34,34 @@ export async function GET({ request, locals }) {
   try {
     const url = new URL(request.url);
     const status = url.searchParams.get('status') || '';
+    const q = (url.searchParams.get('q') || '').trim();
     const page = Math.max(1, parseInt(url.searchParams.get('page')) || 1);
-    const limit = 20;
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit')) || 10));
     const offset = (page - 1) * limit;
 
     let query = `SELECT s.*, u.username, u.full_name as author_name
                  FROM submissions s LEFT JOIN users u ON s.user_id = u.id`;
-    let countQuery = 'SELECT COUNT(*) as total FROM submissions';
+    let countQuery = 'SELECT COUNT(*) as total FROM submissions s LEFT JOIN users u ON s.user_id = u.id';
     const params = [];
     const countParams = [];
 
+    const conditions = [];
     if (status) {
-      query += ' WHERE s.status = ?';
-      countQuery += ' WHERE status = ?';
+      conditions.push('s.status = ?');
       params.push(status);
       countParams.push(status);
+    }
+    if (q) {
+      conditions.push('(s.title LIKE ? OR s.author LIKE ? OR u.full_name LIKE ?)');
+      const likeQuery = `%${q}%`;
+      params.push(likeQuery, likeQuery, likeQuery);
+      countParams.push(likeQuery, likeQuery, likeQuery);
+    }
+
+    if (conditions.length > 0) {
+      const whereClause = ' WHERE ' + conditions.join(' AND ');
+      query += whereClause;
+      countQuery += whereClause;
     }
 
     query += ' ORDER BY s.created_at DESC LIMIT ? OFFSET ?';
@@ -59,12 +72,12 @@ export async function GET({ request, locals }) {
       db.prepare(query).bind(...params).all(),
     ]);
 
+    const total = countResult?.total || 0;
+    const totalPages = Math.ceil(total / limit);
+
     return new Response(JSON.stringify({
       submissions: subs.results || [],
-      total: countResult?.total || 0,
-      page,
-      limit,
-      totalPages: Math.ceil((countResult?.total || 0) / limit),
+      pagination: { total, page, limit, totalPages }
     }), {
       status: 200, headers: { "Content-Type": "application/json" }
     });

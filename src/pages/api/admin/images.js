@@ -81,20 +81,33 @@ export async function GET({ request, locals }) {
   try {
     const url = new URL(request.url);
     const folder = url.searchParams.get('folder') || '';
+    const q = (url.searchParams.get('q') || '').trim();
     const page = Math.max(1, parseInt(url.searchParams.get('page')) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit')) || 50));
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit')) || 10));
     const offset = (page - 1) * limit;
 
     let query = 'SELECT i.*, u.username as uploader_name FROM images i LEFT JOIN users u ON i.uploaded_by = u.id';
-    let countQuery = 'SELECT COUNT(*) as total FROM images';
+    let countQuery = 'SELECT COUNT(*) as total FROM images i';
     const params = [];
     const countParams = [];
 
+    const conditions = [];
     if (folder) {
-      query += ' WHERE i.folder = ?';
-      countQuery += ' WHERE folder = ?';
+      conditions.push('i.folder = ?');
       params.push(folder);
       countParams.push(folder);
+    }
+    if (q) {
+      conditions.push('(i.name LIKE ? OR i.key LIKE ?)');
+      const likeQuery = `%${q}%`;
+      params.push(likeQuery, likeQuery);
+      countParams.push(likeQuery, likeQuery);
+    }
+
+    if (conditions.length > 0) {
+      const whereClause = ' WHERE ' + conditions.join(' AND ');
+      query += whereClause;
+      countQuery += whereClause;
     }
 
     query += ' ORDER BY i.created_at DESC LIMIT ? OFFSET ?';
@@ -103,12 +116,12 @@ export async function GET({ request, locals }) {
     const countResult = await db.prepare(countQuery).bind(...countParams).first();
     const images = await db.prepare(query).bind(...params).all();
 
+    const total = countResult?.total || 0;
+    const totalPages = Math.ceil(total / limit);
+
     return new Response(JSON.stringify({
       images: images.results || [],
-      total: countResult?.total || 0,
-      page,
-      limit,
-      totalPages: Math.ceil((countResult?.total || 0) / limit),
+      pagination: { total, page, limit, totalPages }
     }), {
       status: 200, headers: { "Content-Type": "application/json" }
     });
