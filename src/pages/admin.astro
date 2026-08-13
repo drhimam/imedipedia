@@ -555,7 +555,7 @@ if (Astro.request) {
 
   <!-- Edit User Modal -->
   <div class="view-modal-overlay" id="userEditModalOverlay" style="display:none;">
-    <div class="view-modal" style="max-width:550px;">
+    <div class="view-modal" style="max-width:650px;">
       <div class="view-modal-header">
         <button type="button" class="view-modal-close" onclick="closeUserEditModal()">&times;</button>
         <h2>✏️ Edit User Profile</h2>
@@ -563,26 +563,61 @@ if (Astro.request) {
       <div id="userEditStatus" class="alert" style="display:none;margin-bottom:1rem;"></div>
       <form id="userEditForm" class="edit-modal-form" style="margin-top:1rem;" onsubmit="return false;">
         <input type="hidden" id="userEditId">
-        <div class="form-group">
-          <label class="form-label">Username</label>
-          <input type="text" class="form-input" id="userEditUsername" disabled>
+        <div style="display:flex;gap:0.75rem;">
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-input" id="userEditUsername" disabled>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Role</label>
+            <select class="form-input" id="userEditRole">
+              <option value="admin">admin</option>
+              <option value="co-admin">co-admin</option>
+              <option value="contributor">contributor</option>
+              <option value="editor">editor</option>
+              <option value="user">user</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.75rem;">
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-input" id="userEditFullName">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-input" id="userEditEmail">
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Full Name</label>
-          <input type="text" class="form-input" id="userEditFullName">
+          <label class="form-label">Avatar URL</label>
+          <input type="text" class="form-input" id="userEditAvatarUrl" placeholder="https://...">
         </div>
         <div class="form-group">
-          <label class="form-label">Email</label>
-          <input type="email" class="form-input" id="userEditEmail">
+          <label class="form-label">Affiliations (comma separated)</label>
+          <input type="text" class="form-input" id="userEditAffiliation" placeholder="e.g. Johns Hopkins, Mayo Clinic">
         </div>
         <div class="form-group">
-          <label class="form-label">Role</label>
-          <select class="form-input" id="userEditRole">
-            <option value="admin">admin</option>
-            <option value="co-admin">co-admin</option>
-            <option value="contributor">contributor</option>
-            <option value="user">user</option>
-          </select>
+          <label class="form-label">Specialties (comma separated)</label>
+          <input type="text" class="form-input" id="userEditSpecialty" placeholder="e.g. Cardiology, Internal Medicine">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Experience (comma separated)</label>
+          <input type="text" class="form-input" id="userEditExperience" placeholder="e.g. Senior Resident, Attending Physician">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bio</label>
+          <textarea class="form-input form-textarea" id="userEditBio" style="min-height:80px;"></textarea>
+        </div>
+        <div style="display:flex;gap:1.5rem;margin-top:0.5rem;margin-bottom:1rem;">
+          <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;cursor:pointer;">
+            <input type="checkbox" id="userEditMfaEnabled">
+            <span>Enable MFA</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;cursor:pointer;">
+            <input type="checkbox" id="userEditForcePasswordChange">
+            <span>Force Password Change</span>
+          </label>
         </div>
         <div class="edit-modal-actions">
           <button type="button" class="topbar-btn" onclick="closeUserEditModal()" style="padding:0.6rem 1.25rem;">Cancel</button>
@@ -1056,7 +1091,10 @@ if (Astro.request) {
     loadApplications();
   };
 
+  window._loadedApplications = {};
+
   async function loadApplications() {
+    window._loadedApplications = {};
     const container = document.getElementById('applicationsTable');
     const status = document.getElementById('applicationsStatus');
     
@@ -1091,7 +1129,7 @@ if (Astro.request) {
       </tr></thead><tbody>`;
       
       data.applications.forEach(a => {
-        let appDataStr = encodeURIComponent(JSON.stringify(a));
+        window._loadedApplications[a.id] = a;
         html += `
         <tr>
           <td><strong class="truncate" style="max-width:150px;" title="${esc(a.name)}">${esc(a.name)}</strong></td>
@@ -1103,14 +1141,14 @@ if (Astro.request) {
             <div class="dropdown">
               <button onclick="toggleDropdown('app-drop-${a.id}')" class="dropdown-btn">⋮</button>
               <div id="app-drop-${a.id}" class="dropdown-content">
-                <button onclick="viewApp('${appDataStr}')">👁 View</button>
-                <button onclick="editApp('${appDataStr}')">✏️ Edit</button>
+                <button onclick="viewApp(${a.id})">👁 View</button>
+                <button onclick="editApp(${a.id})">✏️ Edit</button>
                 ${a.status==='pending' ? `
                   <button onclick="reviewApp(${a.id},'accept')">✅ Accept</button>
                   <button onclick="reviewApp(${a.id},'reject')">❌ Reject</button>
                 ` : `<button disabled style="opacity:0.5;cursor:default;">Reviewed</button>`}
-                <button onclick="downloadAppAsText('${appDataStr}')">📄 Download Text</button>
-                <button onclick="downloadAppAsPdf('${appDataStr}')">📑 Download PDF</button>
+                <button onclick="downloadAppAsText(${a.id})">📄 Download Text</button>
+                <button onclick="downloadAppAsPdf(${a.id})">📑 Download PDF</button>
                 <button onclick="deleteApp(${a.id})" style="color:#ef4444;">🗑 Delete</button>
               </div>
             </div>
@@ -1135,15 +1173,17 @@ if (Astro.request) {
     }
   }
 
-  window.downloadAppAsText = function(dataStr) {
-    const a = JSON.parse(decodeURIComponent(dataStr));
+  window.downloadAppAsText = function(id) {
+    const a = window._loadedApplications[id];
+    if (!a) return;
     const content = `Applicant: ${a.name}\nEmail: ${a.email}\nStatus: ${a.status}\n\nAbout Me:\n${a.about_me}\n\nExperience:\n${a.writing_experience}\n\nLinks:\n${a.portfolio_links}`;
-    downloadTextFile(`Application-${a.name.replace(/\\s+/g, '_')}.txt`, content);
+    downloadTextFile(`Application-${a.name.replace(/\s+/g, '_')}.txt`, content);
   };
   
-  window.downloadAppAsPdf = function(dataStr) {
-    const a = JSON.parse(decodeURIComponent(dataStr));
-    const content = `<h1>Applicant: ${esc(a.name)}</h1><p><strong>Email:</strong> ${esc(a.email)}</p><p><strong>Status:</strong> ${a.status}</p><h3>About Me</h3><p>${esc(a.about_me).replace(/\\n/g, '<br>')}</p><h3>Experience</h3><p>${esc(a.writing_experience).replace(/\\n/g, '<br>')}</p><h3>Links</h3><p>${esc(a.portfolio_links).replace(/\\n/g, '<br>')}</p>`;
+  window.downloadAppAsPdf = function(id) {
+    const a = window._loadedApplications[id];
+    if (!a) return;
+    const content = `<h1>Applicant: ${esc(a.name)}</h1><p><strong>Email:</strong> ${esc(a.email)}</p><p><strong>Status:</strong> ${a.status}</p><h3>About Me</h3><p>${esc(a.about_me).replace(/\n/g, '<br>')}</p><h3>Experience</h3><p>${esc(a.writing_experience).replace(/\n/g, '<br>')}</p><h3>Links</h3><p>${esc(a.portfolio_links).replace(/\n/g, '<br>')}</p>`;
     generatePdfFromHtml(`Application: ${a.name}`, content);
   };
 
@@ -2475,7 +2515,10 @@ if (Astro.request) {
     loadUsers();
   };
 
+  window._loadedUsers = {};
+
   async function loadUsers() {
+    window._loadedUsers = {};
     const container = document.getElementById('usersTable');
     
     if (!document.getElementById('userControls')) {
@@ -2511,7 +2554,7 @@ if (Astro.request) {
       </tr></thead><tbody>`;
       
       data.users.forEach(u => {
-        let uDataStr = encodeURIComponent(JSON.stringify(u));
+        window._loadedUsers[u.id] = u;
         html += `
         <tr>
           <td><strong>${esc(u.username)}</strong></td>
@@ -2523,11 +2566,11 @@ if (Astro.request) {
             <div class="dropdown">
               <button onclick="toggleDropdown('user-drop-${u.id}')" class="dropdown-btn">⋮</button>
               <div id="user-drop-${u.id}" class="dropdown-content">
-                <button onclick="viewUser('${uDataStr}')">👁 View</button>
-                <button onclick="editUser('${uDataStr}')">✏️ Edit</button>
+                <button onclick="viewUser('${u.id}')">👁 View</button>
+                <button onclick="editUser('${u.id}')">✏️ Edit</button>
                 <button onclick="openEmailModal('${esc(u.email)}')">✉️ Send Email</button>
-                <button onclick="downloadUserAsText('${uDataStr}')">📄 Download Text</button>
-                <button onclick="downloadUserAsPdf('${uDataStr}')">📑 Download PDF</button>
+                <button onclick="downloadUserAsText('${u.id}')">📄 Download Text</button>
+                <button onclick="downloadUserAsPdf('${u.id}')">📑 Download PDF</button>
                 <button onclick="deleteUser('${u.id}', '${esc(u.username)}')">🗑 Delete</button>
               </div>
             </div>
@@ -2548,15 +2591,17 @@ if (Astro.request) {
     }
   }
 
-  window.downloadUserAsText = function(dataStr) {
-    const u = JSON.parse(decodeURIComponent(dataStr));
-    const content = `User Profile\n\nUsername: ${u.username}\nFull Name: ${u.full_name}\nEmail: ${u.email}\nRole: ${u.role}\nMFA Enabled: ${u.mfa_enabled ? 'Yes' : 'No'}`;
+  window.downloadUserAsText = function(id) {
+    const u = window._loadedUsers[id];
+    if (!u) return;
+    const content = `User Profile\n\nID: ${u.id}\nUsername: ${u.username}\nFull Name: ${u.full_name}\nEmail: ${u.email}\nRole: ${u.role}\nAffiliations: ${u.affiliation}\nSpecialties: ${u.specialty}\nExperience: ${u.experience}\nBio: ${u.bio}\nAvatar URL: ${u.avatar_url}\nMFA Enabled: ${u.mfa_enabled ? 'Yes' : 'No'}\nForce Password Change: ${u.force_password_change ? 'Yes' : 'No'}`;
     downloadTextFile(`User-${u.username}.txt`, content);
   };
   
-  window.downloadUserAsPdf = function(dataStr) {
-    const u = JSON.parse(decodeURIComponent(dataStr));
-    const content = `<h1>User Profile: ${esc(u.username)}</h1><p><strong>Full Name:</strong> ${esc(u.full_name)}</p><p><strong>Email:</strong> ${esc(u.email)}</p><p><strong>Role:</strong> ${esc(u.role)}</p><p><strong>MFA Enabled:</strong> ${u.mfa_enabled ? 'Yes' : 'No'}</p>`;
+  window.downloadUserAsPdf = function(id) {
+    const u = window._loadedUsers[id];
+    if (!u) return;
+    const content = `<h1>User Profile: ${esc(u.username)}</h1><p><strong>ID:</strong> ${esc(u.id)}</p><p><strong>Full Name:</strong> ${esc(u.full_name)}</p><p><strong>Email:</strong> ${esc(u.email)}</p><p><strong>Role:</strong> ${esc(u.role)}</p><p><strong>Affiliations:</strong> ${esc(u.affiliation)}</p><p><strong>Specialties:</strong> ${esc(u.specialty)}</p><p><strong>Experience:</strong> ${esc(u.experience)}</p><p><strong>Bio:</strong> ${esc(u.bio).replace(/\n/g, '<br>')}</p><p><strong>MFA Enabled:</strong> ${u.mfa_enabled ? 'Yes' : 'No'}</p><p><strong>Force Password Change:</strong> ${u.force_password_change ? 'Yes' : 'No'}</p>`;
     generatePdfFromHtml(`User Profile: ${u.username}`, content);
   };
 
@@ -2649,33 +2694,38 @@ if (Astro.request) {
   };
 
   // --- Application & User View / Edit Logic ---
-  window.viewApp = function(dataStr) {
-    const a = JSON.parse(decodeURIComponent(dataStr));
+  window.viewApp = function(id) {
+    const a = window._loadedApplications[id];
+    if (!a) return;
     const modal = document.getElementById('adminViewModalContent');
     const date = new Date(a.created_at * 1000).toLocaleDateString();
     modal.innerHTML = `
-      <div class="view-modal-header">
-        <button class="view-modal-close" onclick="closeAdminViewModal()">&times;</button>
-        <h2>Application: ${esc(a.name)}</h2>
-        <div class="view-modal-meta">
-          <span><strong>Email:</strong> ${esc(a.email)}</span>
-          <span><strong>Status:</strong> <span class="badge badge-${a.status}">${a.status}</span></span>
-          <span><strong>Date:</strong> ${date}</span>
+      <div class="view-modal-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="margin:0;">Application: ${esc(a.name)}</h2>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button onclick="closeAdminViewModal(); editApp(${a.id});" class="btn btn-sm btn-secondary">✏️ Edit Application</button>
+          <button class="view-modal-close" onclick="closeAdminViewModal()">&times;</button>
         </div>
-        <div style="margin-top:1rem;">
-          <h4>About Me</h4>
-          <p style="color:var(--text);margin-bottom:0.75rem;">${esc(a.about_me || 'N/A').replace(/\n/g, '<br>')}</p>
-          <h4>Writing Experience</h4>
-          <p style="color:var(--text);margin-bottom:0.75rem;">${esc(a.writing_experience || 'N/A').replace(/\n/g, '<br>')}</p>
-          <h4>Portfolio Links</h4>
-          <p style="color:var(--text);">${esc(a.portfolio_links || 'N/A').replace(/\n/g, '<br>')}</p>
-        </div>
+      </div>
+      <div class="view-modal-meta" style="margin-top:0.75rem;">
+        <span><strong>Email:</strong> ${esc(a.email)}</span>
+        <span><strong>Status:</strong> <span class="badge badge-${a.status}">${a.status}</span></span>
+        <span><strong>Date:</strong> ${date}</span>
+      </div>
+      <div style="margin-top:1rem;">
+        <h4 style="margin-bottom:0.25rem;color:var(--muted);">About Me</h4>
+        <p style="color:var(--text);margin-bottom:1rem;background:rgba(255,255,255,0.03);padding:0.75rem;border-radius:6px;">${esc(a.about_me || 'N/A').replace(/\n/g, '<br>')}</p>
+        <h4 style="margin-bottom:0.25rem;color:var(--muted);">Writing Experience</h4>
+        <p style="color:var(--text);margin-bottom:1rem;background:rgba(255,255,255,0.03);padding:0.75rem;border-radius:6px;">${esc(a.writing_experience || 'N/A').replace(/\n/g, '<br>')}</p>
+        <h4 style="margin-bottom:0.25rem;color:var(--muted);">Portfolio Links</h4>
+        <p style="color:var(--text);background:rgba(255,255,255,0.03);padding:0.75rem;border-radius:6px;">${esc(a.portfolio_links || 'N/A').replace(/\n/g, '<br>')}</p>
       </div>`;
     document.getElementById('adminViewModalOverlay').style.display = 'flex';
   };
 
-  window.editApp = function(dataStr) {
-    const a = JSON.parse(decodeURIComponent(dataStr));
+  window.editApp = function(id) {
+    const a = window._loadedApplications[id];
+    if (!a) return;
     document.getElementById('appEditId').value = a.id;
     document.getElementById('appEditName').value = a.name || '';
     document.getElementById('appEditEmail').value = a.email || '';
@@ -2737,30 +2787,94 @@ if (Astro.request) {
     }
   };
 
-  window.viewUser = function(dataStr) {
-    const u = JSON.parse(decodeURIComponent(dataStr));
+  window.viewUser = function(id) {
+    const u = window._loadedUsers[id];
+    if (!u) return;
     const modal = document.getElementById('adminViewModalContent');
+
+    const parseJSONList = (val) => {
+      if (!val) return 'None';
+      try {
+        const arr = JSON.parse(val);
+        return Array.isArray(arr) ? arr.join(', ') : val;
+      } catch (e) {
+        return val;
+      }
+    };
+
     modal.innerHTML = `
-      <div class="view-modal-header">
-        <button class="view-modal-close" onclick="closeAdminViewModal()">&times;</button>
-        <h2>User Profile: ${esc(u.username)}</h2>
-        <div class="view-modal-meta">
-          <span><strong>Full Name:</strong> ${esc(u.full_name || 'N/A')}</span>
-          <span><strong>Email:</strong> ${esc(u.email || 'N/A')}</span>
-          <span><strong>Role:</strong> <span class="badge badge-pending">${esc(u.role)}</span></span>
-          <span><strong>MFA Enabled:</strong> ${u.mfa_enabled ? '✅ Yes' : '❌ No'}</span>
+      <div class="view-modal-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          ${u.avatar_url ? `<img src="${esc(u.avatar_url)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
+          <div>
+            <h2 style="margin:0;">${esc(u.full_name || u.username)}</h2>
+            <span style="font-size:0.8rem;color:var(--muted);">@${esc(u.username)} • ID: ${esc(u.id)}</span>
+          </div>
         </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button onclick="closeAdminViewModal(); editUser('${u.id}');" class="btn btn-sm btn-secondary">✏️ Edit Profile</button>
+          <button class="view-modal-close" onclick="closeAdminViewModal()">&times;</button>
+        </div>
+      </div>
+      <div class="view-modal-meta" style="margin-top:0.75rem;">
+        <span><strong>Email:</strong> ${esc(u.email || 'N/A')}</span>
+        <span><strong>Role:</strong> <span class="badge badge-pending">${esc(u.role)}</span></span>
+        <span><strong>MFA Enabled:</strong> ${u.mfa_enabled ? '✅ Yes' : '❌ No'}</span>
+        <span><strong>Force Password Change:</strong> ${u.force_password_change ? '⚠️ Yes' : 'No'}</span>
+      </div>
+      <div style="margin-top:1.25rem;">
+        <h4 style="margin-bottom:0.25rem;color:var(--muted);">Bio</h4>
+        <p style="color:var(--text);margin-bottom:1rem;background:rgba(255,255,255,0.03);padding:0.75rem;border-radius:6px;">${esc(u.bio || 'N/A').replace(/\n/g, '<br>')}</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+          <div>
+            <h4 style="margin-bottom:0.25rem;color:var(--muted);">Affiliations</h4>
+            <p style="color:var(--text);background:rgba(255,255,255,0.03);padding:0.75rem;border-radius:6px;">${esc(parseJSONList(u.affiliation))}</p>
+          </div>
+          <div>
+            <h4 style="margin-bottom:0.25rem;color:var(--muted);">Specialties</h4>
+            <p style="color:var(--text);background:rgba(255,255,255,0.03);padding:0.75rem;border-radius:6px;">${esc(parseJSONList(u.specialty))}</p>
+          </div>
+        </div>
+        <div>
+          <h4 style="margin-bottom:0.25rem;color:var(--muted);">Experience</h4>
+          <p style="color:var(--text);background:rgba(255,255,255,0.03);padding:0.75rem;border-radius:6px;">${esc(parseJSONList(u.experience))}</p>
+        </div>
+        ${u.avatar_url ? `
+        <div style="margin-top:1rem;">
+          <h4 style="margin-bottom:0.25rem;color:var(--muted);">Avatar URL</h4>
+          <a href="${esc(u.avatar_url)}" target="_blank" style="color:var(--accent);font-size:0.85rem;word-break:break-all;">${esc(u.avatar_url)}</a>
+        </div>` : ''}
       </div>`;
     document.getElementById('adminViewModalOverlay').style.display = 'flex';
   };
 
-  window.editUser = function(dataStr) {
-    const u = JSON.parse(decodeURIComponent(dataStr));
+  window.editUser = function(id) {
+    const u = window._loadedUsers[id];
+    if (!u) return;
+
+    const formatArrayToStr = (val) => {
+      if (!val) return '';
+      try {
+        const arr = JSON.parse(val);
+        return Array.isArray(arr) ? arr.join(', ') : val;
+      } catch (e) {
+        return val;
+      }
+    };
+
     document.getElementById('userEditId').value = u.id;
     document.getElementById('userEditUsername').value = u.username || '';
     document.getElementById('userEditFullName').value = u.full_name || '';
     document.getElementById('userEditEmail').value = u.email || '';
     document.getElementById('userEditRole').value = u.role || 'user';
+    document.getElementById('userEditAvatarUrl').value = u.avatar_url || '';
+    document.getElementById('userEditAffiliation').value = formatArrayToStr(u.affiliation);
+    document.getElementById('userEditSpecialty').value = formatArrayToStr(u.specialty);
+    document.getElementById('userEditExperience').value = formatArrayToStr(u.experience);
+    document.getElementById('userEditBio').value = u.bio || '';
+    document.getElementById('userEditMfaEnabled').checked = !!u.mfa_enabled;
+    document.getElementById('userEditForcePasswordChange').checked = !!u.force_password_change;
+
     document.getElementById('userEditStatus').style.display = 'none';
     document.getElementById('userEditModalOverlay').style.display = 'flex';
   };
@@ -2774,6 +2888,15 @@ if (Astro.request) {
     const full_name = document.getElementById('userEditFullName').value.trim();
     const email = document.getElementById('userEditEmail').value.trim();
     const role = document.getElementById('userEditRole').value;
+    const avatar_url = document.getElementById('userEditAvatarUrl').value.trim();
+    const bio = document.getElementById('userEditBio').value.trim();
+    const mfa_enabled = document.getElementById('userEditMfaEnabled').checked;
+    const force_password_change = document.getElementById('userEditForcePasswordChange').checked;
+
+    const strToArr = (str) => str.split(',').map(s => s.trim()).filter(Boolean);
+    const affiliation = strToArr(document.getElementById('userEditAffiliation').value);
+    const specialty = strToArr(document.getElementById('userEditSpecialty').value);
+    const experience = strToArr(document.getElementById('userEditExperience').value);
 
     if (!id) {
       alert('User ID is required.');
@@ -2790,7 +2913,9 @@ if (Astro.request) {
       const resp = await fetch('/api/admin/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, full_name, email, role })
+        body: JSON.stringify({
+          id, full_name, email, role, avatar_url, bio, affiliation, specialty, experience, mfa_enabled, force_password_change
+        })
       });
       const data = await resp.json();
       statusEl.style.display = 'block';

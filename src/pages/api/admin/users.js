@@ -38,18 +38,18 @@ export async function GET({ request, locals }) {
     const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit')) || 10));
     const offset = (page - 1) * limit;
 
-    let query = 'SELECT id, username, full_name, email, role, mfa_enabled FROM users';
+    let query = 'SELECT id, username, role, full_name, email, affiliation, specialty, experience, bio, avatar_url, force_password_change, mfa_enabled FROM users';
     let countQuery = 'SELECT COUNT(*) as total FROM users';
     const params = [];
     const countParams = [];
 
     if (q) {
-      const whereClause = ' WHERE username LIKE ? OR full_name LIKE ? OR email LIKE ?';
+      const whereClause = ' WHERE username LIKE ? OR full_name LIKE ? OR email LIKE ? OR bio LIKE ? OR specialty LIKE ?';
       query += whereClause;
       countQuery += whereClause;
       const likeQuery = `%${q}%`;
-      params.push(likeQuery, likeQuery, likeQuery);
-      countParams.push(likeQuery, likeQuery, likeQuery);
+      params.push(likeQuery, likeQuery, likeQuery, likeQuery, likeQuery);
+      countParams.push(likeQuery, likeQuery, likeQuery, likeQuery, likeQuery);
     }
 
     query += ' ORDER BY username ASC LIMIT ? OFFSET ?';
@@ -84,12 +84,39 @@ export async function PUT({ request, locals }) {
   if (!user || !isAdmin(user)) return new Response(JSON.stringify({ error: "Forbidden." }), { status: 403 });
 
   try {
-    const { id, full_name, email, role } = await request.json();
+    const { id, full_name, email, role, affiliation, specialty, experience, bio, avatar_url, mfa_enabled, force_password_change } = await request.json();
     if (!id) return new Response(JSON.stringify({ error: "User ID required." }), { status: 400 });
 
+    const affStr = typeof affiliation === 'string' ? affiliation : JSON.stringify(affiliation || []);
+    const specStr = typeof specialty === 'string' ? specialty : JSON.stringify(specialty || []);
+    const expStr = typeof experience === 'string' ? experience : JSON.stringify(experience || []);
+
     await db.prepare(
-      "UPDATE users SET full_name = ?, email = ?, role = ? WHERE id = ?"
-    ).bind(full_name || '', email || '', role || 'user', id).run();
+      `UPDATE users SET 
+        full_name = ?, 
+        email = ?, 
+        role = ?, 
+        affiliation = ?, 
+        specialty = ?, 
+        experience = ?, 
+        bio = ?, 
+        avatar_url = ?, 
+        mfa_enabled = ?, 
+        force_password_change = ? 
+       WHERE id = ?`
+    ).bind(
+      full_name || '',
+      email || '',
+      role || 'user',
+      affStr,
+      specStr,
+      expStr,
+      bio || '',
+      avatar_url || '',
+      mfa_enabled ? 1 : 0,
+      force_password_change ? 1 : 0,
+      id
+    ).run();
 
     return new Response(JSON.stringify({ success: true, message: "User updated successfully." }), { status: 200 });
   } catch (err) {
