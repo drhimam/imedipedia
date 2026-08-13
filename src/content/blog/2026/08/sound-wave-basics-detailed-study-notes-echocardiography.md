@@ -3,18 +3,14 @@ title: "Sound Wave Basics – Detailed Study Notes (Echocardiography)"
 pubDate: 2026-08-11
 description: "Study Frequency, Understand High vs Low Frequency trade-off, Study Wavelength, Study Velocity"
 author: "iMedipedia Desk"
-subjects: ["Radiology", "Ultrasound Physics"]
 type: "education"
+subjects: ["Radiology", "Ultrasound Physics"]
 topic: "Sound - Basic"
 exams: []
 ---
 
-# Sound Wave Basics – Detailed Study Notes (Echocardiography)
-
 Use these tables as a rapid-revision study guide for the physics of sound waves in echocardiography.
-
----
-
+— — —
 ## 1. What Is Sound?
 
 | Feature | Description |
@@ -24,9 +20,7 @@ Use these tables as a rapid-revision study guide for the physics of sound waves 
 | Vacuum? | Cannot travel through vacuum — unlike electromagnetic waves such as light |
 | Wave motion | Longitudinal |
 | Used in echo | High-frequency sound waves (ultrasound) create images of the heart |
-
----
-
+— — —
 ## 2. Longitudinal vs Transverse Waves
 
 | Feature | Longitudinal Wave | Transverse Wave |
@@ -36,9 +30,7 @@ Use these tables as a rapid-revision study guide for the physics of sound waves 
 | Structure | Compressions (denser particle areas) and rarefactions (less dense areas) | Peaks (crests) and troughs |
 | Sound wave? | Yes — sound is longitudinal | No — sound is not transverse |
 | Used in echo diagrams? | Represented as a sine wave for simplicity | Usually not used to represent sound in echo texts |
-
----
-
+— — —
 ## 3. Key Properties of Sound Waves
 
 | Property | Definition | Unit | Echocardiography Relevance |
@@ -47,9 +39,7 @@ Use these tables as a rapid-revision study guide for the physics of sound waves 
 | Wavelength | Distance between two successive peaks or troughs | Metres (m) | Inversely related to frequency; shorter wavelength = finer detail |
 | Velocity | Speed of sound through a medium | Metres per second (m/s) | In soft tissue ≈ 1540 m/s; depends on density and elasticity of medium |
 | Amplitude | Height of the wave; strength/intensity of the wave | Decibels or arbitrary units | Higher amplitude = louder sound / stronger echo |
-
----
-
+— — —
 ## 4. Frequency and Wavelength Relationship
 
 | Situation | What Happens | Clinical Consequence |
@@ -58,9 +48,7 @@ Use these tables as a rapid-revision study guide for the physics of sound waves 
 | Lower frequency | Longer wavelength | Deeper tissue penetration, but lower image resolution |
 | In soft tissue | Velocity ≈ 1540 m/s | Standard value used by echo machines to calculate distance |
 | Wavelength formula | Wavelength = Velocity ÷ Frequency | Higher frequency → shorter wavelength at a given tissue velocity |
-
----
-
+— — —
 ## 5. How Sound Waves Interact with Tissue
 
 | Interaction | What Happens | Importance in Echocardiography |
@@ -69,9 +57,7 @@ Use these tables as a rapid-revision study guide for the physics of sound waves 
 | Refraction | Sound changes direction as it passes through tissues of different densities | Can cause image artifacts or distortions |
 | Scattering | Sound disperses in many directions after hitting small structures such as red blood cells | Contributes to Doppler signals used for blood flow analysis |
 | Attenuation | Loss of sound energy as it travels through tissue due to absorption, reflection, and scattering | Limits penetration; higher frequencies attenuate more quickly |
-
----
-
+— — —
 ## 6. Factors Affecting Reflection Strength
 
 | Factor | Effect |
@@ -80,9 +66,7 @@ Use these tables as a rapid-revision study guide for the physics of sound waves 
 | Boundary between blood and myocardium | Produces detectable echoes for imaging |
 | Similar acoustic impedance between tissues | Weak reflection → poor boundary detection |
 | Scattering surfaces | Produce weak, multi-directional echoes, useful in Doppler |
-
----
-
+— — —
 ## 7. Practical Frequency Selection in Echocardiography
 
 | Structure Being Imaged | Frequency Choice | Reason |
@@ -91,9 +75,7 @@ Use these tables as a rapid-revision study guide for the physics of sound waves 
 | Deeper structures such as the left ventricle in large patients | Lower frequency | Better tissue penetration |
 | Obese / difficult-to-scan patients | Lower frequency needed | Higher frequency energy is lost quickly by attenuation |
 | Paediatric / thin patients | Higher frequency possible | Less tissue depth, so penetration is less of a problem |
-
----
-
+— — —
 ## 8. How the Echo Machine Builds an Image
 
 | Step | Function |
@@ -104,9 +86,7 @@ Use these tables as a rapid-revision study guide for the physics of sound waves 
 | 4. Transducer receives returning echoes | Reflected waves are captured by the same transducer |
 | 5. Machine analyzes echoes | Time taken to return and intensity of echoes are measured |
 | 6. Heart image is constructed | Structure, motion, and blood flow are displayed |
-
----
-
+— — —
 ## 9. Quick-Review Key Facts Table
 
 | Fact | Must Remember |
@@ -122,9 +102,7 @@ Use these tables as a rapid-revision study guide for the physics of sound waves 
 | Refraction | Causes image distortion/artifact |
 | Scattering | From small structures like RBCs; used for Doppler |
 | Attenuation | Energy loss; increased at higher frequency |
-
----
-
+— — —
 ## 10. Common Exam Traps / Confusions
 
 | Misconception | Correct Understanding |
@@ -135,9 +113,7 @@ Use these tables as a rapid-revision study guide for the physics of sound waves 
 | “All reflections give good images” | Refraction and scattering can create artifacts |
 | “Amplitude controls pitch” | No — amplitude controls intensity/loudness; frequency controls pitch |
 | “Ultrasound is inaudible because it is too low frequency” | It is inaudible because it is too high frequency — above 20 kHz |
-
----
-
+— — —
 ## 11. Quick Formulas and Relationships
 
 | Relationship | Meaning |
@@ -146,5 +122,4 @@ Use these tables as a rapid-revision study guide for the physics of sound waves 
 | Wavelength = Velocity ÷ Frequency | Used to work out wavelength from transducer frequency |
 | Frequency in echo = 1–10 MHz | Corresponds to wavelengths in soft tissue that give good cardiac detail |
 | Acoustic impedance difference | Determines strength of reflection at tissue boundaries |
-
----
+— — —
