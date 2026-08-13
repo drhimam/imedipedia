@@ -1,6 +1,6 @@
 # iMedipedia — Implementation Walkthrough
 
-> **Last Updated:** 2026-08-12
+> **Last Updated:** 2026-08-13
 > **Platform:** Medical Research & Education Platform
 > **Live URL:** https://imedipedia.pages.dev
 
@@ -23,6 +23,8 @@
 13. [Database Migration & Seeding](#13-database-migration--seeding)
 14. [Known Issues & Resolved Bugs](#14-known-issues--resolved-bugs)
 15. [Development Guide](#15-development-guide)
+16. [Knowledge Base & RAG Grounding (Phase 2)](#16-knowledge-base--rag-grounding-phase-2)
+17. [Verifying the RAG Implementation](#17-verifying-the-rag-implementation)
 
 ---
 
@@ -36,6 +38,8 @@ iMedipedia is a medical research platform built with Astro 4 (hybrid SSR/static 
 - **CME & Learning** — Board preparation questions and educational content
 - **Contributor Portal** — Application system, author dashboard, article submissions
 - **Admin Dashboard** — Application review, submission review, article publishing, image management
+- **AI Studio** — Full-page article generation (4 article types), cover-image generation, and evidence-grounded (RAG) writing
+- **Knowledge Base (RAG)** — Ingest evidence sources (paste / URL / file / web search), embed them, and ground generated articles in retrieved chunks with `[n]` citations
 - **Dark/Light Theme** — System-aware theme toggle with no flash-of-wrong-theme
 
 ---
@@ -51,6 +55,9 @@ iMedipedia is a medical research platform built with Astro 4 (hybrid SSR/static 
 | Object Storage | Cloudflare R2 — Binding: `IMAGES`, Bucket: `imedipedia-images` |
 | Email | AWS SES (`@aws-sdk/client-ses` v3.600) |
 | Auth | PBKDF2 password hashing + TOTP MFA + HttpOnly session cookies |
+| AI | OpenAI-compatible APIs (chat, embeddings, image gen) with a provider fallback chain |
+| RAG / Vector store | D1-backed embeddings (JSON arrays) + brute-force cosine similarity in JS |
+| Web search | Tavily Search API (Knowledge Base "Web search" source) |
 | Fonts | Outfit + Plus Jakarta Sans (Google Fonts) |
 
 ### How SSR Works
@@ -81,6 +88,9 @@ Pages that need server-side logic (auth checks, API routes, dynamic content) dec
 ├── src/
 │   ├── layouts/
 │   │   └── BaseLayout.astro      # Shared layout (nav, footer, theme, fonts)
+│   ├── lib/
+│   │   ├── ai.js                 # Shared AI helpers (chat fallback, embed, image gen)
+│   │   └── kb.js                 # RAG helpers (chunk, hash, cosine, ingest, retrieve)
 │   ├── pages/
 │   │   ├── index.astro           # Home — article grid with search/filter/sort
 │   │   ├── general.astro         # Research Digest
@@ -95,7 +105,9 @@ Pages that need server-side logic (auth checks, API routes, dynamic content) dec
 │   │   │   └── reset-password.astro  # Password reset page
 │   │   ├── admin.astro           # Admin dashboard (SSR, auth-protected)
 │   │   ├── admin/
-│   │   │   └── login.astro       # Admin login page
+│   │   │   ├── login.astro       # Admin login page
+│   │   │   ├── studio.astro      # AI Studio — full-page article generation (Phase 1+2)
+│   │   │   └── kb.astro          # Knowledge Base — manage RAG evidence sources
 │   │   ├── blog/
 │   │   │   └── [...slug].astro   # Individual blog article
 │   │   └── api/
@@ -130,7 +142,15 @@ Pages that need server-side logic (auth checks, API routes, dynamic content) dec
 │   │           ├── articles.js        # GET — list published articles (GitHub)
 │   │           ├── images.js          # GET/DELETE — manage uploaded images
 │   │           ├── subjects-save.js   # POST — commit subject taxonomy to GitHub
-│   │           └── exams-save.js      # POST — commit exam list to GitHub
+│   │           ├── exams-save.js      # POST — commit exam list to GitHub
+│   │           ├── studio/
+│   │           │   ├── generate.js    # POST — multi-step article generation (+ RAG grounding)
+│   │           │   ├── cover.js       # POST — generate cover image (data URI)
+│   │           │   └── preview.js     # POST — markdown → HTML preview fragment
+│   │           └── kb/
+│   │               ├── ingest.js      # POST — ingest text | url | file | search
+│   │               ├── search.js      # POST — retrieve top-K chunks by similarity
+│   │               └── sources.js     # GET/DELETE — list/delete KB sources
 │   ├── data/
 │   │   ├── subjects.json         # Managed subject taxonomy (single source of truth)
 │   │   └── exams.json            # Managed exam list (separate from subjects)
@@ -243,7 +263,33 @@ Database: `imedipedia-db` (ID: `8aeee120-4b92-44e1-b9d2-5f8b1566a52b`)
 | `enabled` | INTEGER DEFAULT 0 | Whether MFA is active |
 | `created_at` | INTEGER | Unix timestamp |
 
-### 4.8 Managed Subject & Exam Taxonomy (Static JSON)
+### 4.8 `kb_sources` Table (Knowledge Base — Phase 2 RAG)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER PRIMARY KEY AUTOINCREMENT | |
+| `type` | TEXT NOT NULL | Source kind: `text`, `url`, `file`, or `search` |
+| `title` | TEXT DEFAULT '' | Display title |
+| `source_url` | TEXT DEFAULT '' | Origin URL (for `url` and `search` sources) |
+| `content_hash` | TEXT NOT NULL | FNV-1a hash of the raw text, used to dedupe identical sources |
+| `meta` | TEXT DEFAULT '{}' | Reserved JSON metadata |
+| `created_by` | TEXT | FK → users.id |
+| `created_at` | INTEGER NOT NULL | Unix timestamp |
+
+### 4.9 `kb_chunks` Table (Knowledge Base — Phase 2 RAG)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER PRIMARY KEY AUTOINCREMENT | |
+| `source_id` | INTEGER NOT NULL | FK → kb_sources.id (ON DELETE CASCADE) |
+| `chunk_index` | INTEGER NOT NULL | 0-based order within the source |
+| `text` | TEXT NOT NULL | Chunk text (~600 tokens) |
+| `token_count` | INTEGER DEFAULT 0 | Estimated token count |
+| `embedding` | TEXT DEFAULT '' | Embedding vector as a JSON array of floats |
+
+> **Vector storage note:** embeddings are stored as JSON in the `embedding` TEXT column (not a dedicated vector index). Retrieval loads all chunks, parses the JSON, and scores them with cosine similarity in JS. This is the deliberate Phase 2 trade-off — see §16.5 for the Vectorize migration plan.
+
+### 4.10 Managed Subject & Exam Taxonomy (Static JSON)
 
 Categories are no longer free-text. Instead, subjects and exams live in two static JSON files at the repo root of `src/data/`, and are the **single source of truth**:
 
@@ -538,6 +584,52 @@ All admin endpoints require session + admin/co-admin role.
 - **Action:** Same GitHub Contents-API pattern as `subjects-save`, but writes `src/data/exams.json`.
 - **Response:** `{ success: true, message: "Exam taxonomy saved (N exams). Deploying to Cloudflare..." }`
 
+### 6.8 AI Studio Endpoints
+
+All studio endpoints require admin/co-admin.
+
+#### `POST /api/admin/studio/generate`
+- **Body:** `{ type, title, topic, subjects[], exams[], brief, fineTune?, caseNotes?, guidelineVersion?, comparePrevious?, ground?, groundQuery?, topK? }`
+- **Action:** Multi-step pipeline — generates the article body (type-specific prompt), then refines the title and writes a 2–3 sentence TL;DR in parallel. When `ground: true`, it first retrieves the top-K KB chunks via `retrieveChunks()` and injects them as numbered `[1]`, `[2]`… sources with citing rules; it then appends a `## References` section to the body.
+- **Response:** `{ title, description, body, sources: [{ title, sourceUrl, score }] }`
+- **Notes:** `sources` is empty when grounding is off or no chunks match. `topK` defaults to 5 (capped 1–10).
+
+#### `POST /api/admin/studio/cover`
+- **Body:** `{ prompt?, title?, topic? }`
+- **Action:** Builds a cover-art prompt, calls the image API (`AI_IMAGE_*`), and returns the image as a base64 data URI. The client downscales + re-encodes to AVIF and uploads to R2.
+- **Response:** `{ success: true, imageData: "data:image/...;base64,..." }`
+
+#### `POST /api/admin/studio/preview`
+- **Body:** `{ title, description, author, pubDate, image, body }`
+- **Action:** Renders the markdown body to an HTML fragment (via `marked` GFM) with the same CSS classes the live article pages use, so the studio preview matches the site.
+- **Response:** `{ success: true, html: "..." }`
+
+### 6.9 Knowledge Base (RAG) Endpoints
+
+All KB endpoints require admin/co-admin.
+
+#### `POST /api/admin/kb/ingest`
+- **Body (by `type`):**
+  - `{ type: "text", title?, text }`
+  - `{ type: "url", urls: string[] }` (also accepts single `url`)
+  - `{ type: "file", title?, filename?, content }` — `.txt`/`.md` text or base64 data URI
+  - `{ type: "search", query, maxResults? }` — Tavily web search, ingests the top results' content
+- **Action:** For each source: hash content → dedupe (skip if hash exists) → insert `kb_sources` row → chunk text (~600 tokens) → embed each chunk (`text-embedding-3-small` by default) → insert `kb_chunks` rows with the JSON embedding. Chunk-embed failures are logged and the chunk is stored without an embedding (skipped at retrieval).
+- **Response:** `{ success: true, ingested: [{ title, sourceUrl, sourceId, chunks, alreadyExists }] }`
+- **Notes:** Requires `TAVILY_API_KEY` only for the `search` type.
+
+#### `POST /api/admin/kb/search`
+- **Body:** `{ query, topK? }` (topK default 5, capped 1–20)
+- **Action:** Embeds the query, loads all embedded chunks, computes cosine similarity, returns the top-K.
+- **Response:** `{ success: true, query, results: [{ id, sourceId, title, sourceUrl, text, score }] }`
+
+#### `GET /api/admin/kb/sources`
+- **Response:** `{ success: true, sources: [{ id, type, title, sourceUrl, createdBy, createdAt, chunkCount, embeddedCount }] }`
+
+#### `DELETE /api/admin/kb/sources?id=123`
+- **Action:** Deletes the source and its chunks (FK `ON DELETE CASCADE`).
+- **Response:** `{ success: true, message: "Source deleted." }`
+
 ---
 
 ## 7. Pages Reference
@@ -575,9 +667,11 @@ All admin endpoints require session + admin/co-admin role.
 |------|-------|-----------|------|-------------|
 | Admin Login | `/admin/login` | Static | None | Username + password login form |
 | Admin Dashboard | `/admin` | SSR (auth check) | admin/co-admin | 6 tabs: Applications, Submissions, Articles, Images, Subjects, Exams |
+| AI Studio | `/admin/studio` | SSR (auth check) | admin/co-admin | Full-page article generation, cover image, evidence grounding |
+| Knowledge Base | `/admin/kb` | SSR (auth check) | admin/co-admin | Manage RAG evidence sources (ingest, search, delete) |
 
 #### Admin Dashboard Features:
-- **Sticky top bar:** Logo, admin badge, user name, Settings button (⚙️), Logout button (↪️)
+- **Sticky top bar:** Logo, admin badge, user name, Studio (✨) link, KB (📚) link, Settings button (⚙️), Logout button (↪️)
 - **Settings drawer (right panel):** Profile form, password change, MFA setup, theme toggle (Dark/Light/System)
 - **Applications tab:** Table with Accept/Reject buttons for pending applications
 - **Submissions tab:** Table with Approve/Reject/Publish buttons
@@ -705,7 +799,43 @@ This prevents the "flash of wrong theme" on page navigation.
 
 ### 11.1 Cloudflare Pages / Workers
 
-Set in Cloudflare Dashboard → Pages → Settings → Environment variables:
+Set in Cloudflare Dashboard → Pages → Settings → Environment variables. The full annotated reference lives in `.env.example` — this table is the quick summary.
+
+**AI — content generation (chat), with fallback chain:**
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `AI_API_BASE_URL` | Yes (for AI) | Primary OpenAI-compatible base URL (e.g. `https://api.openai.com/v1`) |
+| `AI_MODEL_NAME` | Yes (for AI) | Primary chat model |
+| `AI_API_KEY` | Yes (for AI) | Primary API key |
+| `AI_FALLBACK1_BASE_URL` / `_MODEL_NAME` / `_API_KEY` | Optional | Fallback #1 — tried if primary fails (network error / non-2xx / empty) |
+| `AI_FALLBACK2_BASE_URL` / `_MODEL_NAME` / `_API_KEY` | Optional | Fallback #2 — tried if primary and fallback #1 both fail |
+
+**AI — embeddings (Knowledge Base / RAG):**
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `AI_EMBEDDING_MODEL_NAME` | Optional | Embedding model. Defaults to `text-embedding-3-small` on whichever chat provider is reachable. Only set it if your provider uses a different embedding model name. |
+
+**AI — image generation (studio covers):**
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `AI_IMAGE_BASE_URL` | Yes (for covers) | Image API base URL (separate from the chat provider) |
+| `AI_IMAGE_MODEL_NAME` | Yes (for covers) | Image model (e.g. `gpt-image-1`) |
+| `AI_IMAGE_API_KEY` | Yes (for covers) | Image API key |
+| `AI_IMAGE_SIZE` | Optional | Default `1536x1024` (landscape). Also `1024x1024`, `1024x1536`. |
+| `AI_IMAGE_QUALITY` | Optional | Default `low` (`low`/`medium`/`high`/`auto`) — cost control |
+| `AI_IMAGE_OUTPUT_FORMAT` | Optional | Default `webp` (`webp`/`jpeg`/`png`) |
+| `AI_IMAGE_COMPRESSION` | Optional | Default `50` (0–100; lower = smaller file, for webp/jpeg) |
+
+**Web search (Knowledge Base "Web search" source):**
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `TAVILY_API_KEY` | Only for web-search ingestion | Tavily Search API key (https://app.tavily.com). Leave empty to disable the "Web search" source type — paste/URL/file still work. |
+
+**Email (SES), Storage (R2), GitHub:**
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
@@ -715,17 +845,15 @@ Set in Cloudflare Dashboard → Pages → Settings → Environment variables:
 | `SES_FROM_EMAIL` | Yes (for SES) | Verified sender email |
 | `R2_PUBLIC_URL` | Yes | Public R2 bucket URL |
 | `R2_ACCOUNT_ID` | Yes | Cloudflare account ID |
-| `R2_ACCESS_KEY_ID` | Optional | S3-compatible R2 access key (for local dev) |
-| `R2_SECRET_ACCESS_KEY` | Optional | S3-compatible R2 secret key (for local dev) |
+| `R2_ACCESS_KEY_ID` | Optional | S3-compatible R2 access key (for local dev fallback) |
+| `R2_SECRET_ACCESS_KEY` | Optional | S3-compatible R2 secret key (for local dev fallback) |
 | `R2_BUCKET_NAME` | Optional | Bucket name (default: `imedipedia-images`) |
-| `GITHUB_TOKEN` | Optional | GitHub PAT for admin publish |
+| `GITHUB_TOKEN` | Optional | GitHub PAT (fine-grained, "Contents: Read and Write") for admin publish |
 | `GITHUB_REPO` | Optional | Repo name (default: `drhimam/imedipedia`) |
-| `AI_API_BASE_URL` | Optional | AI API endpoint |
-| `AI_MODEL_NAME` | Optional | AI model name |
 
 ### 11.2 Local Development (`.dev.vars`)
 
-Copy `.env.example` → `.dev.vars` and fill in values. Wrangler loads this automatically.
+Copy `.env.example` → `.dev.vars` and fill in values. Wrangler loads this automatically. **Every variable in `.env.example` has a comment explaining its purpose and where to get the value** — read that file as the authoritative local reference.
 
 ### 11.3 `wrangler.toml` Bindings
 
@@ -1007,6 +1135,143 @@ export async function POST({ request, locals }) {
   // ... similar pattern ...
 }
 ```
+
+---
+
+## 16. Knowledge Base & RAG Grounding (Phase 2)
+
+### 16.1 Overview
+
+The Knowledge Base (KB) is the evidence layer for grounded article generation. Admins ingest source documents, each source is split into chunks and embedded into a vector; when generating an article with grounding enabled, the AI Studio retrieves the most relevant chunks and instructs the model to write from (and cite) that evidence.
+
+**Why D1-backed (not Vectorize) for Phase 2:** Cloudflare Vectorize requires provisioning an index before any code can run against it. A D1-backed store — embeddings as JSON arrays + brute-force cosine similarity in JS — works immediately with zero extra provisioning and is fine for a small/medium corpus. The migration path to Vectorize is documented in §16.6.
+
+### 16.2 Pipeline
+
+**Ingestion** (`src/lib/kb.js` → `ingestSource()`):
+
+1. Normalize the raw text (HTML → plain text, or paste/file content as-is).
+2. `hashContent()` computes an FNV-1a hash — identical content is skipped (dedupe).
+3. Insert a `kb_sources` row.
+4. `chunkText()` splits into ~600-token overlapping chunks on paragraph boundaries.
+5. Each chunk is embedded via `embed()` (the same provider family as chat, `text-embedding-3-small` by default) and stored in `kb_chunks.embedding` as a JSON array.
+
+**Retrieval** (`retrieveChunks()`):
+
+1. Embed the query.
+2. Load all chunks, parse each JSON embedding, compute cosine similarity.
+3. Return the top-K chunks with source title/URL and score.
+
+**Grounded generation** (`/api/admin/studio/generate`):
+
+1. When `ground: true`, embed the query (defaults to title + topic) and retrieve top-K chunks.
+2. Inject them into the prompt as numbered `[1]`, `[2]`… sources with citing rules ("do not invent citations…").
+3. After generation, append a `## References` section to the body.
+
+### 16.3 Source Types
+
+| Type | Endpoint input | Notes |
+|------|----------------|-------|
+| `text` | `{ title?, text }` | Paste raw text. |
+| `url` | `{ urls: [...] }` | Fetches each URL (2 MB cap), extracts main text from HTML. |
+| `file` | `{ filename?, content }` | `.txt`/`.md` only; accepts plain text or a base64 data URI. |
+| `search` | `{ query, maxResults? }` | Tavily web search → ingests top results' content. Requires `TAVILY_API_KEY`. |
+
+### 16.4 UI
+
+- **`/admin/kb`** — add sources (tabbed by type), test retrieval against the KB, and list/delete sources (with chunk + embedded counts). Linked from the admin top bar (📚 KB) and the studio top bar.
+- **`/admin/studio`** — "Ground in Knowledge Base (evidence-based)" checkbox + optional retrieval-query field in the Details card. The status line reports how many KB sources were used.
+
+### 16.5 Data Model
+
+See §4.8 (`kb_sources`) and §4.9 (`kb_chunks`). Embeddings live in the `kb_chunks.embedding` TEXT column as JSON; there is no vector index yet.
+
+### 16.6 Future Plan — Migration to Cloudflare Vectorize
+
+The current D1 brute-force approach reads and scores **every chunk** on each query. That is intentionally simple, but it does not scale — as the corpus grows past a few thousand chunks, retrieval latency and D1 read costs rise linearly. The planned upgrade:
+
+1. **Add a Vectorize index** — `[[vectorize]]` binding in `wrangler.toml` (e.g. `imedipedia-kb`), dimension set to the embedding model's output (1536 for `text-embedding-3-small`).
+2. **Split ownership** — keep `kb_sources`/`kb_chunks` in D1 for text + metadata (title, URL, chunk text, token count), but move the **vector** out of the JSON TEXT column into Vectorize, keyed by a `vector_id` column on `kb_chunks`.
+3. **Swap the write path** — `ingestSource()` does `VECTORIZE.upsert([{ id: vector_id, values, metadata: { source_id, title, url } }])` instead of writing a JSON string.
+4. **Swap the read path** — `retrieveChunks()` does `VECTORIZE.query(queryEmbedding, { topK, returnMetadata: true })` instead of loading all chunks and computing cosine in JS; then JOINs back to `kb_chunks`/`kb_sources` in D1 for the text.
+5. **Keep the public API unchanged** — `/api/admin/kb/search` and `retrieveChunks()` return the same shape, so the studio and KB UI need no changes.
+
+Also on the roadmap for a later phase:
+- **PDF/DOCX ingestion** (currently only `.txt`/`.md`) via edge-compatible extractors (`unpdf`, `mammoth`).
+- **Chunk metadata filtering** — filter retrieval by source type or subject once Vectorize supports it natively.
+- **Re-ranking** — a second-pass cross-encoder or rule-based re-ranker for higher-quality top-K before the LLM call.
+
+---
+
+## 17. Verifying the RAG Implementation
+
+Work through this checklist top-to-bottom. It covers the schema, ingestion, retrieval, and grounded generation end-to-end.
+
+### 17.1 One-time setup
+
+```bash
+# 1. Apply the new tables to D1 (remote) — and --local if you run the dev server with wrangler
+npx wrangler@latest d1 execute imedipedia-db --remote --file=schema.sql
+
+# 2. Confirm the tables exist
+npx wrangler@latest d1 execute imedipedia-db --remote \
+  --command "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'kb_%';"
+# Expect two rows: kb_sources, kb_chunks
+```
+
+- **Embeddings:** no action needed — `AI_EMBEDDING_MODEL_NAME` defaults to `text-embedding-3-small`. Only set it (`.dev.vars` and/or Cloudflare) if your provider uses another name.
+- **Web search:** set `TAVILY_API_KEY` only if you want to test the "Web search" source type. The other three source types work without it.
+
+### 17.2 Test ingestion (paste text)
+
+1. Run `npm run dev` and log in to `/admin`.
+2. Click **📚 KB** in the top bar (or go to `/admin/kb`).
+3. Under **Add a source → 📝 Paste text**, enter a title (e.g. "Sepsis-3 definitions") and paste a few paragraphs of real text.
+4. Click **＋ Ingest source**.
+   - ✅ Expect a green "Ingested: Sepsis-3 definitions (N chunks)" message.
+   - ✅ The right-hand **Sources** table now lists the source with `type = text` and `Chunks > 0`.
+5. Click **＋ Ingest source** again with the *same* text.
+   - ✅ Expect "(already exists)" and **no** duplicate row — this proves the content-hash dedupe.
+
+### 17.3 Test retrieval
+
+1. Still on `/admin/kb`, in **Test retrieval**, type a phrase clearly present in the text you just pasted.
+2. Click **Search**.
+   - ✅ Expect one or more result cards, each with a **% match** score and a quote of the matching chunk. A high score (≥ ~70%) for a direct phrase confirms the cosine-similarity path works.
+
+### 17.4 Test grounded generation (the headline feature)
+
+1. Open **✨ Studio** (`/admin/studio`).
+2. Enter a **Topic** (or Title) that overlaps with the text you ingested.
+3. Check **Ground in Knowledge Base (evidence-based)**.
+4. Click **✨ Generate**.
+   - ✅ The status line should read "…Grounded in 1 (or more) KB source(s)." (If it says "No matching KB sources found," the topic was too far from your ingested text — retry with a closer topic.)
+5. Inspect the generated **Body**:
+   - ✅ It should contain inline citations like `[1]`, `[2]` after sourced claims.
+   - ✅ It should end with a `## References` section listing your source title/URL.
+6. Optionally toggle grounding **off** and regenerate — the body should have no `## References` section and no `[n]` markers, confirming grounding is what drives them.
+
+### 17.5 Test the other source types (optional)
+
+| Type | How | Expect |
+|------|-----|--------|
+| `url` | Paste a public article URL (one per line) in **🔗 Web URL** | Ingested with `Chunks > 0`; source shows a clickable title link. |
+| `file` | Choose a `.txt` or `.md` file in **📄 File** | Ingested; a non-`.txt`/`.md` file is rejected with a clear error. |
+| `search` | Enter a query in **🔎 Web search** (needs `TAVILY_API_KEY`) | Ingested N search-result sources. Without the key, you get "Web search is not configured". |
+
+### 17.6 Test deletion
+
+1. In the **Sources** table, click **Delete** on a source.
+2. Confirm the prompt.
+   - ✅ The row disappears (source + its chunks deleted via FK cascade). Re-ingesting the same content afterwards creates a fresh row.
+
+### 17.7 Verify in production
+
+After pushing to `master` and letting Cloudflare Pages deploy:
+
+1. Confirm the **schema** was applied to the remote D1 (step 17.1) — the KB page will return "D1 … binding is missing" only if the binding is absent, but the tables must exist or ingest will 500 with "no such table: kb_sources".
+2. Confirm **secrets** are set in Cloudflare Pages → Settings → Environment variables (`TAVILY_API_KEY` if using web search; `AI_EMBEDDING_MODEL_NAME` only if overriding the default).
+3. Repeat 17.2–17.4 against the live site.
 
 ---
 
