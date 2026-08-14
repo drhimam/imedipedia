@@ -635,11 +635,47 @@ if (Astro.request) {
       <form id="assignReviewersForm" onsubmit="return false;">
         <input type="hidden" id="assignSubmissionId" value="">
         <div class="form-group" style="margin-bottom:1.25rem;">
-          <label class="form-label" style="font-weight:700;margin-bottom:0.5rem;display:block;">Select Peer Reviewers from Roster</label>
-          <div id="reviewersSelectionList" style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0.75rem;background:rgba(0,0,0,0.1);">
-            <p style="color:var(--muted);font-size:0.85rem;margin:0;">Loading reviewer roster...</p>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem;">
+            <label class="form-label" style="font-weight:700;margin:0;display:block;">Select Peer Reviewers from Roster</label>
+            <span id="assignReviewerCountBadge" style="font-size:0.8rem;color:var(--accent);background:rgba(99,102,241,0.12);padding:0.2rem 0.6rem;border-radius:12px;border:1px solid rgba(99,102,241,0.3);font-weight:600;">0 selected</span>
           </div>
-          <small style="color:var(--muted);margin-top:0.35rem;display:block;">You may select multiple peer reviewers. Each reviewer will receive an automated invitation via SES.</small>
+
+          <!-- Reviewer Search Input -->
+          <div style="position:relative;margin-bottom:0.75rem;">
+            <input 
+              type="text" 
+              id="assignReviewerSearchInput" 
+              class="form-input" 
+              placeholder="🔍 Search reviewers by name, email, specialty, or affiliation..." 
+              oninput="filterAssignReviewersList()"
+              style="padding-left:2.25rem;padding-right:2.25rem;width:100%;font-size:0.88rem;border-radius:8px;box-sizing:border-box;"
+            >
+            <span style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:0.9rem;">🔍</span>
+            <button 
+              type="button" 
+              id="assignReviewerSearchClearBtn" 
+              onclick="clearAssignReviewerSearch()" 
+              style="position:absolute;right:0.6rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.95rem;padding:0.2rem 0.4rem;display:none;line-height:1;"
+              title="Clear search"
+            >✕</button>
+          </div>
+
+          <!-- Reviewers Checklist Container -->
+          <div id="reviewersSelectionList" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0.5rem;background:rgba(0,0,0,0.1);">
+            <p style="color:var(--muted);font-size:0.85rem;margin:0;padding:0.5rem;">Loading reviewer roster...</p>
+          </div>
+          <div id="assignReviewerNoResults" style="display:none;padding:1.5rem 1rem;text-align:center;color:var(--muted);font-size:0.88rem;">
+            🔍 No peer reviewers matching your search.
+          </div>
+
+          <!-- Quick Controls -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.6rem;flex-wrap:wrap;gap:0.5rem;">
+            <small style="color:var(--muted);display:block;font-size:0.8rem;">Selected reviewers will receive an automated invitation via SES.</small>
+            <div style="display:flex;gap:0.4rem;">
+              <button type="button" class="topbar-btn" onclick="toggleSelectAllVisibleReviewers(true)" style="padding:0.25rem 0.6rem;font-size:0.75rem;">Select Visible</button>
+              <button type="button" class="topbar-btn" onclick="toggleSelectAllVisibleReviewers(false)" style="padding:0.25rem 0.6rem;font-size:0.75rem;">Deselect Visible</button>
+            </div>
+          </div>
         </div>
         <div class="edit-modal-actions" style="display:flex;justify-content:flex-end;gap:0.75rem;">
           <button type="button" class="topbar-btn" onclick="closeAssignReviewersModal()" style="padding:0.6rem 1.25rem;">Cancel</button>
@@ -3988,8 +4024,17 @@ if (Astro.request) {
     document.getElementById('assignSubTitle').textContent = 'Manuscript: "' + articleTitle + '"';
     document.getElementById('assignModalStatus').style.display = 'none';
 
+    const searchInput = document.getElementById('assignReviewerSearchInput');
+    if (searchInput) searchInput.value = '';
+    const clearBtn = document.getElementById('assignReviewerSearchClearBtn');
+    if (clearBtn) clearBtn.style.display = 'none';
+    const noRes = document.getElementById('assignReviewerNoResults');
+    if (noRes) noRes.style.display = 'none';
+    const countBadge = document.getElementById('assignReviewerCountBadge');
+    if (countBadge) countBadge.textContent = '0 selected';
+
     const listEl = document.getElementById('reviewersSelectionList');
-    listEl.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;margin:0;">Loading roster...</p>';
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;margin:0;padding:0.5rem;">Loading roster...</p>';
     document.getElementById('assignReviewersModalOverlay').style.display = 'flex';
 
     try {
@@ -4000,7 +4045,7 @@ if (Astro.request) {
       }
 
       if (!loadedReviewersRoster.length) {
-        listEl.innerHTML = '<p style="color:#ef4444;font-size:0.85rem;margin:0;">No active peer reviewers registered. Please approve applicants in the Peer Reviewers tab first.</p>';
+        listEl.innerHTML = '<p style="color:#ef4444;font-size:0.85rem;margin:0;padding:0.5rem;">No active peer reviewers registered. Please approve applicants in the Peer Reviewers tab first.</p>';
         return;
       }
 
@@ -4009,21 +4054,98 @@ if (Astro.request) {
         try { aff = JSON.parse(r.affiliation || '[]').join(', '); } catch { aff = r.affiliation || ''; }
         let spec = '';
         try { spec = JSON.parse(r.specialty || '[]').join(', '); } catch { spec = r.specialty || ''; }
+        
+        const fullName = r.full_name || r.username || '';
+        const email = r.email || '';
+        const searchKeywords = `${fullName} ${r.username || ''} ${email} ${aff} ${spec}`.toLowerCase();
 
         return `
-          <label style="display:flex;align-items:flex-start;gap:0.75rem;padding:0.5rem;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;">
-            <input type="checkbox" name="selectedReviewers" value="${r.id}" style="margin-top:0.25rem;">
-            <div>
-              <strong style="color:var(--text);font-size:0.95rem;">${esc(r.full_name || r.username)}</strong>
-              <div style="font-size:0.8rem;color:var(--muted);">${esc(aff || r.email || '')} ${spec ? '• ' + esc(spec) : ''}</div>
+          <label class="reviewer-select-item" data-search="${esc(searchKeywords)}" style="display:flex;align-items:flex-start;gap:0.75rem;padding:0.6rem 0.75rem;border-radius:6px;margin-bottom:0.25rem;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:background 0.15s ease;">
+            <input type="checkbox" name="selectedReviewers" value="${r.id}" onchange="updateAssignReviewerCount()" style="margin-top:0.25rem;cursor:pointer;">
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                <strong style="color:var(--text);font-size:0.95rem;">${esc(fullName)}</strong>
+                ${email ? `<span style="font-size:0.78rem;color:var(--accent);font-family:monospace;background:rgba(99,102,241,0.12);padding:0.15rem 0.45rem;border-radius:4px;border:1px solid rgba(99,102,241,0.25);">${esc(email)}</span>` : ''}
+              </div>
+              <div style="font-size:0.8rem;color:var(--muted);margin-top:0.2rem;line-height:1.4;">
+                ${aff ? `<span>🏥 ${esc(aff)}</span>` : ''}
+                ${(aff && spec) ? ' • ' : ''}
+                ${spec ? `<span>🩺 ${esc(spec)}</span>` : ''}
+              </div>
             </div>
           </label>
         `;
       }).join('');
 
+      updateAssignReviewerCount();
+      if (searchInput) searchInput.focus();
+
     } catch (err) {
-      listEl.innerHTML = `<p style="color:#ef4444;font-size:0.85rem;margin:0;">Error loading reviewers: ${esc(err.message)}</p>`;
+      listEl.innerHTML = `<p style="color:#ef4444;font-size:0.85rem;margin:0;padding:0.5rem;">Error loading reviewers: ${esc(err.message)}</p>`;
     }
+  };
+
+  window.filterAssignReviewersList = function() {
+    const input = document.getElementById('assignReviewerSearchInput');
+    const clearBtn = document.getElementById('assignReviewerSearchClearBtn');
+    const noRes = document.getElementById('assignReviewerNoResults');
+    const query = (input?.value || '').trim().toLowerCase();
+
+    if (clearBtn) clearBtn.style.display = query ? 'block' : 'none';
+
+    const items = document.querySelectorAll('#reviewersSelectionList .reviewer-select-item');
+    if (!items.length) return;
+
+    const terms = query.split(/\s+/).filter(Boolean);
+    let visibleCount = 0;
+
+    items.forEach(item => {
+      const searchData = item.getAttribute('data-search') || '';
+      const matches = terms.length === 0 || terms.every(t => searchData.includes(t));
+      if (matches) {
+        item.style.display = 'flex';
+        visibleCount++;
+      } else {
+        item.style.display = 'none';
+      }
+    });
+
+    if (noRes) noRes.style.display = (visibleCount === 0 && items.length > 0) ? 'block' : 'none';
+    updateAssignReviewerCount(visibleCount, items.length);
+  };
+
+  window.clearAssignReviewerSearch = function() {
+    const input = document.getElementById('assignReviewerSearchInput');
+    if (input) {
+      input.value = '';
+      filterAssignReviewersList();
+      input.focus();
+    }
+  };
+
+  window.updateAssignReviewerCount = function(visibleCount, totalCount) {
+    const countBadge = document.getElementById('assignReviewerCountBadge');
+    if (!countBadge) return;
+    const selected = document.querySelectorAll('#reviewersSelectionList input[name="selectedReviewers"]:checked').length;
+    const allItems = document.querySelectorAll('#reviewersSelectionList .reviewer-select-item');
+    const total = totalCount !== undefined ? totalCount : allItems.length;
+    
+    if (visibleCount !== undefined && visibleCount < total) {
+      countBadge.textContent = `${selected} selected (${visibleCount} of ${total} visible)`;
+    } else {
+      countBadge.textContent = `${selected} of ${total} selected`;
+    }
+  };
+
+  window.toggleSelectAllVisibleReviewers = function(selectAll) {
+    const items = document.querySelectorAll('#reviewersSelectionList .reviewer-select-item');
+    items.forEach(item => {
+      if (item.style.display !== 'none') {
+        const cb = item.querySelector('input[name="selectedReviewers"]');
+        if (cb) cb.checked = !!selectAll;
+      }
+    });
+    filterAssignReviewersList();
   };
 
   window.closeAssignReviewersModal = function() {
