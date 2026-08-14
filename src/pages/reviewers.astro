@@ -4,117 +4,752 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <BaseLayout
   title="Peer Review Board - iMedipedia Medical Research"
+  description="iMedipedia upholds the highest standards of scientific and clinical rigor through structured, independent peer review by practicing physicians and medical researchers."
   currentPage="reviewers"
 >
   <slot name="head">
     <style>
-      .main-content { max-width: 1100px; margin: 3.5rem auto; padding: 0 1.5rem; flex-grow: 1; width: 100%; box-sizing: border-box; }
-      .portal-header { text-align: center; margin-bottom: 3.5rem; }
-      .portal-header h1 { font-family: 'Outfit', sans-serif; font-size: 3rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 0.5rem; }
-      .portal-header p { color: var(--muted); font-size: 1.1rem; max-width: 650px; margin: 0 auto; line-height: 1.6; }
+      /* Layout & Structure */
+      .portal-layout {
+        max-width: 1220px;
+        margin: 3.5rem auto;
+        padding: 0 1.5rem;
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 2.5rem;
+        width: 100%;
+        box-sizing: border-box;
+        align-items: start;
+      }
+
+      .portal-main {
+        min-width: 0;
+      }
+
+      .portal-sidebar {
+        min-width: 0;
+      }
+
+      .sticky-panel {
+        position: sticky;
+        top: 5.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      /* Hero Header */
+      .portal-header {
+        text-align: left;
+        margin-bottom: 3.5rem;
+        position: relative;
+      }
+
+      .portal-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--accent);
+        background: rgba(13, 148, 136, 0.12);
+        padding: 0.35rem 0.85rem;
+        border-radius: 20px;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(13, 148, 136, 0.2);
+      }
+
+      .portal-header h1 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 3rem;
+        font-weight: 800;
+        letter-spacing: -1px;
+        margin: 0 0 0.75rem 0;
+        line-height: 1.15;
+      }
+
+      .portal-header p {
+        color: var(--muted);
+        font-size: 1.1rem;
+        max-width: 720px;
+        margin: 0;
+        line-height: 1.6;
+      }
       
-      .hero-cta { display: flex; justify-content: center; gap: 1rem; margin-top: 2rem; }
-      .btn { background: var(--accent); color: #ffffff; border: none; padding: 0.85rem 1.75rem; font-size: 1rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; text-decoration: none; }
-      .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 14px var(--accent-glow); }
-      .btn-secondary { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); }
-      .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+      .hero-cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+
+      .btn {
+        background: var(--accent);
+        color: #ffffff;
+        border: none;
+        padding: 0.85rem 1.75rem;
+        font-size: 1rem;
+        font-weight: 700;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        text-decoration: none;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px var(--accent-glow);
+        background: #0f766e;
+      }
+
+      .btn-secondary {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      .btn-secondary:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: rgba(13, 148, 136, 0.08);
+      }
 
       /* Review Process Cards */
-      .process-section { margin-bottom: 4.5rem; }
-      .process-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-      .process-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; transition: transform 0.2s, border-color 0.2s; }
-      .process-card:hover { transform: translateY(-3px); border-color: var(--accent); }
-      .process-icon { font-size: 2.2rem; margin-bottom: 1rem; display: inline-block; }
-      .process-title { font-family: 'Outfit', sans-serif; font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text); }
-      .process-desc { color: var(--muted); font-size: 0.95rem; line-height: 1.6; }
+      .process-section {
+        margin-bottom: 4.5rem;
+      }
+
+      .section-subtitle-tag {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--accent);
+        margin-bottom: 0.5rem;
+        display: block;
+      }
+
+      .process-heading {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.85rem;
+        font-weight: 800;
+        margin: 0 0 1.5rem 0;
+        letter-spacing: -0.5px;
+      }
+
+      .process-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+      }
+
+      .process-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.75rem;
+        transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .process-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      .process-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--accent);
+        box-shadow: 0 10px 30px var(--accent-glow);
+      }
+
+      .process-card:hover::before {
+        opacity: 1;
+      }
+
+      .process-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        display: inline-block;
+      }
+
+      .process-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: var(--text);
+      }
+
+      .process-desc {
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.55;
+        margin: 0;
+      }
 
       /* Reviewer Gallery */
-      .gallery-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
-      .gallery-title { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 800; margin: 0; }
-      .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem; }
-      .reviewer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s; }
-      .reviewer-card:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: 0 10px 30px var(--accent-glow); }
-      .reviewer-avatar { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid var(--border); margin-bottom: 1.25rem; background: #090d16; }
-      .reviewer-name { font-family: 'Outfit', sans-serif; font-size: 1.35rem; font-weight: 700; margin: 0 0 0.4rem 0; color: var(--text); }
-      .reviewer-affiliation { color: var(--muted); font-size: 0.9rem; margin-bottom: 0.75rem; font-weight: 500; }
-      .reviewer-specialties { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: center; margin-bottom: 1rem; }
-      .spec-badge { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--accent); background: rgba(13, 148, 136, 0.1); padding: 0.25rem 0.6rem; border-radius: 12px; }
-      .reviewer-bio { color: var(--muted); font-size: 0.88rem; line-height: 1.5; margin-bottom: 1.25rem; flex-grow: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+      .gallery-section {
+        scroll-margin-top: 6rem;
+      }
+
+      .gallery-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 1.25rem;
+      }
+
+      .gallery-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -0.5px;
+      }
+
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+      }
+
+      .reviewer-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+      }
+
+      .reviewer-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--accent);
+        box-shadow: 0 12px 35px var(--accent-glow);
+      }
+
+      .reviewer-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid var(--border);
+        margin-bottom: 1.25rem;
+        background: #090d16;
+        transition: border-color 0.2s ease;
+      }
+
+      .reviewer-card:hover .reviewer-avatar {
+        border-color: var(--accent);
+      }
+
+      .reviewer-name {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0 0 0.35rem 0;
+        color: var(--text);
+      }
+
+      .reviewer-affiliation {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin-bottom: 0.75rem;
+        font-weight: 500;
+        line-height: 1.4;
+      }
+
+      .reviewer-specialties {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        justify-content: center;
+        margin-bottom: 1rem;
+      }
+
+      .spec-badge {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: rgba(13, 148, 136, 0.1);
+        padding: 0.25rem 0.55rem;
+        border-radius: 10px;
+        border: 1px solid rgba(13, 148, 136, 0.2);
+      }
+
+      .reviewer-bio {
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.5;
+        margin-bottom: 0;
+        flex-grow: 1;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      /* Right Sidebar Navigation Widgets */
+      .sidebar-widget {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        backdrop-filter: blur(12px);
+      }
+
+      .widget-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0 0 1rem 0;
+        padding-bottom: 0.6rem;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .sidebar-nav-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+
+      .sidebar-action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.85rem 1rem;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.92rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: left;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      :global([data-theme="light"]) .sidebar-action-btn {
+        background: rgba(0, 0, 0, 0.02);
+      }
+
+      .sidebar-action-btn:hover {
+        border-color: var(--accent);
+        background: rgba(13, 148, 136, 0.08);
+        color: var(--accent);
+        transform: translateX(3px);
+      }
+
+      .sidebar-action-btn.primary {
+        background: linear-gradient(135deg, rgba(13, 148, 136, 0.2), rgba(14, 165, 233, 0.15));
+        border-color: rgba(13, 148, 136, 0.4);
+        color: var(--text);
+      }
+
+      .sidebar-action-btn.primary:hover {
+        background: linear-gradient(135deg, rgba(13, 148, 136, 0.3), rgba(14, 165, 233, 0.25));
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .action-left {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .action-icon {
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .action-text {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .action-text strong {
+        font-size: 0.9rem;
+        color: var(--text);
+        line-height: 1.2;
+      }
+
+      .action-text small {
+        font-size: 0.75rem;
+        color: var(--muted);
+        font-weight: 400;
+        margin-top: 2px;
+      }
+
+      .action-arrow {
+        color: var(--muted);
+        font-size: 1.1rem;
+        transition: transform 0.2s;
+      }
+
+      .sidebar-action-btn:hover .action-arrow {
+        color: var(--accent);
+        transform: translateX(3px);
+      }
+
+      /* Sidebar Highlights Card */
+      .sidebar-info-card {
+        background: linear-gradient(180deg, rgba(13, 148, 136, 0.06), var(--card-bg));
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.25rem;
+      }
+
+      .info-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.85rem;
+      }
+
+      .info-card-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 0;
+        color: var(--text);
+      }
+
+      .info-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: rgba(13, 148, 136, 0.15);
+        padding: 0.15rem 0.5rem;
+        border-radius: 6px;
+      }
+
+      .info-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+
+      .info-list li {
+        font-size: 0.82rem;
+        color: var(--muted);
+        line-height: 1.45;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .info-list li span.check {
+        color: var(--accent);
+        font-weight: bold;
+      }
 
       /* Modal */
-      .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(3, 7, 18, 0.65); backdrop-filter: blur(8px); z-index: 1000; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; }
-      .modal-overlay.active { display: flex; opacity: 1; }
-      .modal-content { background: var(--bg); border: 1px solid var(--border); border-radius: 24px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 2.5rem; position: relative; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4); }
-      .modal-close { position: absolute; top: 1.25rem; right: 1.25rem; background: transparent; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; }
-      .modal-close:hover { color: var(--text); }
-      .form-group { margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.4rem; }
-      .form-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-      .form-input, .form-textarea { padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 0.95rem; }
-      .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--accent); }
-      .form-textarea { resize: vertical; min-height: 100px; font-family: inherit; }
-      .alert { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem; margin-bottom: 1rem; display: none; }
-      .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; }
-      .alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; }
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(3, 7, 18, 0.75);
+        backdrop-filter: blur(8px);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        padding: 1.5rem;
+        box-sizing: border-box;
+      }
 
-      @media (max-width: 768px) {
-        .process-grid { grid-template-columns: 1fr; }
-        .portal-header h1 { font-size: 2.2rem; }
-        .hero-cta { flex-direction: column; }
+      .modal-overlay.active {
+        display: flex;
+        opacity: 1;
+      }
+
+      .modal-content {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        max-width: 600px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 2.5rem;
+        position: relative;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      }
+
+      .modal-close {
+        position: absolute;
+        top: 1.25rem;
+        right: 1.25rem;
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        font-size: 1.6rem;
+        cursor: pointer;
+        line-height: 1;
+        transition: color 0.2s;
+      }
+
+      .modal-close:hover {
+        color: var(--text);
+      }
+
+      .form-group {
+        margin-bottom: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+
+      .form-label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--muted);
+      }
+
+      .form-input, .form-textarea {
+        padding: 0.8rem 1rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--card-bg);
+        color: var(--text);
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+      }
+
+      .form-input:focus, .form-textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      .form-textarea {
+        resize: vertical;
+        min-height: 100px;
+        font-family: inherit;
+      }
+
+      .alert {
+        padding: 0.85rem 1.15rem;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        margin-bottom: 1.25rem;
+        display: none;
+      }
+
+      .alert-error {
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+      }
+
+      .alert-success {
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #10b981;
+      }
+
+      @media (max-width: 992px) {
+        .portal-layout {
+          grid-template-columns: 1fr;
+          gap: 3rem;
+        }
+
+        .sticky-panel {
+          position: static;
+        }
+
+        .portal-header h1 {
+          font-size: 2.5rem;
+        }
+
+        .process-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .portal-layout {
+          margin: 2rem auto;
+          padding: 0 1rem;
+        }
+
+        .portal-header h1 {
+          font-size: 2rem;
+        }
+
+        .hero-cta {
+          flex-direction: column;
+        }
+
+        .modal-content {
+          padding: 1.75rem 1.25rem;
+        }
       }
     </style>
   </slot>
 
-  <main class="main-content">
-    <header class="portal-header">
-      <h1>Peer Review Board</h1>
-      <p>iMedipedia upholds the highest standards of scientific and clinical rigor through structured, independent peer review by practicing physicians, academicians, and medical researchers.</p>
-      
-      <div class="hero-cta">
-        <button id="joinReviewerBtn" class="btn">🩺 Join as Peer Reviewer</button>
-        <a href="/reviewers/login" class="btn btn-secondary">🔑 Peer Reviewer Login &rarr;</a>
-      </div>
-    </header>
+  <div class="portal-layout">
+    <!-- Main Left Column -->
+    <main class="portal-main">
+      <header class="portal-header">
+        <div class="portal-badge">🩺 Clinical Excellence &amp; Rigor</div>
+        <h1>Peer Review Board</h1>
+        <p>iMedipedia upholds the highest standards of scientific and clinical rigor through structured, independent peer review by practicing physicians, academicians, and medical researchers.</p>
+        
+        <div class="hero-cta">
+          <button id="joinReviewerBtn" class="btn">🩺 Join as Peer Reviewer</button>
+          <a href="/reviewers/login" class="btn btn-secondary">🔑 Peer Reviewer Login &rarr;</a>
+        </div>
+      </header>
 
-    <!-- Standards & Rigor Section -->
-    <section class="process-section">
-      <div class="process-grid">
-        <div class="process-card">
-          <span class="process-icon">🔬</span>
-          <h3 class="process-title">1. Clinical Rigor</h3>
-          <p class="process-desc">Manuscripts are evaluated for pathophysiological validity, evidence classification, diagnostic criteria, and pharmacological safety.</p>
+      <!-- Standards & Rigor Section -->
+      <section class="process-section">
+        <span class="section-subtitle-tag">Evaluation Framework</span>
+        <h2 class="process-heading">Our Peer Review Standards</h2>
+        <div class="process-grid">
+          <div class="process-card">
+            <span class="process-icon">🔬</span>
+            <h3 class="process-title">1. Clinical Rigor</h3>
+            <p class="process-desc">Manuscripts are evaluated for pathophysiological validity, evidence classification, diagnostic criteria, and pharmacological safety.</p>
+          </div>
+          <div class="process-card">
+            <span class="process-icon">🛡️</span>
+            <h3 class="process-title">2. Double-Grounded Rubric</h3>
+            <p class="process-desc">Standardized scoring across Clinical Accuracy, Article Clarity, and Evidence Base with actionable feedback delivered to authors.</p>
+          </div>
+          <div class="process-card">
+            <span class="process-icon">⚡</span>
+            <h3 class="process-title">3. Collaborative Revisions</h3>
+            <p class="process-desc">Authors receive structured reviewer recommendations to refine manuscripts before final publication to the medical community.</p>
+          </div>
         </div>
-        <div class="process-card">
-          <span class="process-icon">🛡️</span>
-          <h3 class="process-title">2. Double-Grounded Rubric</h3>
-          <p class="process-desc">Standardized scoring across Clinical Accuracy, Article Clarity, and Evidence Base with actionable feedback delivered to authors.</p>
-        </div>
-        <div class="process-card">
-          <span class="process-icon">⚡</span>
-          <h3 class="process-title">3. Collaborative Revisions</h3>
-          <p class="process-desc">Authors receive structured reviewer recommendations to refine manuscripts before final publication to the medical community.</p>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Showcase Gallery Section -->
-    <section class="gallery-section">
-      <div class="gallery-header">
-        <div>
-          <h2 class="gallery-title">Distinguished Review Board</h2>
-          <p style="color:var(--muted);margin:0.25rem 0 0 0;font-size:0.95rem;">Meet the clinicians and researchers reviewing our medical manuscripts.</p>
+      <!-- Showcase Gallery Section -->
+      <section class="gallery-section" id="reviewBoardSection">
+        <div class="gallery-header">
+          <div>
+            <span class="section-subtitle-tag">Editorial Community</span>
+            <h2 class="gallery-title">Distinguished Review Board</h2>
+            <p style="color:var(--muted);margin:0.25rem 0 0 0;font-size:0.95rem;">Meet the clinicians and researchers reviewing our medical manuscripts.</p>
+          </div>
+        </div>
+
+        <div class="gallery-grid" id="reviewersGrid">
+          <p style="color:var(--muted);text-align:center;grid-column:1/-1;">Loading review board members...</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Right Navigation Panel -->
+    <aside class="portal-sidebar">
+      <div class="sticky-panel">
+        <!-- Navigation Widget -->
+        <div class="sidebar-widget">
+          <h3 class="widget-title">
+            <span>⚡</span> Reviewer Navigation
+          </h3>
+          <div class="sidebar-nav-list">
+            <button id="sideJoinReviewerBtn" class="sidebar-action-btn primary" type="button">
+              <span class="action-left">
+                <span class="action-icon">🩺</span>
+                <span class="action-text">
+                  <strong>Join as Peer Reviewer</strong>
+                  <small>Apply with clinical credentials</small>
+                </span>
+              </span>
+              <span class="action-arrow">&rarr;</span>
+            </button>
+
+            <a href="/reviewers/login" class="sidebar-action-btn">
+              <span class="action-left">
+                <span class="action-icon">🔑</span>
+                <span class="action-text">
+                  <strong>Peer Reviewer Login</strong>
+                  <small>Access review queue</small>
+                </span>
+              </span>
+              <span class="action-arrow">&rarr;</span>
+            </a>
+
+            <a href="#reviewBoardSection" id="sideBoardLink" class="sidebar-action-btn">
+              <span class="action-left">
+                <span class="action-icon">👥</span>
+                <span class="action-text">
+                  <strong>Our Review Board</strong>
+                  <small>Meet verified reviewers</small>
+                </span>
+              </span>
+              <span class="action-arrow">&darr;</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Rigor & Accreditation Info -->
+        <div class="sidebar-info-card">
+          <div class="info-card-header">
+            <h4 class="info-card-title">Review Board Rigor</h4>
+            <span class="info-badge">Accredited</span>
+          </div>
+          <ul class="info-list">
+            <li><span class="check">✔</span> Double-blind evaluation framework</li>
+            <li><span class="check">✔</span> Standardized clinical rubrics</li>
+            <li><span class="check">✔</span> Verified faculty &amp; MD reviewers</li>
+            <li><span class="check">✔</span> Reviewer citation recognition</li>
+          </ul>
         </div>
       </div>
-
-      <div class="gallery-grid" id="reviewersGrid">
-        <p style="color:var(--muted);text-align:center;grid-column:1/-1;">Loading review board members...</p>
-      </div>
-    </section>
-  </main>
+    </aside>
+  </div>
 
   <!-- Join Modal -->
   <div class="modal-overlay" id="reviewerModalOverlay">
     <div class="modal-content">
-      <button class="modal-close" id="closeReviewerModal">&times;</button>
+      <button class="modal-close" id="closeReviewerModal" aria-label="Close modal">&times;</button>
       <h2 style="font-family:'Outfit',sans-serif;font-size:1.75rem;margin-top:0;margin-bottom:0.5rem;">Join the Peer Review Board</h2>
       <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.5rem;line-height:1.5;">Apply to evaluate prospective medical articles, case presentations, and clinical review digests in your subspecialty.</p>
       
@@ -161,15 +796,46 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     // Modal management
     const overlay = document.getElementById('reviewerModalOverlay');
     const joinBtn = document.getElementById('joinReviewerBtn');
+    const sideJoinBtn = document.getElementById('sideJoinReviewerBtn');
     const closeBtn = document.getElementById('closeReviewerModal');
     const form = document.getElementById('reviewerApplyForm');
     const submitBtn = document.getElementById('submitAppBtn');
     const alertErr = document.getElementById('modalAlertError');
     const alertSucc = document.getElementById('modalAlertSuccess');
+    const sideBoardLink = document.getElementById('sideBoardLink');
 
-    joinBtn.addEventListener('click', () => { overlay.classList.add('active'); });
-    closeBtn.addEventListener('click', () => { overlay.classList.remove('active'); });
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('active'); });
+    function openModal() {
+      overlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      overlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    if (joinBtn) joinBtn.addEventListener('click', openModal);
+    if (sideJoinBtn) sideJoinBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+    // Smooth scroll for Our Review Board link
+    if (sideBoardLink) {
+      sideBoardLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = document.getElementById('reviewBoardSection');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    }
+
+    // Escape key listener
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && overlay.classList.contains('active')) {
+        closeModal();
+      }
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -198,7 +864,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           form.reset();
           alertSucc.textContent = data.message || 'Application submitted successfully!';
           alertSucc.style.display = 'block';
-          setTimeout(() => { overlay.classList.remove('active'); alertSucc.style.display = 'none'; }, 3000);
+          setTimeout(() => { closeModal(); alertSucc.style.display = 'none'; }, 3000);
         } else {
           alertErr.textContent = data.error || 'Submission failed. Please check your information.';
           alertErr.style.display = 'block';

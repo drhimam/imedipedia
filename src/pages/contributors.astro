@@ -4,194 +4,948 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <BaseLayout
   title="Contributor Portal - iMedipedia Medical Research"
+  description="Help shape the future of medical science publication. Join our network of practicing clinicians, medical educators, and researchers sharing peer-reviewed clinical knowledge."
   currentPage="contributors"
 >
   <slot name="head">
     <style>
-      .main-content { max-width: 1000px; margin: 4rem auto; padding: 0 1.5rem; flex-grow: 1; width: 100%; box-sizing: border-box; }
-      .portal-header { text-align: center; margin-bottom: 3.5rem; }
-      .portal-header h1 { font-family: 'Outfit', sans-serif; font-size: 3rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 0.5rem; }
-      .portal-header p { color: var(--muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
-      .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; }
-      .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 2.5rem; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; }
-      .card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 12px 40px var(--accent-glow); }
-      .card-title { font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 700; margin-top: 0; margin-bottom: 1rem; }
-      .card-desc { color: var(--muted); font-size: 1rem; margin-bottom: 2rem; line-height: 1.6; }
-      .form-group { margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; }
-      .form-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-      .form-input, .form-textarea { padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0, 0, 0, 0.1); color: var(--text); font-size: 0.95rem; transition: border-color 0.2s, background-color 0.2s; }
-      :global([data-theme="light"]) .form-input, :global([data-theme="light"]) .form-textarea { background: rgba(255, 255, 255, 0.8); }
-      .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--accent); background: rgba(0, 0, 0, 0.2); }
-      :global([data-theme="light"]) .form-input:focus, :global([data-theme="light"]) .form-textarea:focus { background: #ffffff; }
-      .form-textarea { resize: vertical; min-height: 80px; font-family: inherit; }
-      .btn { background: var(--accent); color: #ffffff; border: none; padding: 0.9rem 1.5rem; font-size: 1rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: transform 0.2s, opacity 0.2s, box-shadow 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
-      .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--accent-glow); }
-      .btn:active { transform: translateY(0); }
-      .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-      .btn-secondary { background: transparent; border: 1px solid var(--accent); color: var(--text); }
-      .btn-secondary:hover { background: var(--accent); color: white; }
-      .alert { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem; margin-bottom: 1rem; display: none; }
-      .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; }
-      .alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; }
-      .alert-info { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6; }
-      .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(3, 7, 18, 0.6); backdrop-filter: blur(8px); z-index: 100; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; }
-      .modal-overlay.active { display: flex; opacity: 1; }
-      .modal-content { background: var(--bg); border: 1px solid var(--border); border-radius: 24px; max-width: 550px; width: 90%; max-height: 85vh; overflow-y: auto; padding: 2.5rem; position: relative; transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); }
-      .modal-overlay.active .modal-content { transform: scale(1); }
-      .modal-close { position: absolute; top: 1.25rem; right: 1.25rem; background: transparent; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; line-height: 1; }
-      .modal-close:hover { color: var(--text); }
-      .success-state { display: none; flex-direction: column; align-items: center; text-align: center; padding: 2rem 0; }
-      .success-icon { width: 64px; height: 64px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1.5rem; border: 2px solid var(--success); animation: scaleIn2 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-      @keyframes scaleIn2 { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-      .success-title { font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 700; margin-bottom: 0.75rem; }
-      .success-desc { color: var(--muted); font-size: 1rem; line-height: 1.6; max-width: 400px; }
-      .forgot-pw-link { text-align: center; margin-top: 1rem; font-size: 0.85rem; }
-      .forgot-pw-link a { color: var(--accent); text-decoration: none; }
-      .forgot-pw-link a:hover { text-decoration: underline; }
-      .contributors-section { margin-top: 5rem; border-top: 1px solid var(--border); padding-top: 4rem; }
-      .contributors-section h2 { font-family: 'Outfit', sans-serif; font-size: 2.2rem; font-weight: 800; text-align: center; margin-bottom: 3rem; letter-spacing: -0.5px; }
-      .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem; }
-      .contributor-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 2.2rem; transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; }
-      .contributor-card:hover { transform: translateY(-6px); border-color: var(--accent); box-shadow: 0 10px 30px var(--accent-glow); }
-      .contributor-img-link { width: 130px; height: 130px; border-radius: 50%; margin-bottom: 1.5rem; overflow: hidden; border: 2px solid var(--border); transition: border-color 0.2s; display: block; }
-      .contributor-card:hover .contributor-img-link { border-color: var(--accent); }
-      .contributor-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
-      .contributor-card:hover .contributor-img { transform: scale(1.1); }
-      .contributor-name-link { text-decoration: none; color: inherit; }
-      .contributor-name { font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 700; margin: 0 0 0.5rem 0; transition: color 0.2s; }
-      .contributor-name-link:hover .contributor-name { color: var(--accent); }
-      .contributor-specialty { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--accent); background: rgba(99, 102, 241, 0.1); padding: 0.25rem 0.75rem; border-radius: 20px; margin-bottom: 1rem; }
-      .contributor-bio { color: var(--muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.5rem; flex-grow: 1; }
-      @media (max-width: 768px) {
-        .grid-layout { grid-template-columns: 1fr; gap: 2rem; }
-        .portal-header h1 { font-size: 2.2rem; }
+      /* Layout & Structure */
+      .portal-layout {
+        max-width: 1220px;
+        margin: 3.5rem auto;
+        padding: 0 1.5rem;
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 2.5rem;
+        width: 100%;
+        box-sizing: border-box;
+        align-items: start;
       }
-      @media (max-width: 480px) {
-        .main-content { margin: 2rem auto; padding: 0 1rem; }
-        .portal-header h1 { font-size: 1.8rem; }
-        .portal-header p { font-size: 0.95rem; }
-        .card { padding: 1.5rem; }
-        .card-title { font-size: 1.4rem; }
-        .gallery-grid { grid-template-columns: 1fr; }
-        .contributors-section { margin-top: 3rem; padding-top: 2.5rem; }
-        .contributors-section h2 { font-size: 1.6rem; margin-bottom: 2rem; }
-        .form-input, .form-textarea { font-size: 16px; }
-        .modal-content { padding: 1.5rem; }
+
+      .portal-main {
+        min-width: 0;
+      }
+
+      .portal-sidebar {
+        min-width: 0;
+      }
+
+      .sticky-panel {
+        position: sticky;
+        top: 5.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      /* Hero Header */
+      .portal-header {
+        text-align: left;
+        margin-bottom: 3.5rem;
+        position: relative;
+      }
+
+      .portal-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--accent);
+        background: rgba(13, 148, 136, 0.12);
+        padding: 0.35rem 0.85rem;
+        border-radius: 20px;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(13, 148, 136, 0.2);
+      }
+
+      .portal-header h1 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 3rem;
+        font-weight: 800;
+        letter-spacing: -1px;
+        margin: 0 0 0.75rem 0;
+        line-height: 1.15;
+      }
+
+      .portal-header p {
+        color: var(--muted);
+        font-size: 1.1rem;
+        max-width: 720px;
+        margin: 0;
+        line-height: 1.6;
+      }
+      
+      .hero-cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+
+      .btn {
+        background: var(--accent);
+        color: #ffffff;
+        border: none;
+        padding: 0.85rem 1.75rem;
+        font-size: 1rem;
+        font-weight: 700;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        text-decoration: none;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px var(--accent-glow);
+        background: #0f766e;
+      }
+
+      .btn:active {
+        transform: translateY(0);
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+      }
+
+      .btn-secondary {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      .btn-secondary:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: rgba(13, 148, 136, 0.08);
+      }
+
+      /* Process / Rigor Cards */
+      .process-section {
+        margin-bottom: 4.5rem;
+      }
+
+      .section-subtitle-tag {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--accent);
+        margin-bottom: 0.5rem;
+        display: block;
+      }
+
+      .process-heading {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.85rem;
+        font-weight: 800;
+        margin: 0 0 1.5rem 0;
+        letter-spacing: -0.5px;
+      }
+
+      .process-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+      }
+
+      .process-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.75rem;
+        transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .process-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      .process-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--accent);
+        box-shadow: 0 10px 30px var(--accent-glow);
+      }
+
+      .process-card:hover::before {
+        opacity: 1;
+      }
+
+      .process-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        display: inline-block;
+      }
+
+      .process-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: var(--text);
+      }
+
+      .process-desc {
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.55;
+        margin: 0;
+      }
+
+      /* Contributors Gallery */
+      .gallery-section {
+        scroll-margin-top: 6rem;
+      }
+
+      .gallery-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 1.25rem;
+      }
+
+      .gallery-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -0.5px;
+      }
+
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+      }
+
+      .contributor-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+      }
+
+      .contributor-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--accent);
+        box-shadow: 0 12px 35px var(--accent-glow);
+      }
+
+      .contributor-img-link {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        margin-bottom: 1.25rem;
+        overflow: hidden;
+        border: 3px solid var(--border);
+        transition: border-color 0.2s;
+        display: block;
+        flex-shrink: 0;
+      }
+
+      .contributor-card:hover .contributor-img-link {
+        border-color: var(--accent);
+      }
+
+      .contributor-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+      }
+
+      .contributor-card:hover .contributor-img {
+        transform: scale(1.08);
+      }
+
+      .contributor-name-link {
+        text-decoration: none;
+        color: inherit;
+      }
+
+      .contributor-name {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0 0 0.35rem 0;
+        color: var(--text);
+        transition: color 0.2s;
+      }
+
+      .contributor-name-link:hover .contributor-name {
+        color: var(--accent);
+      }
+
+      .contributor-specialty {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: rgba(13, 148, 136, 0.1);
+        padding: 0.25rem 0.55rem;
+        border-radius: 10px;
+        margin-bottom: 0.85rem;
+        border: 1px solid rgba(13, 148, 136, 0.2);
+      }
+
+      .contributor-bio {
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.5;
+        margin-bottom: 1.25rem;
+        flex-grow: 1;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      /* Right Sidebar Navigation Widgets */
+      .sidebar-widget {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        backdrop-filter: blur(12px);
+      }
+
+      .widget-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0 0 1rem 0;
+        padding-bottom: 0.6rem;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .sidebar-nav-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+
+      .sidebar-action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.85rem 1rem;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.92rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: left;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      :global([data-theme="light"]) .sidebar-action-btn {
+        background: rgba(0, 0, 0, 0.02);
+      }
+
+      .sidebar-action-btn:hover {
+        border-color: var(--accent);
+        background: rgba(13, 148, 136, 0.08);
+        color: var(--accent);
+        transform: translateX(3px);
+      }
+
+      .sidebar-action-btn.primary {
+        background: linear-gradient(135deg, rgba(13, 148, 136, 0.2), rgba(14, 165, 233, 0.15));
+        border-color: rgba(13, 148, 136, 0.4);
+        color: var(--text);
+      }
+
+      .sidebar-action-btn.primary:hover {
+        background: linear-gradient(135deg, rgba(13, 148, 136, 0.3), rgba(14, 165, 233, 0.25));
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .action-left {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .action-icon {
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .action-text {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .action-text strong {
+        font-size: 0.9rem;
+        color: var(--text);
+        line-height: 1.2;
+      }
+
+      .action-text small {
+        font-size: 0.75rem;
+        color: var(--muted);
+        font-weight: 400;
+        margin-top: 2px;
+      }
+
+      .action-arrow {
+        color: var(--muted);
+        font-size: 1.1rem;
+        transition: transform 0.2s;
+      }
+
+      .sidebar-action-btn:hover .action-arrow {
+        color: var(--accent);
+        transform: translateX(3px);
+      }
+
+      /* Sidebar Highlights Card */
+      .sidebar-info-card {
+        background: linear-gradient(180deg, rgba(13, 148, 136, 0.06), var(--card-bg));
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.25rem;
+      }
+
+      .info-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.85rem;
+      }
+
+      .info-card-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 0;
+        color: var(--text);
+      }
+
+      .info-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: rgba(13, 148, 136, 0.15);
+        padding: 0.15rem 0.5rem;
+        border-radius: 6px;
+      }
+
+      .info-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+
+      .info-list li {
+        font-size: 0.82rem;
+        color: var(--muted);
+        line-height: 1.45;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .info-list li span.check {
+        color: var(--accent);
+        font-weight: bold;
+      }
+
+      .peer-reviewer-link-box {
+        margin-top: 1rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid var(--border);
+        text-align: center;
+      }
+
+      .peer-reviewer-link {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--accent);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        transition: text-decoration 0.2s;
+      }
+
+      .peer-reviewer-link:hover {
+        text-decoration: underline;
+      }
+
+      /* Modals */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(3, 7, 18, 0.75);
+        backdrop-filter: blur(8px);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        padding: 1.5rem;
+        box-sizing: border-box;
+      }
+
+      .modal-overlay.active {
+        display: flex;
+        opacity: 1;
+      }
+
+      .modal-content {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        max-width: 580px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 2.5rem;
+        position: relative;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      }
+
+      .modal-close {
+        position: absolute;
+        top: 1.25rem;
+        right: 1.25rem;
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        font-size: 1.6rem;
+        cursor: pointer;
+        line-height: 1;
+        transition: color 0.2s;
+      }
+
+      .modal-close:hover {
+        color: var(--text);
+      }
+
+      .form-group {
+        margin-bottom: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+
+      .form-label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--muted);
+      }
+
+      .form-input, .form-textarea {
+        padding: 0.8rem 1rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--card-bg);
+        color: var(--text);
+        font-size: 0.95rem;
+        transition: border-color 0.2s, background-color 0.2s;
+      }
+
+      :global([data-theme="light"]) .form-input,
+      :global([data-theme="light"]) .form-textarea {
+        background: #ffffff;
+      }
+
+      .form-input:focus, .form-textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      .form-textarea {
+        resize: vertical;
+        min-height: 90px;
+        font-family: inherit;
+      }
+
+      .alert {
+        padding: 0.85rem 1.15rem;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        margin-bottom: 1.25rem;
+        display: none;
+      }
+
+      .alert-error {
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+      }
+
+      .alert-success {
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #10b981;
+      }
+
+      .alert-info {
+        background: rgba(59, 130, 246, 0.12);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        color: #3b82f6;
+      }
+
+      .success-state {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 2rem 0;
+      }
+
+      .success-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: rgba(16, 185, 129, 0.12);
+        color: var(--success);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin-bottom: 1.25rem;
+        border: 2px solid var(--success);
+      }
+
+      .success-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.6rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+      }
+
+      .success-desc {
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.6;
+        max-width: 420px;
+        margin: 0 0 1.5rem 0;
+      }
+
+      .forgot-pw-link {
+        text-align: center;
+        margin-top: 1rem;
+        font-size: 0.85rem;
+      }
+
+      .forgot-pw-link a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .forgot-pw-link a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 992px) {
+        .portal-layout {
+          grid-template-columns: 1fr;
+          gap: 3rem;
+        }
+
+        .sticky-panel {
+          position: static;
+        }
+
+        .portal-header h1 {
+          font-size: 2.5rem;
+        }
+
+        .process-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .portal-layout {
+          margin: 2rem auto;
+          padding: 0 1rem;
+        }
+
+        .portal-header h1 {
+          font-size: 2rem;
+        }
+
+        .hero-cta {
+          flex-direction: column;
+        }
+
+        .modal-content {
+          padding: 1.75rem 1.25rem;
+        }
       }
     </style>
   </slot>
 
-  <main class="main-content">
-    <header class="portal-header">
-      <h1>Contributor Portal</h1>
-      <p>Help shape the future of medical science publication. Apply to become a contributor and share original research, case reports, and clinical reviews.</p>
-    </header>
-
-    <div class="grid-layout">
-      <!-- Apply Card -->
-      <section class="card">
-        <div>
-          <h2 class="card-title">Apply to Contribute</h2>
-          <p class="card-desc">Join our network of medical professionals, researchers, and scientific writers. Submit your application for editorial board review.</p>
+  <div class="portal-layout">
+    <!-- Main Left Column -->
+    <main class="portal-main">
+      <header class="portal-header">
+        <div class="portal-badge">✍️ Medical Authorship &amp; Research</div>
+        <h1>Contributor Portal</h1>
+        <p>Help shape the future of medical science publication. Join our network of practicing clinicians, medical educators, and researchers sharing peer-reviewed clinical knowledge, case studies, and research reviews.</p>
+        
+        <div class="hero-cta">
+          <button id="heroApplyBtn" class="btn">✍️ Join as Contributor</button>
+          <button id="heroLoginBtn" class="btn btn-secondary">🔑 Contributor Login &rarr;</button>
         </div>
-        <button id="applyBtn" class="btn">Apply Now &rarr;</button>
-      </section>
+      </header>
 
-      <!-- Login Card -->
-      <section class="card">
-        <div>
-          <h2 class="card-title">Portal Login</h2>
-          <p class="card-desc">Log in with your registered email to access your Contributor Publisher hub or Peer Reviewer Dashboard.</p>
-          <div id="loginAlert" class="alert alert-error"></div>
-          <form id="loginForm">
-            <div class="form-group">
-              <label for="loginUsername" class="form-label">Email Address</label>
-              <input type="text" id="loginUsername" class="form-input" placeholder="dr.smith@hospital.edu" required autocomplete="username" />
-            </div>
-            <div class="form-group" id="passwordGroup">
-              <label for="loginPassword" class="form-label">Password</label>
-              <input type="password" id="loginPassword" class="form-input" placeholder="Password" required autocomplete="current-password" />
-            </div>
-            <div class="form-group" id="totpGroup" style="display:none;">
-              <label for="loginTotp" class="form-label">Authenticator Code</label>
-              <input type="text" id="loginTotp" class="form-input" placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" />
-              <span style="font-size:0.75rem;color:var(--muted);">Enter the 6-digit code from your authenticator app</span>
-            </div>
-            <button type="submit" class="btn btn-secondary" style="width: 100%;" id="loginBtn">Log In</button>
-          </form>
-          <p class="forgot-pw-link"><a href="#" id="forgotPwLink">Forgot your password?</a></p>
-          <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);text-align:center;font-size:0.85rem;">
-            <a href="/reviewers/login" style="color:var(--accent);text-decoration:none;font-weight:600;">🩺 Are you a Peer Reviewer? Sign in here &rarr;</a>
+      <!-- Publishing Framework / Process Cards -->
+      <section class="process-section">
+        <span class="section-subtitle-tag">Author Framework</span>
+        <h2 class="process-heading">Publishing on iMedipedia</h2>
+        <div class="process-grid">
+          <div class="process-card">
+            <span class="process-icon">🔬</span>
+            <h3 class="process-title">1. Evidence-Based Publishing</h3>
+            <p class="process-desc">Submit original clinical insights, case reports, review digests, or practice guidelines with seamless Markdown &amp; TinaCMS authoring.</p>
+          </div>
+          <div class="process-card">
+            <span class="process-icon">🛡️</span>
+            <h3 class="process-title">2. Double-Blind Peer Review</h3>
+            <p class="process-desc">Every manuscript undergoes structured evaluation by practicing clinicians and subspecialists on our Peer Review Board for clinical accuracy.</p>
+          </div>
+          <div class="process-card">
+            <span class="process-icon">⚡</span>
+            <h3 class="process-title">3. Global Impact &amp; Recognition</h3>
+            <p class="process-desc">Build your academic footprint with verified author profiles, PubMed/ORCID linkage, citation metrics, and practitioner reach.</p>
           </div>
         </div>
       </section>
-    </div>
 
-    <section class="contributors-section">
-      <h2>Our Current Contributors</h2>
-      <div class="gallery-grid" id="contributorsGrid">
-        <article class="contributor-card">
-          <a href="/contributors/eleanor-vance" class="contributor-img-link"><img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300" alt="Dr. Eleanor Vance" class="contributor-img" /></a>
-          <a href="/contributors/eleanor-vance" class="contributor-name-link"><h3 class="contributor-name">Dr. Eleanor Vance</h3></a>
-          <span class="contributor-specialty">Genomics & Oncology</span>
-          <p class="contributor-bio">Lead researcher in clinical genetics and cancer immunotherapies at the iMedipedia Institute.</p>
-          <a href="/contributors/eleanor-vance" class="btn btn-secondary" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem;">View Profile & Articles</a>
-        </article>
-        <article class="contributor-card">
-          <a href="/contributors/marcus-thorne" class="contributor-img-link"><img src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=300" alt="Dr. Marcus Thorne" class="contributor-img" /></a>
-          <a href="/contributors/marcus-thorne" class="contributor-name-link"><h3 class="contributor-name">Dr. Marcus Thorne</h3></a>
-          <span class="contributor-specialty">Neurology</span>
-          <p class="contributor-bio">Associate Professor of neuroengineering, focused on BCI clinical translation.</p>
-          <a href="/contributors/marcus-thorne" class="btn btn-secondary" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem;">View Profile & Articles</a>
-        </article>
-        <article class="contributor-card">
-          <a href="/contributors/sarah-jenkins" class="contributor-img-link"><img src="https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&q=80&w=300" alt="Dr. Sarah Jenkins" class="contributor-img" /></a>
-          <a href="/contributors/sarah-jenkins" class="contributor-name-link"><h3 class="contributor-name">Dr. Sarah Jenkins</h3></a>
-          <span class="contributor-specialty">Cardiology</span>
-          <p class="contributor-bio">Clinical cardiologist researching genetic markers for heart disease.</p>
-          <a href="/contributors/sarah-jenkins" class="btn btn-secondary" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem;">View Profile & Articles</a>
-        </article>
+      <!-- Showcase Gallery Section -->
+      <section class="gallery-section" id="contributorsSection">
+        <div class="gallery-header">
+          <div>
+            <span class="section-subtitle-tag">Author Network</span>
+            <h2 class="gallery-title">Our Distinguished Contributors</h2>
+            <p style="color:var(--muted);margin:0.25rem 0 0 0;font-size:0.95rem;">Meet the physicians, researchers, and specialists advancing clinical education on iMedipedia.</p>
+          </div>
+        </div>
+
+        <div class="gallery-grid" id="contributorsGrid">
+          <article class="contributor-card">
+            <a href="/contributors/eleanor-vance" class="contributor-img-link"><img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300" alt="Dr. Eleanor Vance" class="contributor-img" /></a>
+            <a href="/contributors/eleanor-vance" class="contributor-name-link"><h3 class="contributor-name">Dr. Eleanor Vance</h3></a>
+            <span class="contributor-specialty">Genomics &amp; Oncology</span>
+            <p class="contributor-bio">Lead researcher in clinical genetics and cancer immunotherapies at the iMedipedia Institute.</p>
+            <a href="/contributors/eleanor-vance" class="btn btn-secondary" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem;">View Profile &amp; Articles</a>
+          </article>
+          <article class="contributor-card">
+            <a href="/contributors/marcus-thorne" class="contributor-img-link"><img src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=300" alt="Dr. Marcus Thorne" class="contributor-img" /></a>
+            <a href="/contributors/marcus-thorne" class="contributor-name-link"><h3 class="contributor-name">Dr. Marcus Thorne</h3></a>
+            <span class="contributor-specialty">Neurology</span>
+            <p class="contributor-bio">Associate Professor of neuroengineering, focused on BCI clinical translation.</p>
+            <a href="/contributors/marcus-thorne" class="btn btn-secondary" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem;">View Profile &amp; Articles</a>
+          </article>
+          <article class="contributor-card">
+            <a href="/contributors/sarah-jenkins" class="contributor-img-link"><img src="https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&q=80&w=300" alt="Dr. Sarah Jenkins" class="contributor-img" /></a>
+            <a href="/contributors/sarah-jenkins" class="contributor-name-link"><h3 class="contributor-name">Dr. Sarah Jenkins</h3></a>
+            <span class="contributor-specialty">Cardiology</span>
+            <p class="contributor-bio">Clinical cardiologist researching genetic markers for heart disease.</p>
+            <a href="/contributors/sarah-jenkins" class="btn btn-secondary" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem;">View Profile &amp; Articles</a>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <!-- Right Navigation Panel -->
+    <aside class="portal-sidebar">
+      <div class="sticky-panel">
+        <!-- Navigation Widget -->
+        <div class="sidebar-widget">
+          <h3 class="widget-title">
+            <span>⚡</span> Contributor Navigation
+          </h3>
+          <div class="sidebar-nav-list">
+            <button id="sideApplyBtn" class="sidebar-action-btn primary" type="button">
+              <span class="action-left">
+                <span class="action-icon">✍️</span>
+                <span class="action-text">
+                  <strong>Join as Contributor</strong>
+                  <small>Apply to write &amp; publish</small>
+                </span>
+              </span>
+              <span class="action-arrow">&rarr;</span>
+            </button>
+
+            <button id="sideLoginBtn" class="sidebar-action-btn" type="button">
+              <span class="action-left">
+                <span class="action-icon">🔑</span>
+                <span class="action-text">
+                  <strong>Contributor Login</strong>
+                  <small>Access publisher dashboard</small>
+                </span>
+              </span>
+              <span class="action-arrow">&rarr;</span>
+            </button>
+
+            <a href="#contributorsSection" id="sideContributorsLink" class="sidebar-action-btn">
+              <span class="action-left">
+                <span class="action-icon">👥</span>
+                <span class="action-text">
+                  <strong>Our Contributors</strong>
+                  <small>Browse active authors</small>
+                </span>
+              </span>
+              <span class="action-arrow">&darr;</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Contributor Benefits Info -->
+        <div class="sidebar-info-card">
+          <div class="info-card-header">
+            <h4 class="info-card-title">Author Privileges</h4>
+            <span class="info-badge">Verified</span>
+          </div>
+          <ul class="info-list">
+            <li><span class="check">✔</span> TinaCMS markdown authoring studio</li>
+            <li><span class="check">✔</span> Double-blind peer review evaluation</li>
+            <li><span class="check">✔</span> Verified author profile &amp; ORCID link</li>
+            <li><span class="check">✔</span> Global readership &amp; newsletter reach</li>
+          </ul>
+
+          <div class="peer-reviewer-link-box">
+            <a href="/reviewers" class="peer-reviewer-link">
+              <span>🩺</span> Are you a Peer Reviewer? Portal &rarr;
+            </a>
+          </div>
+        </div>
       </div>
-    </section>
-  </main>
+    </aside>
+  </div>
 
   <!-- Application Modal -->
   <div id="applyModal" class="modal-overlay">
     <div class="modal-content">
       <button id="closeModal" class="modal-close" aria-label="Close modal">&times;</button>
       <div id="formContainer">
-        <h2 class="card-title" style="margin-bottom: 0.5rem;">Apply to Contribute</h2>
-        <p class="card-desc" style="margin-bottom: 1.5rem; font-size: 0.95rem;">Tell us about yourself and your writing experience. Our editorial board will review your application.</p>
+        <h2 style="font-family:'Outfit',sans-serif;font-size:1.75rem;margin-top:0;margin-bottom:0.5rem;">Apply to Contribute</h2>
+        <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.5rem;line-height:1.5;">Join our network of medical authors and researchers. Tell us about your background and clinical interests.</p>
         <div id="appAlert" class="alert alert-error"></div>
         <form id="appForm">
           <div class="form-group">
-            <label for="appName" class="form-label">Full Name *</label>
-            <input type="text" id="appName" class="form-input" placeholder="Dr. Jane Smith" required autocomplete="name" />
+            <label for="appName" class="form-label">Full Name &amp; Credentials *</label>
+            <input type="text" id="appName" class="form-input" placeholder="e.g. Dr. Jane Smith, MD" required autocomplete="name" />
           </div>
           <div class="form-group">
             <label for="appEmail" class="form-label">Email Address *</label>
             <input type="email" id="appEmail" class="form-input" placeholder="jane.smith@hospital.edu" required autocomplete="email" />
           </div>
           <div class="form-group">
-            <label for="appAbout" class="form-label">About Me *</label>
-            <textarea id="appAbout" class="form-textarea" placeholder="Brief description of your background, specialty, and interest in medical writing..." required></textarea>
+            <label for="appAbout" class="form-label">Specialty &amp; Background *</label>
+            <textarea id="appAbout" class="form-textarea" placeholder="Brief description of your clinical subspecialty, academic affiliation, or clinical practice..." required></textarea>
           </div>
           <div class="form-group">
-            <label for="appExperience" class="form-label">Writing Experience *</label>
-            <textarea id="appExperience" class="form-textarea" placeholder="Describe your medical or scientific writing experience. Include previous publications, research papers, or blog posts..." required></textarea>
+            <label for="appExperience" class="form-label">Writing &amp; Research Experience *</label>
+            <textarea id="appExperience" class="form-textarea" placeholder="Describe your medical writing experience, publications, case reports, or clinical review topics..." required></textarea>
           </div>
-          <div class="form-group" style="margin-bottom: 2rem;">
-            <label for="appPortfolio" class="form-label">Portfolio Links <span style="font-weight:400;text-transform:none;">(optional)</span></label>
-            <input type="text" id="appPortfolio" class="form-input" placeholder="https://pubmed.ncbi.nlm.nih.gov/..., https://medium.com/@..." />
+          <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="appPortfolio" class="form-label">Portfolio, ORCID or PubMed Links <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+            <input type="text" id="appPortfolio" class="form-input" placeholder="https://pubmed.ncbi.nlm.nih.gov/..., https://orcid.org/..." />
           </div>
-          <button type="submit" class="btn" style="width: 100%;" id="appSubmitBtn">Submit Application</button>
+          <button type="submit" class="btn" style="width: 100%;" id="appSubmitBtn">Submit Application for Review</button>
         </form>
       </div>
       <div id="successState" class="success-state">
         <div class="success-icon">&#10003;</div>
         <h3 class="success-title">Application Submitted!</h3>
-        <p class="success-desc">Thank you for your interest! Our editorial board will review your application and you will hear back via email within a few business days.</p>
-        <button id="successCloseBtn" class="btn" style="margin-top: 1.5rem;">Close</button>
+        <p class="success-desc">Thank you for your interest! Our editorial team will review your credentials and reach out via email within a few business days.</p>
+        <button id="successCloseBtn" class="btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div id="loginModal" class="modal-overlay">
+    <div class="modal-content">
+      <button id="closeLoginModal" class="modal-close" aria-label="Close modal">&times;</button>
+      <div>
+        <h2 style="font-family:'Outfit',sans-serif;font-size:1.75rem;margin-top:0;margin-bottom:0.5rem;">Contributor Login</h2>
+        <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.5rem;line-height:1.5;">Access your Contributor Publisher dashboard to draft, edit, and submit clinical articles.</p>
+        
+        <div id="loginAlert" class="alert alert-error"></div>
+        
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="loginUsername" class="form-label">Email or Username *</label>
+            <input type="text" id="loginUsername" class="form-input" placeholder="dr.smith@hospital.edu" required autocomplete="username" />
+          </div>
+          <div class="form-group" id="passwordGroup">
+            <label for="loginPassword" class="form-label">Password *</label>
+            <input type="password" id="loginPassword" class="form-input" placeholder="Enter password" required autocomplete="current-password" />
+          </div>
+          <div class="form-group" id="totpGroup" style="display:none;">
+            <label for="loginTotp" class="form-label">Authenticator Code (2FA)</label>
+            <input type="text" id="loginTotp" class="form-input" placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" />
+            <span style="font-size:0.75rem;color:var(--muted);margin-top:0.25rem;">Enter the 6-digit code from your authenticator app</span>
+          </div>
+          <button type="submit" class="btn" style="width: 100%; margin-top: 0.5rem;" id="loginBtn">Log In</button>
+        </form>
+
+        <p class="forgot-pw-link"><a href="#" id="forgotPwLink">Forgot your password?</a></p>
+        <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border);text-align:center;font-size:0.85rem;">
+          <a href="/reviewers/login" style="color:var(--accent);text-decoration:none;font-weight:600;">🩺 Are you a Peer Reviewer? Sign in here &rarr;</a>
+        </div>
       </div>
     </div>
   </div>
@@ -201,12 +955,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     <div class="modal-content">
       <button id="closeForgotPw" class="modal-close" aria-label="Close modal">&times;</button>
       <div id="forgotPwFormContainer">
-        <h2 class="card-title" style="margin-bottom: 0.5rem;">Reset Password</h2>
-        <p class="card-desc" style="margin-bottom: 1.5rem; font-size: 0.95rem;">Enter your username or email. If an account exists, you will receive a password reset link.</p>
+        <h2 style="font-family:'Outfit',sans-serif;font-size:1.75rem;margin-top:0;margin-bottom:0.5rem;">Reset Password</h2>
+        <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.5rem;line-height:1.5;">Enter your username or email. If an account exists, you will receive a password reset link.</p>
         <div id="forgotPwAlert" class="alert alert-error"></div>
         <form id="forgotPwForm">
-          <div class="form-group" style="margin-bottom: 2rem;">
-            <label for="forgotIdentifier" class="form-label">Username or Email</label>
+          <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="forgotIdentifier" class="form-label">Username or Email *</label>
             <input type="text" id="forgotIdentifier" class="form-input" placeholder="dr_smith or jane@hospital.edu" required />
           </div>
           <button type="submit" class="btn" style="width: 100%;" id="forgotPwBtn">Send Reset Link</button>
@@ -216,21 +970,136 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <div class="success-icon">&#10003;</div>
         <h3 class="success-title">Check Your Email</h3>
         <p class="success-desc">If an account with that identifier exists, we've sent a password reset link to the associated email address.</p>
-        <button id="forgotPwCloseBtn" class="btn" style="margin-top: 1.5rem;">Close</button>
+        <button id="forgotPwCloseBtn" class="btn">Close</button>
       </div>
     </div>
   </div>
 
   <slot name="scripts">
     <script is:inline>
-      // --- Login Form with TOTP MFA ---
+      // --- Smooth Scrolling for Sidebar Link ---
+      var sideContributorsLink = document.getElementById('sideContributorsLink');
+      if (sideContributorsLink) {
+        sideContributorsLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          var target = document.getElementById('contributorsSection');
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+          }
+        });
+      }
+
+      // --- Contributor Application Modal ---
+      var heroApplyBtn = document.getElementById('heroApplyBtn');
+      var sideApplyBtn = document.getElementById('sideApplyBtn');
+      var applyModal = document.getElementById('applyModal');
+      var closeModalBtn = document.getElementById('closeModal');
+      var appForm = document.getElementById('appForm');
+      var formContainer = document.getElementById('formContainer');
+      var successState = document.getElementById('successState');
+      var successCloseBtn = document.getElementById('successCloseBtn');
+      var appAlert = document.getElementById('appAlert');
+      var appSubmitBtn = document.getElementById('appSubmitBtn');
+
+      function openApplyModal() {
+        applyModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        formContainer.style.display = 'block';
+        successState.style.display = 'none';
+        appAlert.style.display = 'none';
+        appForm.reset();
+      }
+
+      function closeApplyModal() {
+        applyModal.classList.remove('active');
+        document.body.style.overflow = '';
+        setTimeout(function() {
+          formContainer.style.display = 'block';
+          successState.style.display = 'none';
+          appAlert.style.display = 'none';
+          appForm.reset();
+        }, 300);
+      }
+
+      if (heroApplyBtn) heroApplyBtn.addEventListener('click', openApplyModal);
+      if (sideApplyBtn) sideApplyBtn.addEventListener('click', openApplyModal);
+      if (closeModalBtn) closeModalBtn.addEventListener('click', closeApplyModal);
+      if (successCloseBtn) successCloseBtn.addEventListener('click', closeApplyModal);
+      if (applyModal) applyModal.addEventListener('click', function(e) { if (e.target === applyModal) closeApplyModal(); });
+
+      appForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        appAlert.style.display = 'none';
+        appSubmitBtn.disabled = true;
+        appSubmitBtn.textContent = 'Submitting Application...';
+
+        var name = document.getElementById('appName').value.trim();
+        var email = document.getElementById('appEmail').value.trim();
+        var aboutMe = document.getElementById('appAbout').value.trim();
+        var writingExperience = document.getElementById('appExperience').value.trim();
+        var portfolioLinks = document.getElementById('appPortfolio').value.trim();
+
+        try {
+          var res = await fetch('/api/applications/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: name,
+              email: email,
+              about_me: aboutMe,
+              writing_experience: writingExperience,
+              portfolio_links: portfolioLinks
+            })
+          });
+          var data = await res.json();
+
+          if (res.ok && data.success) {
+            formContainer.style.display = 'none';
+            successState.style.display = 'flex';
+          } else {
+            appAlert.textContent = data.error || 'Application submission failed. Please try again.';
+            appAlert.className = 'alert alert-error';
+            appAlert.style.display = 'block';
+          }
+        } catch (err) {
+          appAlert.textContent = 'Network error. Please check your connection.';
+          appAlert.className = 'alert alert-error';
+          appAlert.style.display = 'block';
+        } finally {
+          appSubmitBtn.disabled = false;
+          appSubmitBtn.textContent = 'Submit Application for Review';
+        }
+      });
+
+      // --- Contributor Login Modal & Form with TOTP MFA ---
+      var heroLoginBtn = document.getElementById('heroLoginBtn');
+      var sideLoginBtn = document.getElementById('sideLoginBtn');
+      var loginModal = document.getElementById('loginModal');
+      var closeLoginModal = document.getElementById('closeLoginModal');
       var loginForm = document.getElementById('loginForm');
       var loginAlert = document.getElementById('loginAlert');
       var loginBtn = document.getElementById('loginBtn');
       var totpGroup = document.getElementById('totpGroup');
       var passwordGroup = document.getElementById('passwordGroup');
       var loginTotp = document.getElementById('loginTotp');
-      var pendingLoginData = null; // stored when MFA step is needed
+      var pendingLoginData = null;
+
+      function openLoginModal() {
+        loginModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        resetMfaState();
+      }
+
+      function closeLoginDialog() {
+        loginModal.classList.remove('active');
+        document.body.style.overflow = '';
+        resetMfaState();
+      }
+
+      if (heroLoginBtn) heroLoginBtn.addEventListener('click', openLoginModal);
+      if (sideLoginBtn) sideLoginBtn.addEventListener('click', openLoginModal);
+      if (closeLoginModal) closeLoginModal.addEventListener('click', closeLoginDialog);
+      if (loginModal) loginModal.addEventListener('click', function(e) { if (e.target === loginModal) closeLoginDialog(); });
 
       loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -240,7 +1109,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         var username = document.getElementById('loginUsername').value.trim();
         var password = document.getElementById('loginPassword').value;
 
-        // If we're in the TOTP step
+        // TOTP verification step
         if (pendingLoginData) {
           loginBtn.textContent = 'Verifying...';
           var totpCode = loginTotp.value.trim();
@@ -284,7 +1153,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           return;
         }
 
-        // Password step
+        // Standard Password step
         loginBtn.textContent = 'Logging in...';
 
         try {
@@ -296,7 +1165,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           var data = await res.json();
 
           if (res.ok && data.success) {
-            // Direct login (no MFA required)
             sessionStorage.setItem('user', JSON.stringify(data.user));
             if (data.user.role === 'reviewer') {
               window.location.href = '/reviewers/dashboard';
@@ -304,7 +1172,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               window.location.href = '/contributors/dashboard';
             }
           } else if (data.mfaRequired) {
-            // Switch to TOTP step
             pendingLoginData = { tempSessionId: data.tempSessionId };
             passwordGroup.style.display = 'none';
             totpGroup.style.display = 'flex';
@@ -329,7 +1196,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         }
       });
 
-      // Reset MFA state when user changes username/password
       document.getElementById('loginUsername').addEventListener('input', resetMfaState);
       document.getElementById('loginPassword').addEventListener('input', resetMfaState);
 
@@ -355,6 +1221,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       var forgotPwBtn = document.getElementById('forgotPwBtn');
 
       function openForgotPw() {
+        closeLoginDialog();
         forgotPwModal.classList.add('active');
         document.body.style.overflow = 'hidden';
         forgotPwFormContainer.style.display = 'block';
@@ -377,7 +1244,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       if (forgotPwLink) forgotPwLink.addEventListener('click', function(e) { e.preventDefault(); openForgotPw(); });
       if (closeForgotPw) closeForgotPw.addEventListener('click', closeForgotPwDialog);
       if (forgotPwCloseBtn) forgotPwCloseBtn.addEventListener('click', closeForgotPwDialog);
-      forgotPwModal.addEventListener('click', function(e) { if (e.target === forgotPwModal) closeForgotPwDialog(); });
+      if (forgotPwModal) forgotPwModal.addEventListener('click', function(e) { if (e.target === forgotPwModal) closeForgotPwDialog(); });
 
       forgotPwForm.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -388,7 +1255,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         var identifier = document.getElementById('forgotIdentifier').value.trim();
 
         try {
-          var res = await fetch('/api/auth/forgot-password', {
+          await fetch('/api/auth/forgot-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ identifier: identifier })
@@ -397,7 +1264,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           forgotPwFormContainer.style.display = 'none';
           forgotPwSuccess.style.display = 'flex';
         } catch (err) {
-          // Still show success for security
           forgotPwFormContainer.style.display = 'none';
           forgotPwSuccess.style.display = 'flex';
         } finally {
@@ -406,83 +1272,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         }
       });
 
-      // --- Application Modal ---
-      var applyBtn = document.getElementById('applyBtn');
-      var applyModal = document.getElementById('applyModal');
-      var closeModalBtn = document.getElementById('closeModal');
-      var appForm = document.getElementById('appForm');
-      var formContainer = document.getElementById('formContainer');
-      var successState = document.getElementById('successState');
-      var successCloseBtn = document.getElementById('successCloseBtn');
-      var appAlert = document.getElementById('appAlert');
-      var appSubmitBtn = document.getElementById('appSubmitBtn');
-
-      function openModal() {
-        applyModal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-        formContainer.style.display = 'block';
-        successState.style.display = 'none';
-        appAlert.style.display = 'none';
-        appForm.reset();
-      }
-
-      function closeDialog() {
-        applyModal.classList.remove('active');
-        document.body.style.overflow = '';
-        setTimeout(function() {
-          formContainer.style.display = 'block';
-          successState.style.display = 'none';
-          appAlert.style.display = 'none';
-          appForm.reset();
-        }, 300);
-      }
-
-      if (applyBtn) applyBtn.addEventListener('click', openModal);
-      if (closeModalBtn) closeModalBtn.addEventListener('click', closeDialog);
-      if (successCloseBtn) successCloseBtn.addEventListener('click', closeDialog);
-      applyModal.addEventListener('click', function(e) { if (e.target === applyModal) closeDialog(); });
-
-      appForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        appAlert.style.display = 'none';
-        appSubmitBtn.disabled = true;
-        appSubmitBtn.textContent = 'Submitting Application...';
-
-        var name = document.getElementById('appName').value.trim();
-        var email = document.getElementById('appEmail').value.trim();
-        var aboutMe = document.getElementById('appAbout').value.trim();
-        var writingExperience = document.getElementById('appExperience').value.trim();
-        var portfolioLinks = document.getElementById('appPortfolio').value.trim();
-
-        try {
-          var res = await fetch('/api/applications/submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: name,
-              email: email,
-              about_me: aboutMe,
-              writing_experience: writingExperience,
-              portfolio_links: portfolioLinks
-            })
-          });
-          var data = await res.json();
-
-          if (res.ok && data.success) {
-            formContainer.style.display = 'none';
-            successState.style.display = 'flex';
-          } else {
-            appAlert.textContent = data.error || 'Application submission failed. Please try again.';
-            appAlert.className = 'alert alert-error';
-            appAlert.style.display = 'block';
-          }
-        } catch (err) {
-          appAlert.textContent = 'Network error. Please check your connection.';
-          appAlert.className = 'alert alert-error';
-          appAlert.style.display = 'block';
-        } finally {
-          appSubmitBtn.disabled = false;
-          appSubmitBtn.textContent = 'Submit Application';
+      // Escape key listener for all modals
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          if (applyModal && applyModal.classList.contains('active')) closeApplyModal();
+          if (loginModal && loginModal.classList.contains('active')) closeLoginDialog();
+          if (forgotPwModal && forgotPwModal.classList.contains('active')) closeForgotPwDialog();
         }
       });
 
@@ -501,14 +1296,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           });
 
           contributors.forEach(function(c) {
-            // Skip if already shown as a demo card
             if (existingNames.includes(c.full_name.toLowerCase())) return;
 
             var slug = c.slug;
             var initial = c.initial;
             var avatarHtml = c.avatar_url
               ? '<img src="' + escapeHTML2(c.avatar_url) + '" alt="' + escapeHTML2(c.full_name) + '" class="contributor-img" />'
-              : '<div style="width:100%;height:100%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:3rem;color:#fff;font-family:Outfit,sans-serif;font-weight:800;">' + initial + '</div>';
+              : '<div style="width:100%;height:100%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:#fff;font-family:Outfit,sans-serif;font-weight:800;">' + initial + '</div>';
 
             var card = document.createElement('article');
             card.className = 'contributor-card';
@@ -517,15 +1311,16 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               '<a href="/contributors/' + slug + '" class="contributor-name-link"><h3 class="contributor-name">' + escapeHTML2(c.full_name) + '</h3></a>' +
               '<span class="contributor-specialty">' + escapeHTML2(c.specialty || 'Medical Contributor') + '</span>' +
               '<p class="contributor-bio">' + escapeHTML2((c.bio || '').substring(0, 120) + (c.bio && c.bio.length > 120 ? '...' : '') || 'iMedipedia medical contributor.') + '</p>' +
-              '<a href="/contributors/' + slug + '" class="btn btn-secondary" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem;">View Profile & Articles</a>';
+              '<a href="/contributors/' + slug + '" class="btn btn-secondary" style="width: 100%; padding: 0.6rem 1rem; font-size: 0.85rem;">View Profile &amp; Articles</a>';
             grid.appendChild(card);
           });
         } catch(e) {
-          // Silently fail - demo cards still show
+          // Silently fail - default demo cards remain visible
         }
       })();
 
       function escapeHTML2(str) {
+        if (!str) return '';
         var div = document.createElement('div');
         div.textContent = str || '';
         return div.innerHTML;
