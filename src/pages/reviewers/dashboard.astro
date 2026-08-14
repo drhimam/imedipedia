@@ -1,0 +1,1184 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Peer Reviewer Dashboard - iMedipedia Medical Research"
+  description="Evaluate assigned manuscripts, submit clinical peer reviews, and manage your editorial credentials."
+  currentPage="reviewers"
+>
+  <slot name="head">
+    <style>
+      .dashboard-container {
+        max-width: 1350px;
+        margin: 2rem auto;
+        padding: 0 1.5rem;
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 2rem;
+        flex-grow: 1;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .sidebar {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        height: fit-content;
+        position: sticky;
+        top: 6rem;
+      }
+      .user-profile-summary {
+        text-align: center;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 1.5rem;
+      }
+      .avatar {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #0d9488, #0ea5e9);
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin: 0 auto 0.75rem auto;
+        box-shadow: 0 4px 14px var(--accent-glow);
+      }
+      .profile-name {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin: 0 0 0.25rem 0;
+        color: var(--text);
+      }
+      .profile-email {
+        font-size: 0.82rem;
+        color: var(--muted);
+        word-break: break-all;
+        margin-bottom: 0.6rem;
+      }
+      .profile-role-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: rgba(13, 148, 136, 0.12);
+        padding: 0.25rem 0.65rem;
+        border-radius: 12px;
+      }
+      .tab-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .tab-btn {
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        padding: 0.75rem 1rem;
+        text-align: left;
+        font-size: 0.92rem;
+        font-weight: 600;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .tab-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text);
+      }
+      .tab-btn.active {
+        background: var(--accent);
+        color: #ffffff;
+      }
+      .tab-count-badge {
+        background: rgba(0, 0, 0, 0.25);
+        color: #ffffff;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.15rem 0.5rem;
+        border-radius: 10px;
+      }
+      .tab-btn.active .tab-count-badge {
+        background: rgba(255, 255, 255, 0.25);
+      }
+
+      /* Main Content */
+      .main-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+      }
+      .stat-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+      }
+      .stat-icon {
+        font-size: 2rem;
+      }
+      .stat-val {
+        font-size: 1.75rem;
+        font-weight: 800;
+        font-family: 'Outfit', sans-serif;
+        color: var(--text);
+        line-height: 1.1;
+      }
+      .stat-label {
+        color: var(--muted);
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin-top: 0.2rem;
+      }
+
+      /* Panels */
+      .tab-panel {
+        display: none;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+      }
+      .tab-panel.active {
+        display: block;
+      }
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 1rem;
+      }
+      .panel-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+        color: var(--text);
+      }
+      .panel-desc {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin: 0.35rem 0 0 0;
+      }
+
+      /* Tables */
+      .data-table-container {
+        overflow-x: auto;
+      }
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+        text-align: left;
+      }
+      .data-table th {
+        background: rgba(0, 0, 0, 0.15);
+        padding: 0.85rem 1rem;
+        color: var(--muted);
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--border);
+      }
+      .data-table td {
+        padding: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        color: var(--text);
+        vertical-align: middle;
+      }
+      .data-table tr:hover td {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.25rem 0.6rem;
+        border-radius: 12px;
+        text-transform: uppercase;
+      }
+      .badge-pending {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+      }
+      .badge-completed {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+      }
+      .badge-accept {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+      }
+      .badge-minor_revisions {
+        background: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+      }
+      .badge-major_revisions {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+      }
+      .badge-reject {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+      }
+
+      .btn-action {
+        background: var(--accent);
+        color: #ffffff;
+        border: none;
+        padding: 0.45rem 0.9rem;
+        border-radius: 6px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .btn-action:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
+      .btn-action-view {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+      .btn-action-view:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      /* Review Modal */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(3, 7, 18, 0.75);
+        backdrop-filter: blur(8px);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-content-lg {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        max-width: 1200px;
+        width: 95%;
+        max-height: 92vh;
+        overflow-y: auto;
+        padding: 2rem;
+        position: relative;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 1.25rem;
+        margin-bottom: 1.5rem;
+      }
+      .modal-close {
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        font-size: 1.75rem;
+        cursor: pointer;
+        line-height: 1;
+      }
+      .modal-close:hover { color: var(--text); }
+
+      /* Split Screen Layout for Manuscript Review */
+      .review-split-grid {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr;
+        gap: 2rem;
+      }
+      .manuscript-viewer-pane {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1.75rem;
+        max-height: 680px;
+        overflow-y: auto;
+        line-height: 1.8;
+      }
+      .manuscript-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0 0 0.75rem 0;
+        color: var(--text);
+      }
+      .manuscript-meta-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+      .manuscript-abstract-box {
+        background: rgba(13, 148, 136, 0.06);
+        border-left: 3px solid var(--accent);
+        border-radius: 6px;
+        padding: 1rem 1.25rem;
+        font-size: 0.92rem;
+        font-style: italic;
+        color: var(--text);
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+      }
+      .manuscript-body-rendered {
+        color: var(--text);
+        font-size: 0.95rem;
+      }
+      .manuscript-body-rendered h2 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.4rem;
+        margin: 1.75rem 0 0.5rem 0;
+        color: var(--text);
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 4px;
+      }
+      .manuscript-body-rendered h3 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.2rem;
+        margin: 1.25rem 0 0.4rem 0;
+        color: var(--text);
+      }
+      .manuscript-body-rendered p {
+        margin-bottom: 1rem;
+        line-height: 1.8;
+      }
+      .manuscript-body-rendered ul {
+        margin: 0.5rem 0 1rem 1.5rem;
+        padding-left: 0.5rem;
+      }
+      .manuscript-body-rendered li {
+        margin-bottom: 0.35rem;
+      }
+      .manuscript-body-rendered blockquote {
+        border-left: 3px solid var(--accent);
+        background: rgba(255, 255, 255, 0.03);
+        margin: 1rem 0;
+        padding: 0.6rem 1rem;
+        font-style: italic;
+      }
+
+      /* Form Elements */
+      .form-group {
+        margin-bottom: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+      .form-label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--muted);
+      }
+      .form-select, .form-input, .form-textarea {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.15);
+        color: var(--text);
+        font-size: 0.95rem;
+      }
+      :global([data-theme="light"]) .form-select,
+      :global([data-theme="light"]) .form-input,
+      :global([data-theme="light"]) .form-textarea {
+        background: rgba(255, 255, 255, 0.9);
+      }
+      .form-select:focus, .form-input:focus, .form-textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      .form-textarea {
+        resize: vertical;
+        font-family: inherit;
+      }
+      .score-selector-row {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .score-radio-label {
+        flex: 1;
+        text-align: center;
+        padding: 0.6rem 0.2rem;
+        background: rgba(0, 0, 0, 0.15);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+      }
+      .score-radio-label:hover {
+        border-color: var(--accent);
+      }
+      .score-radio-label.active {
+        background: var(--accent);
+        color: #ffffff;
+        border-color: var(--accent);
+      }
+      .score-radio-label input {
+        display: none;
+      }
+
+      .alert {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        margin-bottom: 1.25rem;
+        display: none;
+      }
+      .alert-error {
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+      }
+      .alert-success {
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #10b981;
+      }
+
+      /* Responsive */
+      @media (max-width: 992px) {
+        .dashboard-container {
+          grid-template-columns: 1fr;
+        }
+        .sidebar {
+          position: static;
+        }
+        .stats-grid {
+          grid-template-columns: 1fr;
+        }
+        .review-split-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </slot>
+
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="user-profile-summary">
+        <div class="avatar" id="revAvatarInitial">R</div>
+        <h3 id="revName" class="profile-name">Reviewer</h3>
+        <div id="revEmail" class="profile-email">reviewer@institution.edu</div>
+        <div class="profile-role-badge">🩺 Peer Reviewer</div>
+      </div>
+
+      <nav class="tab-menu">
+        <button class="tab-btn active" data-tab="assignments" id="tabBtnAssignments">
+          <span>📋 Assigned Manuscripts</span>
+          <span class="tab-count-badge" id="badgePendingCount">0</span>
+        </button>
+        <button class="tab-btn" data-tab="completed" id="tabBtnCompleted">
+          <span>✅ Completed Reviews</span>
+          <span class="tab-count-badge" id="badgeCompletedCount">0</span>
+        </button>
+        <button class="tab-btn" data-tab="profile" id="tabBtnProfile">
+          <span>⚙️ Reviewer Profile</span>
+        </button>
+        <button class="tab-btn" id="logoutBtn" style="color:#ef4444;margin-top:1rem;border-top:1px solid var(--border);border-radius:0;padding-top:1rem;">
+          <span>🚪 Sign Out</span>
+        </button>
+      </nav>
+    </aside>
+
+    <!-- Main Panel Area -->
+    <main class="main-panel">
+      <!-- Top Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-icon">⏳</span>
+          <div>
+            <div class="stat-val" id="statPendingCount">0</div>
+            <div class="stat-label">Pending Reviews</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">✅</span>
+          <div>
+            <div class="stat-val" id="statCompletedCount">0</div>
+            <div class="stat-label">Evaluations Completed</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">📜</span>
+          <div>
+            <div class="stat-val" id="statTotalCount">0</div>
+            <div class="stat-label">Total Assigned</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 1: Assigned Manuscripts (Pending) -->
+      <div id="panelAssignments" class="tab-panel active">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Assigned Manuscripts</h2>
+            <p class="panel-desc">Manuscripts awaiting your clinical, methodological, and evidence evaluation.</p>
+          </div>
+        </div>
+
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Manuscript Title</th>
+                <th>Author</th>
+                <th>Category</th>
+                <th>Topic</th>
+                <th>Assigned Date</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="assignmentsTableBody">
+              <tr>
+                <td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">Loading assigned manuscripts...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab 2: Completed Reviews Archive -->
+      <div id="panelCompleted" class="tab-panel">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Completed Evaluations Archive</h2>
+            <p class="panel-desc">Review records and scorecards you have submitted to authors and the editorial board.</p>
+          </div>
+        </div>
+
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Manuscript Title</th>
+                <th>Author</th>
+                <th>Recommendation</th>
+                <th>Clinical Accuracy</th>
+                <th>Structure</th>
+                <th>Evidence</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="completedTableBody">
+              <tr>
+                <td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">No completed reviews yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab 3: Reviewer Profile & Credentials -->
+      <div id="panelProfile" class="tab-panel">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Reviewer Credentials & Profile</h2>
+            <p class="panel-desc">Keep your affiliations and medical specialties updated for manuscript routing.</p>
+          </div>
+        </div>
+
+        <div id="profileAlert" class="alert"></div>
+
+        <form id="reviewerProfileForm" style="max-width:650px;">
+          <div class="form-group">
+            <label for="profFullName" class="form-label">Full Name</label>
+            <input type="text" id="profFullName" class="form-input" required />
+          </div>
+
+          <div class="form-group">
+            <label for="profEmail" class="form-label">Email Address (Read-only)</label>
+            <input type="email" id="profEmail" class="form-input" readonly disabled />
+          </div>
+
+          <div class="form-group">
+            <label for="profAffiliation" class="form-label">Institution / Academic Affiliation</label>
+            <input type="text" id="profAffiliation" class="form-input" placeholder="e.g., Johns Hopkins Medicine, Department of Neurology" />
+          </div>
+
+          <div class="form-group">
+            <label for="profSpecialty" class="form-label">Clinical Specialties (comma-separated)</label>
+            <input type="text" id="profSpecialty" class="form-input" placeholder="e.g., Cardiology, Electrophysiology, Heart Failure" />
+          </div>
+
+          <div class="form-group">
+            <label for="profBio" class="form-label">Bio & Research Background</label>
+            <textarea id="profBio" class="form-textarea" rows="4" placeholder="Summary of clinical practice, board certifications, and research interests..."></textarea>
+          </div>
+
+          <button type="submit" class="btn-action" id="saveProfBtn" style="padding:0.75rem 1.5rem;font-size:0.95rem;margin-top:0.5rem;">Save Profile Updates</button>
+        </form>
+
+        <div style="margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--border);max-width:650px;">
+          <h3 style="font-family:'Outfit',sans-serif;margin:0 0 1rem 0;">Change Password</h3>
+          <div id="pwAlert" class="alert"></div>
+          <form id="reviewerPasswordForm">
+            <div class="form-group">
+              <label for="currentPassword" class="form-label">Current Password</label>
+              <input type="password" id="currentPassword" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label for="newPassword" class="form-label">New Password</label>
+              <input type="password" id="newPassword" class="form-input" required minlength="8" />
+            </div>
+            <button type="submit" class="btn-action" id="savePwBtn" style="padding:0.75rem 1.5rem;font-size:0.95rem;margin-top:0.5rem;">Update Password</button>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Full Manuscript Review & Evaluation Modal -->
+  <div id="reviewModal" class="modal-overlay">
+    <div class="modal-content-lg">
+      <div class="modal-header">
+        <div>
+          <div style="font-size:0.8rem;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:0.25rem;">Peer Review Evaluation</div>
+          <h2 id="evalManuscriptTitle" style="font-family:'Outfit',sans-serif;margin:0;font-size:1.6rem;color:var(--text);">Manuscript Title</h2>
+        </div>
+        <button class="modal-close" onclick="closeReviewModal()">&times;</button>
+      </div>
+
+      <div id="evalAlert" class="alert"></div>
+
+      <div class="review-split-grid">
+        <!-- Left: Rendered Manuscript Reader -->
+        <div class="manuscript-viewer-pane">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:0.5rem;">
+            <span style="font-weight:700;color:var(--accent);font-size:0.9rem;">📖 Clinical Manuscript Webview</span>
+            <span id="evalManuscriptMeta" style="font-size:0.82rem;color:var(--muted);"></span>
+          </div>
+
+          <div id="evalCoverImgContainer" style="display:none;margin-bottom:1.25rem;">
+            <img id="evalCoverImg" src="" alt="Cover" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;" />
+          </div>
+
+          <div id="evalAbstractBox" class="manuscript-abstract-box" style="display:none;"></div>
+
+          <div id="evalBodyContent" class="manuscript-body-rendered"></div>
+        </div>
+
+        <!-- Right: Standardized Review Rubric -->
+        <div>
+          <form id="evaluationForm" onsubmit="return false;">
+            <input type="hidden" id="evalAssignmentId" value="" />
+
+            <div class="form-group">
+              <label for="evalRecommendation" class="form-label">Overall Editorial Recommendation *</label>
+              <select id="evalRecommendation" class="form-select" required style="font-weight:700;">
+                <option value="accept">✅ Accept (Publish Ready)</option>
+                <option value="minor_revisions">✏️ Minor Revisions Suggested</option>
+                <option value="major_revisions">🔄 Major Revisions Required</option>
+                <option value="reject">❌ Reject (Does not meet standards)</option>
+              </select>
+            </div>
+
+            <!-- Rubric Ratings (1 to 5) -->
+            <div class="form-group">
+              <label class="form-label">1. Clinical Accuracy & Medical Validity * (1 - Poor, 5 - Flawless)</label>
+              <select id="evalClinicalAccuracy" class="form-select">
+                <option value="5">5 / 5 — Highly accurate, evidence-aligned</option>
+                <option value="4">4 / 5 — Clinically sound with minor nuances</option>
+                <option value="3">3 / 5 — Acceptable, needs minor factual clarity</option>
+                <option value="2">2 / 5 — Questionable claims / needs revision</option>
+                <option value="1">1 / 5 — Major clinical inaccuracies</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">2. Manuscript Structure & Clarity *</label>
+              <select id="evalStructure" class="form-select">
+                <option value="5">5 / 5 — Excellent logical flow & headings</option>
+                <option value="4">4 / 5 — Clear with good organization</option>
+                <option value="3">3 / 5 — Readable, minor layout reorganization</option>
+                <option value="2">2 / 5 — Disorganized, hard to follow</option>
+                <option value="1">1 / 5 — Poorly structured</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">3. Evidence Base & Citations *</label>
+              <select id="evalEvidence" class="form-select">
+                <option value="5">5 / 5 — Thoroughly backed by strong sources</option>
+                <option value="4">4 / 5 — Well referenced with standard literature</option>
+                <option value="3">3 / 5 — Adequate citations, could cite guidelines</option>
+                <option value="2">2 / 5 — Missing key clinical references</option>
+                <option value="1">1 / 5 — Unsubstantiated claims</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="evalAuthorFeedback" class="form-label">Detailed Author Feedback Remarks *</label>
+              <textarea
+                id="evalAuthorFeedback"
+                class="form-textarea"
+                rows="6"
+                placeholder="Provide constructive, paragraph-by-paragraph or thematic feedback for the author. This will be emailed directly to the author..."
+                required
+              ></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="evalEditorNotes" class="form-label">Confidential Notes for Editorial Board <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+              <textarea
+                id="evalEditorNotes"
+                class="form-textarea"
+                rows="3"
+                placeholder="Private comments visible only to the Editor-in-Chief..."
+              ></textarea>
+            </div>
+
+            <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.5rem;">
+              <button type="button" class="btn-action btn-action-view" onclick="closeReviewModal()">Cancel</button>
+              <button type="button" class="btn-action" id="submitReviewBtn" onclick="submitEvaluation()">
+                <span>Submit Evaluation & Notify Author</span> &rarr;
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <slot name="scripts">
+    <script is:inline>
+      var loadedAssignments = [];
+
+      // --- Helper: Markdown to Rendered HTML ---
+      function renderMarkdownToHtml(md) {
+        if (!md) return '<p style="color:var(--muted);font-style:italic;">No manuscript content provided.</p>';
+        var raw = md.replace(/\r\n/g, '\n').trim();
+        var lines = raw.split('\n');
+        var html = [];
+        var inList = false;
+
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i];
+
+          // List item
+          if (line.match(/^[\*\-]\s+(.*)$/)) {
+            var itemText = line.replace(/^[\*\-]\s+/, '');
+            if (!inList) {
+              html.push('<ul style="margin:0.75rem 0 1rem 1.5rem;padding-left:1rem;line-height:1.7;">');
+              inList = true;
+            }
+            html.push('<li style="margin-bottom:0.35rem;">' + parseInlineMd(itemText) + '</li>');
+            continue;
+          } else if (inList) {
+            html.push('</ul>');
+            inList = false;
+          }
+
+          // Headings
+          if (line.startsWith('### ')) {
+            html.push('<h4 style="color:var(--text);margin:1.5rem 0 0.5rem 0;font-size:1.15rem;font-family:\'Outfit\',sans-serif;">' + parseInlineMd(line.substring(4)) + '</h4>');
+          } else if (line.startsWith('## ')) {
+            html.push('<h3 style="color:var(--text);margin:1.75rem 0 0.6rem 0;font-size:1.35rem;font-family:\'Outfit\',sans-serif;border-bottom:1px solid var(--border);padding-bottom:6px;">' + parseInlineMd(line.substring(3)) + '</h3>');
+          } else if (line.startsWith('# ')) {
+            html.push('<h2 style="color:var(--text);margin:2rem 0 0.75rem 0;font-size:1.6rem;font-family:\'Outfit\',sans-serif;">' + parseInlineMd(line.substring(2)) + '</h2>');
+          } else if (line.startsWith('> ')) {
+            html.push('<blockquote style="border-left:4px solid var(--accent);margin:1.25rem 0;padding:0.75rem 1.25rem;background:rgba(13,148,136,0.06);color:var(--text);border-radius:4px;font-style:italic;">' + parseInlineMd(line.substring(2)) + '</blockquote>');
+          } else if (line.match(/^---+$|^___+$/)) {
+            html.push('<hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0;">');
+          } else if (line.trim().length > 0) {
+            html.push('<p style="margin-bottom:1rem;line-height:1.8;color:var(--text);">' + parseInlineMd(line) + '</p>');
+          }
+        }
+        if (inList) html.push('</ul>');
+        return html.join('\n');
+      }
+
+      function parseInlineMd(str) {
+        if (!str) return '';
+        var s = escapeHTML(str);
+        s = s.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        s = s.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        s = s.replace(/_(.*?)_/g, '<em>$1</em>');
+        s = s.replace(/`(.*?)`/g, '<code style="background:rgba(13,148,136,0.12);color:var(--accent);padding:0.15rem 0.4rem;border-radius:4px;font-size:0.88em;">$1</code>');
+        return s;
+      }
+
+      function escapeHTML(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      // --- Tab Navigation ---
+      var tabBtns = document.querySelectorAll('.tab-btn[data-tab]');
+      var tabPanels = document.querySelectorAll('.tab-panel');
+      tabBtns.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          var targetTab = btn.getAttribute('data-tab');
+          tabBtns.forEach(function(b) { b.classList.remove('active'); });
+          tabPanels.forEach(function(p) { p.classList.remove('active'); });
+          btn.classList.add('active');
+
+          if (targetTab === 'assignments') {
+            document.getElementById('panelAssignments').classList.add('active');
+          } else if (targetTab === 'completed') {
+            document.getElementById('panelCompleted').classList.add('active');
+          } else if (targetTab === 'profile') {
+            document.getElementById('panelProfile').classList.add('active');
+          }
+        });
+      });
+
+      // --- Fetch Reviewer Profile & Assignments on Load ---
+      async function initReviewerDashboard() {
+        try {
+          // Verify session
+          var userRes = await fetch('/api/profile/get');
+          if (userRes.status === 401) {
+            sessionStorage.clear();
+            window.location.href = '/reviewers/login';
+            return;
+          }
+          var userData = await userRes.json();
+          if (!userData.success || !userData.profile) {
+            window.location.href = '/reviewers/login';
+            return;
+          }
+
+          var prof = userData.profile;
+          // Pre-fill profile UI
+          document.getElementById('revName').textContent = prof.full_name || prof.username;
+          document.getElementById('revEmail').textContent = prof.email || prof.username;
+          document.getElementById('revAvatarInitial').textContent = (prof.full_name || prof.username).charAt(0).toUpperCase();
+
+          document.getElementById('profFullName').value = prof.full_name || '';
+          document.getElementById('profEmail').value = prof.email || prof.username || '';
+          document.getElementById('profAffiliation').value = Array.isArray(prof.affiliation) ? prof.affiliation.join(', ') : (prof.affiliation || '');
+          document.getElementById('profSpecialty').value = Array.isArray(prof.specialty) ? prof.specialty.join(', ') : (prof.specialty || '');
+          document.getElementById('profBio').value = prof.bio || '';
+
+          // Load Assignments
+          await loadAssignments();
+        } catch (err) {
+          console.error('Error initializing dashboard:', err);
+        }
+      }
+
+      async function loadAssignments() {
+        try {
+          var res = await fetch('/api/reviewers/assignments');
+          var data = await res.json();
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to load assignments');
+          }
+
+          loadedAssignments = data.assignments || [];
+
+          var pendingList = loadedAssignments.filter(function(a) { return a.assignment_status === 'pending'; });
+          var completedList = loadedAssignments.filter(function(a) { return a.assignment_status === 'completed'; });
+
+          // Update metrics
+          document.getElementById('statPendingCount').textContent = pendingList.length;
+          document.getElementById('statCompletedCount').textContent = completedList.length;
+          document.getElementById('statTotalCount').textContent = loadedAssignments.length;
+          document.getElementById('badgePendingCount').textContent = pendingList.length;
+          document.getElementById('badgeCompletedCount').textContent = completedList.length;
+
+          // Render Pending Table
+          var assignTbody = document.getElementById('assignmentsTableBody');
+          if (pendingList.length === 0) {
+            assignTbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2.5rem 1rem;">🎉 <strong>No pending manuscript reviews!</strong> You are completely up to date.</td></tr>';
+          } else {
+            assignTbody.innerHTML = pendingList.map(function(a) {
+              var dateStr = a.assigned_at ? new Date(a.assigned_at * 1000).toLocaleDateString() : 'Recent';
+              return '<tr>' +
+                '<td><strong style="color:var(--text);">' + escapeHTML(a.title) + '</strong></td>' +
+                '<td>' + escapeHTML(a.author || 'Author') + '</td>' +
+                '<td><span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text);">' + escapeHTML(a.type || 'Research') + '</span></td>' +
+                '<td>' + escapeHTML(a.topic || 'General') + '</td>' +
+                '<td>' + dateStr + '</td>' +
+                '<td><span class="badge badge-pending">⏳ Pending Review</span></td>' +
+                '<td><button class="btn-action" onclick="openReviewModal(' + a.assignment_id + ')">🩺 Review Manuscript</button></td>' +
+              '</tr>';
+            }).join('');
+          }
+
+          // Render Completed Table
+          var compTbody = document.getElementById('completedTableBody');
+          if (completedList.length === 0) {
+            compTbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2.5rem 1rem;">No reviews completed yet.</td></tr>';
+          } else {
+            compTbody.innerHTML = completedList.map(function(a) {
+              var recClass = 'badge-' + (a.recommendation || 'accept');
+              var recLabel = a.recommendation ? a.recommendation.replace('_', ' ').toUpperCase() : 'ACCEPTED';
+              return '<tr>' +
+                '<td><strong style="color:var(--text);">' + escapeHTML(a.title) + '</strong></td>' +
+                '<td>' + escapeHTML(a.author || 'Author') + '</td>' +
+                '<td><span class="badge ' + recClass + '">' + recLabel + '</span></td>' +
+                '<td>⭐ ' + (a.clinical_accuracy_score || 5) + ' / 5</td>' +
+                '<td>⭐ ' + (a.structure_score || 5) + ' / 5</td>' +
+                '<td>⭐ ' + (a.evidence_score || 5) + ' / 5</td>' +
+                '<td><button class="btn-action btn-action-view" onclick="openReviewModal(' + a.assignment_id + ')">👁 View / Edit</button></td>' +
+              '</tr>';
+            }).join('');
+          }
+        } catch (err) {
+          document.getElementById('assignmentsTableBody').innerHTML = '<tr><td colspan="7" style="color:#ef4444;text-align:center;padding:2rem;">Error: ' + escapeHTML(err.message) + '</td></tr>';
+        }
+      }
+
+      // --- Review Modal Management ---
+      window.openReviewModal = function(assignmentId) {
+        var a = loadedAssignments.find(function(item) { return item.assignment_id === assignmentId; });
+        if (!a) { alert('Manuscript assignment not found.'); return; }
+
+        document.getElementById('evalAssignmentId').value = a.assignment_id;
+        document.getElementById('evalManuscriptTitle').textContent = a.title;
+        document.getElementById('evalManuscriptMeta').textContent = 'Author: ' + (a.author || 'Author') + ' | ' + (a.type || 'General');
+
+        // Cover image
+        var coverCont = document.getElementById('evalCoverImgContainer');
+        var coverImg = document.getElementById('evalCoverImg');
+        if (a.image) {
+          coverImg.src = a.image;
+          coverCont.style.display = 'block';
+        } else {
+          coverCont.style.display = 'none';
+        }
+
+        // Abstract
+        var absBox = document.getElementById('evalAbstractBox');
+        if (a.description) {
+          absBox.textContent = 'Abstract / Clinical Summary: ' + a.description;
+          absBox.style.display = 'block';
+        } else {
+          absBox.style.display = 'none';
+        }
+
+        // Body Rendered Webview
+        document.getElementById('evalBodyContent').innerHTML = renderMarkdownToHtml(a.body || '');
+
+        // Form Fields
+        document.getElementById('evalRecommendation').value = a.recommendation || 'accept';
+        document.getElementById('evalClinicalAccuracy').value = String(a.clinical_accuracy_score || 5);
+        document.getElementById('evalStructure').value = String(a.structure_score || 5);
+        document.getElementById('evalEvidence').value = String(a.evidence_score || 5);
+        document.getElementById('evalAuthorFeedback').value = a.author_comments || '';
+        document.getElementById('evalEditorNotes').value = a.editor_notes || '';
+
+        var submitBtn = document.getElementById('submitReviewBtn');
+        submitBtn.innerHTML = a.assignment_status === 'completed'
+          ? '<span>Update Evaluation & Re-notify Author</span> &rarr;'
+          : '<span>Submit Evaluation & Notify Author</span> &rarr;';
+
+        document.getElementById('evalAlert').style.display = 'none';
+        document.getElementById('reviewModal').style.display = 'flex';
+      };
+
+      window.closeReviewModal = function() {
+        document.getElementById('reviewModal').style.display = 'none';
+      };
+
+      window.submitEvaluation = async function() {
+        var assignmentId = document.getElementById('evalAssignmentId').value;
+        var recommendation = document.getElementById('evalRecommendation').value;
+        var clinicalAccuracy = document.getElementById('evalClinicalAccuracy').value;
+        var structure = document.getElementById('evalStructure').value;
+        var evidence = document.getElementById('evalEvidence').value;
+        var authorComments = document.getElementById('evalAuthorFeedback').value.trim();
+        var editorNotes = document.getElementById('evalEditorNotes').value.trim();
+
+        if (!authorComments) {
+          alert('Please enter detailed author feedback remarks before submitting.');
+          return;
+        }
+
+        var btn = document.getElementById('submitReviewBtn');
+        btn.disabled = true;
+        btn.textContent = 'Submitting & sending email notification...';
+
+        var alertEl = document.getElementById('evalAlert');
+        alertEl.style.display = 'none';
+
+        try {
+          var res = await fetch('/api/reviewers/assignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              assignmentId: parseInt(assignmentId),
+              recommendation: recommendation,
+              clinicalAccuracy: clinicalAccuracy,
+              structure: structure,
+              evidence: evidence,
+              authorComments: authorComments,
+              editorNotes: editorNotes
+            })
+          });
+          var data = await res.json();
+          if (res.ok && data.success) {
+            alertEl.className = 'alert alert-success';
+            alertEl.textContent = data.message || 'Peer review submitted successfully!';
+            alertEl.style.display = 'block';
+            setTimeout(function() {
+              closeReviewModal();
+              loadAssignments();
+            }, 1200);
+          } else {
+            alertEl.className = 'alert alert-error';
+            alertEl.textContent = data.error || 'Submission failed.';
+            alertEl.style.display = 'block';
+          }
+        } catch (err) {
+          alertEl.className = 'alert alert-error';
+          alertEl.textContent = 'Network error: ' + err.message;
+          alertEl.style.display = 'block';
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<span>Submit Evaluation & Notify Author</span> &rarr;';
+        }
+      };
+
+      // --- Profile Form Submit ---
+      document.getElementById('reviewerProfileForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var alertEl = document.getElementById('profileAlert');
+        alertEl.style.display = 'none';
+        var btn = document.getElementById('saveProfBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        var fullName = document.getElementById('profFullName').value.trim();
+        var affil = document.getElementById('profAffiliation').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+        var spec = document.getElementById('profSpecialty').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+        var bio = document.getElementById('profBio').value.trim();
+
+        try {
+          var res = await fetch('/api/profile/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              full_name: fullName,
+              affiliation: affil,
+              specialty: spec,
+              bio: bio
+            })
+          });
+          var data = await res.json();
+          if (res.ok && data.success) {
+            alertEl.className = 'alert alert-success';
+            alertEl.textContent = 'Profile credentials updated successfully!';
+            alertEl.style.display = 'block';
+            document.getElementById('revName').textContent = fullName;
+          } else {
+            alertEl.className = 'alert alert-error';
+            alertEl.textContent = data.error || 'Failed to update profile.';
+            alertEl.style.display = 'block';
+          }
+        } catch (err) {
+          alertEl.className = 'alert alert-error';
+          alertEl.textContent = 'Network error: ' + err.message;
+          alertEl.style.display = 'block';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Save Profile Updates';
+        }
+      });
+
+      // --- Password Form Submit ---
+      document.getElementById('reviewerPasswordForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var alertEl = document.getElementById('pwAlert');
+        alertEl.style.display = 'none';
+        var btn = document.getElementById('savePwBtn');
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+
+        var currentPassword = document.getElementById('currentPassword').value;
+        var newPassword = document.getElementById('newPassword').value;
+
+        try {
+          var res = await fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currentPassword: currentPassword, newPassword: newPassword })
+          });
+          var data = await res.json();
+          if (res.ok && data.success) {
+            alertEl.className = 'alert alert-success';
+            alertEl.textContent = 'Password changed successfully!';
+            alertEl.style.display = 'block';
+            document.getElementById('reviewerPasswordForm').reset();
+          } else {
+            alertEl.className = 'alert alert-error';
+            alertEl.textContent = data.error || 'Password update failed.';
+            alertEl.style.display = 'block';
+          }
+        } catch (err) {
+          alertEl.className = 'alert alert-error';
+          alertEl.textContent = 'Network error: ' + err.message;
+          alertEl.style.display = 'block';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Update Password';
+        }
+      });
+
+      // --- Sign Out Handler ---
+      document.getElementById('logoutBtn').addEventListener('click', async function(e) {
+        e.preventDefault();
+        try {
+          await fetch('/api/auth/logout', { method: 'POST' });
+        } catch(e) {}
+        sessionStorage.clear();
+        window.location.href = '/reviewers/login';
+      });
+
+      // Initialize
+      initReviewerDashboard();
+    </script>
+  </slot>
+</BaseLayout>

@@ -417,13 +417,21 @@ import exams from '../../data/exams.json';
         setTimeout(function() { window.location.href = '/contributors/settings'; }, 1500);
       }
 
+      // Check if user is a reviewer — redirect to dedicated Reviewer Dashboard
+      if (user.role === 'reviewer') {
+        window.location.href = '/reviewers/dashboard';
+      }
+
       function applyUserRoleUI(currentUser) {
-        var isRev = currentUser.role === 'reviewer';
+        if (currentUser.role === 'reviewer') {
+          window.location.href = '/reviewers/dashboard';
+          return;
+        }
         var isAdm = currentUser.role === 'admin' || currentUser.role === 'co-admin';
 
         // Update sidebar profile
         document.getElementById('sideName').textContent = currentUser.full_name || currentUser.username;
-        document.getElementById('sideRole').textContent = isRev ? 'Peer Reviewer' : (currentUser.role || 'Contributor');
+        document.getElementById('sideRole').textContent = currentUser.role || 'Contributor';
         var initial = (currentUser.full_name || currentUser.username).charAt(0).toUpperCase();
         document.getElementById('avatarInitial').textContent = initial;
 
@@ -431,23 +439,7 @@ import exams from '../../data/exams.json';
         var submitTabBtn = document.getElementById('submitTabBtn');
         var submissionsTabBtn = document.getElementById('submissionsTabBtn');
 
-        if (isRev) {
-          // Pure reviewer: Hide Contributor authoring tabs due to conflict of interest
-          if (submitTabBtn) submitTabBtn.style.display = 'none';
-          if (submissionsTabBtn) submissionsTabBtn.style.display = 'none';
-          if (reviewsTabBtn) reviewsTabBtn.style.display = 'block';
-
-          // Adjust overview text & hide author statistics
-          var overviewTitle = document.querySelector('#overviewPanel .panel-title');
-          var overviewDesc = document.querySelector('#overviewPanel .panel-desc');
-          var statsGrid = document.querySelector('#overviewPanel .stats-grid');
-          if (overviewTitle) overviewTitle.textContent = 'Peer Reviewer Dashboard';
-          if (overviewDesc) overviewDesc.textContent = 'Welcome back to the iMedipedia Peer Review Portal. Evaluate assigned manuscripts, assess scientific validity, and guide medical authors.';
-          if (statsGrid) statsGrid.style.display = 'none';
-
-          // Default activate reviews tab for reviewers
-          if (reviewsTabBtn) reviewsTabBtn.click();
-        } else if (isAdm) {
+        if (isAdm) {
           // Admins can see all tabs
           if (submitTabBtn) submitTabBtn.style.display = 'block';
           if (submissionsTabBtn) submissionsTabBtn.style.display = 'block';

@@ -1,0 +1,486 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Peer Reviewer Login - iMedipedia Medical Research"
+  description="Log in to the iMedipedia Peer Reviewer Portal to access assigned clinical manuscripts and submit expert reviews."
+  currentPage="reviewers"
+>
+  <slot name="head">
+    <style>
+      .login-container {
+        max-width: 480px;
+        margin: 4.5rem auto;
+        padding: 0 1.5rem;
+        flex-grow: 1;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .login-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 2.5rem 2rem;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(12px);
+      }
+      .login-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(13, 148, 136, 0.12);
+        color: var(--accent);
+        padding: 0.35rem 0.85rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 1.25rem;
+      }
+      .login-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.85rem;
+        font-weight: 800;
+        margin: 0 0 0.5rem 0;
+        color: var(--text);
+      }
+      .login-desc {
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.5;
+        margin: 0 0 1.75rem 0;
+      }
+      .form-group {
+        margin-bottom: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+      .form-label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--muted);
+      }
+      .form-input {
+        padding: 0.8rem 1rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.15);
+        color: var(--text);
+        font-size: 0.95rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      :global([data-theme="light"]) .form-input {
+        background: rgba(255, 255, 255, 0.9);
+      }
+      .form-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+      }
+      .btn-submit {
+        width: 100%;
+        background: var(--accent);
+        color: #ffffff;
+        border: none;
+        padding: 0.85rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 700;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+      }
+      .btn-submit:hover {
+        opacity: 0.92;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px var(--accent-glow);
+      }
+      .btn-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .alert {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        margin-bottom: 1.25rem;
+        display: none;
+      }
+      .alert-error {
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+      }
+      .alert-info {
+        background: rgba(13, 148, 136, 0.12);
+        border: 1px solid rgba(13, 148, 136, 0.3);
+        color: var(--accent);
+      }
+      .alert-success {
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #10b981;
+      }
+      .login-footer-links {
+        margin-top: 1.5rem;
+        text-align: center;
+        font-size: 0.88rem;
+        color: var(--muted);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .login-footer-links a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .login-footer-links a:hover {
+        text-decoration: underline;
+      }
+
+      /* Forgot Password Modal */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(3, 7, 18, 0.7);
+        backdrop-filter: blur(8px);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+      .modal-overlay.active {
+        display: flex;
+        opacity: 1;
+      }
+      .modal-content {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        max-width: 440px;
+        width: 90%;
+        padding: 2.25rem 2rem;
+        position: relative;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      }
+      .modal-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        font-size: 1.5rem;
+        cursor: pointer;
+      }
+      .modal-close:hover { color: var(--text); }
+    </style>
+  </slot>
+
+  <main class="login-container">
+    <div class="login-card">
+      <div class="login-badge">
+        <span>🩺</span> Peer Review Portal
+      </div>
+      <h1 class="login-title">Reviewer Login</h1>
+      <p class="login-desc">Sign in with your registered peer reviewer credentials to evaluate assigned manuscripts and access the review board.</p>
+
+      <div id="loginAlert" class="alert"></div>
+
+      <form id="reviewerLoginForm">
+        <div class="form-group" id="emailGroup">
+          <label for="reviewerEmail" class="form-label">Reviewer Email Address</label>
+          <input
+            type="email"
+            id="reviewerEmail"
+            class="form-input"
+            placeholder="reviewer@institution.edu"
+            required
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="form-group" id="passwordGroup">
+          <label for="reviewerPassword" class="form-label">Password</label>
+          <input
+            type="password"
+            id="reviewerPassword"
+            class="form-input"
+            placeholder="••••••••••••"
+            required
+            autocomplete="current-password"
+          />
+        </div>
+
+        <div class="form-group" id="totpGroup" style="display:none;">
+          <label for="reviewerTotp" class="form-label">Authenticator 6-Digit Code</label>
+          <input
+            type="text"
+            id="reviewerTotp"
+            class="form-input"
+            placeholder="000000"
+            maxlength="6"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            autocomplete="one-time-code"
+          />
+          <span style="font-size:0.75rem;color:var(--muted);">Enter the 6-digit code from your authenticator app</span>
+        </div>
+
+        <button type="submit" class="btn-submit" id="reviewerLoginBtn">
+          <span>Log In to Reviewer Dashboard</span> &rarr;
+        </button>
+      </form>
+
+      <div class="login-footer-links">
+        <div>
+          <a href="#" id="forgotPwLink">Forgot your password?</a>
+        </div>
+        <div>
+          Not a reviewer yet? <a href="/reviewers">Apply to join Peer Review Board</a>
+        </div>
+        <div style="margin-top:0.5rem;padding-top:0.75rem;border-top:1px solid var(--border);">
+          <a href="/contributors" style="color:var(--muted);font-weight:500;font-size:0.82rem;">Looking for Contributor / Author Portal? &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Forgot Password Modal -->
+  <div id="forgotPwModal" class="modal-overlay">
+    <div class="modal-content">
+      <button id="closeForgotPw" class="modal-close" aria-label="Close modal">&times;</button>
+      <div id="forgotPwFormContainer">
+        <h2 style="font-family:'Outfit',sans-serif;margin-top:0;margin-bottom:0.5rem;font-size:1.5rem;">Reset Password</h2>
+        <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.25rem;">Enter your registered email address to receive a secure password reset link.</p>
+        <div id="forgotPwAlert" class="alert"></div>
+        <form id="forgotPwForm">
+          <div class="form-group">
+            <label for="forgotEmail" class="form-label">Email Address</label>
+            <input type="email" id="forgotEmail" class="form-input" placeholder="reviewer@institution.edu" required autocomplete="email" />
+          </div>
+          <button type="submit" class="btn-submit" id="forgotPwBtn" style="margin-top:0.75rem;">Send Reset Link</button>
+        </form>
+      </div>
+      <div id="forgotPwSuccess" style="display:none;text-align:center;padding:1rem 0;">
+        <div style="font-size:2.5rem;color:#10b981;margin-bottom:0.75rem;">✉️</div>
+        <h3 style="font-family:'Outfit',sans-serif;margin:0 0 0.5rem 0;">Check Your Email</h3>
+        <p style="color:var(--muted);font-size:0.9rem;line-height:1.5;">If an account exists with that email, we've sent a password reset link. Please check your inbox and spam folder.</p>
+        <button id="forgotPwCloseBtn" class="btn-submit" style="margin-top:1.25rem;background:var(--card-bg);border:1px solid var(--border);color:var(--text);">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <slot name="scripts">
+    <script is:inline>
+      (function() {
+        // If already logged in as reviewer, redirect immediately
+        var existingUserData = sessionStorage.getItem('user');
+        if (existingUserData) {
+          try {
+            var existingUser = JSON.parse(existingUserData);
+            if (existingUser && (existingUser.role === 'reviewer' || existingUser.role === 'admin' || existingUser.role === 'co-admin')) {
+              window.location.href = '/reviewers/dashboard';
+              return;
+            }
+          } catch(e) {}
+        }
+
+        var form = document.getElementById('reviewerLoginForm');
+        var emailInput = document.getElementById('reviewerEmail');
+        var passwordInput = document.getElementById('reviewerPassword');
+        var totpInput = document.getElementById('reviewerTotp');
+        var passwordGroup = document.getElementById('passwordGroup');
+        var totpGroup = document.getElementById('totpGroup');
+        var loginBtn = document.getElementById('reviewerLoginBtn');
+        var loginAlert = document.getElementById('loginAlert');
+        var pendingLoginData = null;
+
+        function showAlert(msg, type) {
+          loginAlert.textContent = msg;
+          loginAlert.className = 'alert alert-' + (type || 'error');
+          loginAlert.style.display = 'block';
+        }
+
+        form.addEventListener('submit', async function(e) {
+          e.preventDefault();
+          loginAlert.style.display = 'none';
+
+          // TOTP Step
+          if (pendingLoginData) {
+            var totpCode = totpInput.value.trim();
+            if (!totpCode || totpCode.length !== 6) {
+              showAlert('Please enter the 6-digit code from your authenticator app.', 'error');
+              return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Verifying...';
+
+            try {
+              var res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ totpCode: totpCode, tempSessionId: pendingLoginData.tempSessionId })
+              });
+              var data = await res.json();
+              if (res.ok && data.success) {
+                sessionStorage.setItem('user', JSON.stringify(data.user));
+                window.location.href = '/reviewers/dashboard';
+              } else {
+                showAlert(data.error || 'Invalid verification code.', 'error');
+              }
+            } catch (err) {
+              showAlert('Network error. Please check your connection.', 'error');
+            } finally {
+              loginBtn.disabled = false;
+              loginBtn.textContent = 'Verify & Log In';
+            }
+            return;
+          }
+
+          // Initial Email + Password Step
+          var email = emailInput.value.trim();
+          var password = passwordInput.value;
+
+          if (!email || !password) {
+            showAlert('Please enter both your email address and password.', 'error');
+            return;
+          }
+
+          loginBtn.disabled = true;
+          loginBtn.textContent = 'Signing in...';
+
+          try {
+            var res = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: email, password: password })
+            });
+            var data = await res.json();
+
+            if (res.ok && data.success) {
+              sessionStorage.setItem('user', JSON.stringify(data.user));
+
+              // Reviewer / Admin redirect
+              if (data.user.role === 'reviewer' || data.user.role === 'admin' || data.user.role === 'co-admin') {
+                window.location.href = '/reviewers/dashboard';
+              } else {
+                // If a contributor logged in here by mistake
+                window.location.href = '/contributors/dashboard';
+              }
+            } else if (data.mfaRequired) {
+              pendingLoginData = { tempSessionId: data.tempSessionId };
+              passwordGroup.style.display = 'none';
+              totpGroup.style.display = 'flex';
+              loginBtn.textContent = 'Verify Code & Log In';
+              showAlert('Enter the 6-digit code from your authenticator app.', 'info');
+              totpInput.focus();
+            } else {
+              showAlert(data.error || 'Invalid reviewer credentials.', 'error');
+            }
+          } catch (err) {
+            showAlert('Network error. Please try again.', 'error');
+          } finally {
+            loginBtn.disabled = false;
+            if (!pendingLoginData) {
+              loginBtn.innerHTML = '<span>Log In to Reviewer Dashboard</span> &rarr;';
+            }
+          }
+        });
+
+        // Reset MFA state on edit
+        emailInput.addEventListener('input', resetMfa);
+        passwordInput.addEventListener('input', resetMfa);
+        function resetMfa() {
+          if (pendingLoginData) {
+            pendingLoginData = null;
+            passwordGroup.style.display = 'flex';
+            totpGroup.style.display = 'none';
+            loginBtn.innerHTML = '<span>Log In to Reviewer Dashboard</span> &rarr;';
+            loginAlert.style.display = 'none';
+          }
+        }
+
+        // Forgot password modal
+        var forgotLink = document.getElementById('forgotPwLink');
+        var forgotModal = document.getElementById('forgotPwModal');
+        var closeForgotBtn = document.getElementById('closeForgotPw');
+        var forgotForm = document.getElementById('forgotPwForm');
+        var forgotSuccess = document.getElementById('forgotPwSuccess');
+        var forgotFormContainer = document.getElementById('forgotPwFormContainer');
+        var forgotAlert = document.getElementById('forgotPwAlert');
+        var forgotDoneBtn = document.getElementById('forgotPwCloseBtn');
+
+        function openForgot() {
+          forgotModal.classList.add('active');
+          forgotFormContainer.style.display = 'block';
+          forgotSuccess.style.display = 'none';
+          forgotAlert.style.display = 'none';
+          forgotForm.reset();
+        }
+        function closeForgot() {
+          forgotModal.classList.remove('active');
+        }
+
+        if (forgotLink) forgotLink.addEventListener('click', function(e) { e.preventDefault(); openForgot(); });
+        if (closeForgotBtn) closeForgotBtn.addEventListener('click', closeForgot);
+        if (forgotDoneBtn) forgotDoneBtn.addEventListener('click', closeForgot);
+        if (forgotModal) forgotModal.addEventListener('click', function(e) { if (e.target === forgotModal) closeForgot(); });
+
+        if (forgotForm) {
+          forgotForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var email = document.getElementById('forgotEmail').value.trim();
+            if (!email) return;
+
+            var btn = document.getElementById('forgotPwBtn');
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            forgotAlert.style.display = 'none';
+
+            try {
+              var resp = await fetch('/api/auth/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+              });
+              var data = await resp.json();
+              if (resp.ok && data.success) {
+                forgotFormContainer.style.display = 'none';
+                forgotSuccess.style.display = 'block';
+              } else {
+                forgotAlert.textContent = data.error || 'Failed to send reset link.';
+                forgotAlert.className = 'alert alert-error';
+                forgotAlert.style.display = 'block';
+              }
+            } catch (err) {
+              forgotAlert.textContent = 'Network error. Please try again.';
+              forgotAlert.className = 'alert alert-error';
+              forgotAlert.style.display = 'block';
+            } finally {
+              btn.disabled = false;
+              btn.textContent = 'Send Reset Link';
+            }
+          });
+        }
+      })();
+    </script>
+  </slot>
+</BaseLayout>

@@ -120,6 +120,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             <button type="submit" class="btn btn-secondary" style="width: 100%;" id="loginBtn">Log In</button>
           </form>
           <p class="forgot-pw-link"><a href="#" id="forgotPwLink">Forgot your password?</a></p>
+          <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);text-align:center;font-size:0.85rem;">
+            <a href="/reviewers/login" style="color:var(--accent);text-decoration:none;font-weight:600;">🩺 Are you a Peer Reviewer? Sign in here &rarr;</a>
+          </div>
         </div>
       </section>
     </div>
@@ -260,7 +263,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
             if (res.ok && data.success) {
               sessionStorage.setItem('user', JSON.stringify(data.user));
-              window.location.href = '/contributors/dashboard';
+              if (data.user.role === 'reviewer') {
+                window.location.href = '/reviewers/dashboard';
+              } else {
+                window.location.href = '/contributors/dashboard';
+              }
             } else {
               loginAlert.textContent = data.error || 'Invalid verification code.';
               loginAlert.className = 'alert alert-error';
@@ -291,7 +298,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           if (res.ok && data.success) {
             // Direct login (no MFA required)
             sessionStorage.setItem('user', JSON.stringify(data.user));
-            window.location.href = '/contributors/dashboard';
+            if (data.user.role === 'reviewer') {
+              window.location.href = '/reviewers/dashboard';
+            } else {
+              window.location.href = '/contributors/dashboard';
+            }
           } else if (data.mfaRequired) {
             // Switch to TOTP step
             pendingLoginData = { tempSessionId: data.tempSessionId };

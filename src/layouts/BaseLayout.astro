@@ -687,7 +687,8 @@ const { title, description, currentPage } = Astro.props;
         <input type="checkbox" id="overflow-toggle" class="nav-toggle-hidden" />
         <label for="overflow-toggle" class="overflow-btn" aria-label="More options">⋮</label>
         <div class="nav-overflow">
-          <a href="/contributors" class:list={["btn-contributors", { active: currentPage === 'contributors' }]}>Contributors</a>
+          <a href="/contributors" class:list={["btn-contributors", { active: currentPage === 'contributors' }]}>Authors</a>
+          <a href="/reviewers/login" class:list={["btn-contributors", { active: currentPage === 'reviewers' }]}>Reviewer Login</a>
           <a href="/admin" class:list={["btn-contributors", { active: currentPage === 'admin' }]} id="adminNavLink" style="display:none;">Admin</a>
           <button class="btn-contact" id="contactNavBtn">Contact</button>
           <button id="themeToggle" class="theme-btn">☀️</button>
@@ -771,7 +772,9 @@ const { title, description, currentPage } = Astro.props;
             <a href="/reviewers" class="footer-link">Peer Review Board</a>
             <a href="/contributors" class="footer-link">Join as Contributor</a>
             <a href="/reviewers" class="footer-link">Join as Peer Reviewer</a>
-            <a href="/contributors/dashboard" class="footer-link">Portal Dashboard</a>
+            <a href="/contributors/dashboard" class="footer-link">Author Dashboard</a>
+            <a href="/reviewers/login" class="footer-link">Peer Reviewer Login</a>
+            <a href="/reviewers/dashboard" class="footer-link">Reviewer Dashboard</a>
           </div>
         </div>
 
