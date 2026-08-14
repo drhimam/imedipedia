@@ -321,12 +321,12 @@ import exams from '../../data/exams.json';
           <div id="evalStatusAlert" class="alert" style="display:none;margin-bottom:1rem;"></div>
 
           <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:2rem;">
-            <!-- Left: Article Reader -->
-            <div style="background:rgba(0,0,0,0.15);padding:1.5rem;border-radius:12px;border:1px solid var(--border);max-height:550px;overflow-y:auto;">
-              <h3 style="margin-top:0;font-size:1.1rem;color:var(--accent);">📖 Manuscript Content</h3>
+            <!-- Left: Article Reader (Rendered HTML Webview) -->
+            <div style="background:var(--card-bg);padding:1.5rem;border-radius:12px;border:1px solid var(--border);max-height:580px;overflow-y:auto;">
+              <h3 style="margin-top:0;font-size:1.15rem;color:var(--accent);display:flex;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border);padding-bottom:0.5rem;">📖 Manuscript Reader</h3>
               <div id="evalArticleCover" style="margin-bottom:1rem;"></div>
-              <div id="evalArticleDescription" style="font-style:italic;color:var(--muted);margin-bottom:1rem;padding:0.75rem;background:rgba(99,102,241,0.05);border-left:3px solid var(--accent);border-radius:4px;"></div>
-              <div id="evalArticleBody" style="line-height:1.7;font-size:0.95rem;white-space:pre-wrap;"></div>
+              <div id="evalArticleDescription" style="font-style:italic;color:var(--muted);margin-bottom:1.25rem;padding:0.75rem 1rem;background:rgba(99,102,241,0.06);border-left:3px solid var(--accent);border-radius:4px;font-size:0.95rem;line-height:1.6;"></div>
+              <div id="evalArticleBody" class="article-body" style="font-size:0.95rem;line-height:1.8;color:var(--text);"></div>
             </div>
 
             <!-- Right: Standardized Review Rubric -->
@@ -417,43 +417,61 @@ import exams from '../../data/exams.json';
         setTimeout(function() { window.location.href = '/contributors/settings'; }, 1500);
       }
 
-      // Update sidebar
-      document.getElementById('sideName').textContent = user.full_name || user.username;
-      document.getElementById('sideRole').textContent = user.role === 'reviewer' ? 'Peer Reviewer' : (user.role || 'Contributor');
-      var initial = (user.full_name || user.username).charAt(0).toUpperCase();
-      document.getElementById('avatarInitial').textContent = initial;
+      function applyUserRoleUI(currentUser) {
+        var isRev = currentUser.role === 'reviewer';
+        var isAdm = currentUser.role === 'admin' || currentUser.role === 'co-admin';
 
-      var isReviewer = user.role === 'reviewer';
-      var isAdmin = user.role === 'admin' || user.role === 'co-admin';
-      var reviewsTabBtn = document.getElementById('reviewsTabBtn');
-      var submitTabBtn = document.getElementById('submitTabBtn');
-      var submissionsTabBtn = document.getElementById('submissionsTabBtn');
+        // Update sidebar profile
+        document.getElementById('sideName').textContent = currentUser.full_name || currentUser.username;
+        document.getElementById('sideRole').textContent = isRev ? 'Peer Reviewer' : (currentUser.role || 'Contributor');
+        var initial = (currentUser.full_name || currentUser.username).charAt(0).toUpperCase();
+        document.getElementById('avatarInitial').textContent = initial;
 
-      if (isReviewer) {
-        // Pure reviewer: Hide Contributor authoring tabs due to conflict of interest
-        if (submitTabBtn) submitTabBtn.style.display = 'none';
-        if (submissionsTabBtn) submissionsTabBtn.style.display = 'none';
-        if (reviewsTabBtn) reviewsTabBtn.style.display = 'block';
+        var reviewsTabBtn = document.getElementById('reviewsTabBtn');
+        var submitTabBtn = document.getElementById('submitTabBtn');
+        var submissionsTabBtn = document.getElementById('submissionsTabBtn');
 
-        // Adjust overview text & hide author statistics
-        var overviewTitle = document.querySelector('#overviewPanel .panel-title');
-        var overviewDesc = document.querySelector('#overviewPanel .panel-desc');
-        var statsGrid = document.querySelector('#overviewPanel .stats-grid');
-        if (overviewTitle) overviewTitle.textContent = 'Peer Reviewer Dashboard';
-        if (overviewDesc) overviewDesc.textContent = 'Welcome back to the iMedipedia Peer Review Portal. Evaluate assigned manuscripts, assess scientific validity, and guide medical authors.';
-        if (statsGrid) statsGrid.style.display = 'none';
+        if (isRev) {
+          // Pure reviewer: Hide Contributor authoring tabs due to conflict of interest
+          if (submitTabBtn) submitTabBtn.style.display = 'none';
+          if (submissionsTabBtn) submissionsTabBtn.style.display = 'none';
+          if (reviewsTabBtn) reviewsTabBtn.style.display = 'block';
 
-        // Default direct to reviews tab for reviewers
-        setTimeout(function() {
+          // Adjust overview text & hide author statistics
+          var overviewTitle = document.querySelector('#overviewPanel .panel-title');
+          var overviewDesc = document.querySelector('#overviewPanel .panel-desc');
+          var statsGrid = document.querySelector('#overviewPanel .stats-grid');
+          if (overviewTitle) overviewTitle.textContent = 'Peer Reviewer Dashboard';
+          if (overviewDesc) overviewDesc.textContent = 'Welcome back to the iMedipedia Peer Review Portal. Evaluate assigned manuscripts, assess scientific validity, and guide medical authors.';
+          if (statsGrid) statsGrid.style.display = 'none';
+
+          // Default activate reviews tab for reviewers
           if (reviewsTabBtn) reviewsTabBtn.click();
-        }, 50);
-      } else if (isAdmin) {
-        // Admins can see everything
-        if (reviewsTabBtn) reviewsTabBtn.style.display = 'block';
-      } else {
-        // Regular contributor
-        if (reviewsTabBtn) reviewsTabBtn.style.display = 'none';
+        } else if (isAdm) {
+          // Admins can see all tabs
+          if (submitTabBtn) submitTabBtn.style.display = 'block';
+          if (submissionsTabBtn) submissionsTabBtn.style.display = 'block';
+          if (reviewsTabBtn) reviewsTabBtn.style.display = 'block';
+        } else {
+          // Regular contributor
+          if (submitTabBtn) submitTabBtn.style.display = 'block';
+          if (submissionsTabBtn) submissionsTabBtn.style.display = 'block';
+          if (reviewsTabBtn) reviewsTabBtn.style.display = 'none';
+        }
       }
+
+      // Initial apply with cached user
+      applyUserRoleUI(user);
+
+      // Verify and sync live role from backend
+      fetch('/api/profile/get').then(function(r){ return r.json(); }).then(function(d){
+        if (d.profile && d.profile.role) {
+          user.role = d.profile.role;
+          user.full_name = d.profile.full_name;
+          sessionStorage.setItem('user', JSON.stringify(user));
+          applyUserRoleUI(user);
+        }
+      }).catch(function(err){ console.warn('Profile sync warning:', err); });
 
       // Check URL parameters for tab
       var urlParams = new URLSearchParams(window.location.search);
@@ -1364,25 +1382,60 @@ import exams from '../../data/exams.json';
 
         function renderMarkdownToHtml(md) {
           if (!md) return '<p style="color:var(--muted);font-style:italic;">No content provided.</p>';
-          // Sanitize special HTML chars first
-          var escaped = escapeHTML(md);
-          // Headings
-          escaped = escaped.replace(/^### (.*$)/gim, '<h4 style="color:var(--text);margin:1.25rem 0 0.5rem 0;font-size:1.1rem;">$1</h4>');
-          escaped = escaped.replace(/^## (.*$)/gim, '<h3 style="color:var(--text);margin:1.5rem 0 0.6rem 0;font-size:1.25rem;border-bottom:1px solid var(--border);padding-bottom:4px;">$1</h3>');
-          escaped = escaped.replace(/^# (.*$)/gim, '<h2 style="color:var(--text);margin:1.75rem 0 0.75rem 0;font-size:1.4rem;">$1</h2>');
-          // Bold / Italic
-          escaped = escaped.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
-          escaped = escaped.replace(/\*(.*?)\*/gim, '<em>$1</em>');
-          // Blockquotes
-          escaped = escaped.replace(/^\> (.*$)/gim, '<blockquote style="border-left:3px solid var(--accent);margin:1rem 0;padding:0.5rem 1rem;background:rgba(99,102,241,0.05);color:var(--text);font-style:italic;">$1</blockquote>');
-          // Bullet lists
-          escaped = escaped.replace(/^\- (.*$)/gim, '<li style="margin-left:1.5rem;margin-bottom:0.25rem;">$1</li>');
-          escaped = escaped.replace(/^\* (.*$)/gim, '<li style="margin-left:1.5rem;margin-bottom:0.25rem;">$1</li>');
-          // Paragraphs & Linebreaks
-          escaped = escaped.replace(/\n\n+/g, '</p><p style="margin-bottom:1rem;line-height:1.7;">');
-          escaped = '<p style="margin-bottom:1rem;line-height:1.7;">' + escaped + '</p>';
-          escaped = escaped.replace(/\n/g, '<br>');
-          return escaped;
+          var raw = md.replace(/\r\n/g, '\n').trim();
+          var lines = raw.split('\n');
+          var html = [];
+          var inList = false;
+
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+
+            // List item
+            if (line.match(/^[\*\-]\s+(.*)$/)) {
+              var itemText = line.replace(/^[\*\-]\s+/, '');
+              if (!inList) {
+                html.push('<ul style="margin:0.75rem 0 1rem 1.5rem;padding-left:1rem;line-height:1.7;">');
+                inList = true;
+              }
+              html.push('<li style="margin-bottom:0.35rem;">' + parseInlineMd(itemText) + '</li>');
+              continue;
+            } else if (inList) {
+              html.push('</ul>');
+              inList = false;
+            }
+
+            // Headings
+            if (line.startsWith('### ')) {
+              html.push('<h4 style="color:var(--text);margin:1.5rem 0 0.5rem 0;font-size:1.15rem;font-family:\'Outfit\',sans-serif;">' + parseInlineMd(line.substring(4)) + '</h4>');
+            } else if (line.startsWith('## ')) {
+              html.push('<h3 style="color:var(--text);margin:1.75rem 0 0.6rem 0;font-size:1.35rem;font-family:\'Outfit\',sans-serif;border-bottom:1px solid var(--border);padding-bottom:6px;">' + parseInlineMd(line.substring(3)) + '</h3>');
+            } else if (line.startsWith('# ')) {
+              html.push('<h2 style="color:var(--text);margin:2rem 0 0.75rem 0;font-size:1.6rem;font-family:\'Outfit\',sans-serif;">' + parseInlineMd(line.substring(2)) + '</h2>');
+            } else if (line.startsWith('> ')) {
+              html.push('<blockquote style="border-left:4px solid var(--accent);margin:1.25rem 0;padding:0.75rem 1.25rem;background:rgba(99,102,241,0.06);color:var(--text);border-radius:4px;font-style:italic;">' + parseInlineMd(line.substring(2)) + '</blockquote>');
+            } else if (line.match(/^---+$|^___+$/)) {
+              html.push('<hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0;">');
+            } else if (line.trim().length > 0) {
+              html.push('<p style="margin-bottom:1rem;line-height:1.8;color:var(--text);">' + parseInlineMd(line) + '</p>');
+            }
+          }
+          if (inList) html.push('</ul>');
+          return html.join('\n');
+        }
+
+        function parseInlineMd(str) {
+          if (!str) return '';
+          var s = escapeHTML(str);
+          // Bold + Italic
+          s = s.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+          // Bold
+          s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+          // Italic
+          s = s.replace(/\*(.*?)\*/g, '<em>$1</em>');
+          s = s.replace(/_(.*?)_/g, '<em>$1</em>');
+          // Inline Code
+          s = s.replace(/`(.*?)`/g, '<code style="background:rgba(99,102,241,0.1);color:var(--accent);padding:0.15rem 0.4rem;border-radius:4px;font-size:0.85em;">$1</code>');
+          return s;
         }
 
         document.getElementById('evalArticleDescription').textContent = a.description ? ('Abstract / Summary: ' + a.description) : 'No abstract provided.';
@@ -1468,7 +1521,11 @@ import exams from '../../data/exams.json';
       }
 
       // --- Init ---
-      loadSubmissions();
+      if (isReviewer) {
+        loadAssignedReviews();
+      } else {
+        loadSubmissions();
+      }
     </script>
   </slot>
 </BaseLayout>
