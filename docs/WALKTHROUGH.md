@@ -1594,9 +1594,32 @@ Inside the Review Modal ([`src/pages/reviewers/dashboard.astro`](file:///d:/anti
    - **Email 1 (To Author):** Dispatches `buildPeerReviewFeedbackEmail` containing rubric scores and author feedback remarks with a 1-click button to refine the draft in the Author Dashboard.
    - **Email 2 (To Editorial Board / Admin):** Dispatches `buildPeerReviewSubmittedAdminEmail` directly to `admin@imedipedia.com` containing the full evaluation scorecard, author remarks, **🔒 Confidential Editorial Notes**, and a 1-click button to open the Admin Review Status hub.
 4. **Side-by-Side Subtabs in Admin Dashboard ("Peer Reviewers" Tab):**
-   - **Subtab 1 — 📝 Review Status & Evaluations (`#subtab-panel-status`):** Real-time combined table joining `peer_review_assignments` + `peer_reviews` + `submissions`. Displays manuscript title, author, assigned reviewer, assignment status (`⏳ In Review` / `✅ Completed`), recommendation badge, and numerical scores (`Accuracy / Structure / Evidence`). Features an **"👁 Scorecard"** button that opens the full reviewer scorecard modal.
-   - **Subtab 2 — 📥 Reviewer Applications (`#subtab-panel-apps`):** Real-time list of applicant clinicians and academicians with Accept/Reject actions and a live badge count of pending applications.
-   - **Subtab 3 — 🩺 Active Review Board (`#subtab-panel-board`):** Roster of approved peer reviewers with active subspecialty tags and email links.
+   - **Subtab 1 — 📝 Review Status & Evaluations (`#subtab-panel-status`):**
+     - Real-time combined table joining `peer_review_assignments` + `peer_reviews` + `submissions`.
+     - Displays manuscript title, author, assigned reviewer, assignment status (`⏳ In Review` / `✅ Completed`), recommendation badge, and numerical scores (`Accuracy / Structure / Evidence`).
+     - **Search Bar:** Real-time search by manuscript title, lead author, topic, reviewer name, email, recommendation, or status.
+     - **10-per-page Numbered Pagination:** `< Prev`, numbered pages `1`, `2`, `3`..., `Next >`.
+     - **Three-Dot Action Dropdown (`⋮`):**
+       - `👁 View Scorecard` (opens full evaluation scorecard modal).
+       - `✉️ Email Reviewer` (triggers bulk email modal to the reviewer).
+       - `🗑 Delete Assignment` (dispatches `DELETE /api/admin/assign-reviewers` to delete the assignment and associated review).
+   - **Subtab 2 — 📥 Reviewer Applications (`#subtab-panel-apps`):**
+     - Real-time list of applicant clinicians and academicians with a live badge count of pending applications.
+     - **Search Bar:** Instant search across applicant name, email, affiliation, specialties, and status.
+     - **10-per-page Numbered Pagination:** `< Prev`, numbered pages `1`, `2`, `3`..., `Next >`.
+     - **Three-Dot Action Dropdown (`⋮`):**
+       - `✅ Accept Application` / `❌ Reject Application` (for pending applicants).
+       - `✉️ Send Email` (direct email trigger).
+       - `📄 Download Text` / `📑 Download PDF` (applicant profile export).
+       - `🗑 Delete Application` (dispatches `DELETE /api/admin/reviewer-applications`).
+   - **Subtab 3 — 🩺 Active Review Board (`#subtab-panel-board`):**
+     - Roster of approved peer reviewers with active subspecialty tags and email links.
+     - **Search Bar:** Instant filter across reviewer full name, username, email, affiliation, and specialty.
+     - **10-per-page Numbered Pagination:** `< Prev`, numbered pages `1`, `2`, `3`..., `Next >`.
+     - **Three-Dot Action Dropdown (`⋮`):**
+       - `👁 View Profile` (modal profile inspector).
+       - `✉️ Send Email` (direct email composer).
+       - `🗑 Delete Reviewer` (dispatches `DELETE /api/admin/users` to remove reviewer from board).
    - **URL Query Param Routing:** Deep-linking supported via `/admin?tab=reviewers&subtab=status`.
 
 ---
