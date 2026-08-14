@@ -8,6 +8,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   currentPage="reviewers"
 >
   <slot name="head">
+    <script src="/marked.min.js" is:inline></script>
     <style>
       .dashboard-container {
         max-width: 1350px;
@@ -364,39 +365,115 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       }
       .manuscript-body-rendered {
         color: var(--text);
-        font-size: 0.95rem;
-      }
-      .manuscript-body-rendered h2 {
-        font-family: 'Outfit', sans-serif;
-        font-size: 1.4rem;
-        margin: 1.75rem 0 0.5rem 0;
-        color: var(--text);
-        border-bottom: 1px solid var(--border);
-        padding-bottom: 4px;
-      }
-      .manuscript-body-rendered h3 {
-        font-family: 'Outfit', sans-serif;
-        font-size: 1.2rem;
-        margin: 1.25rem 0 0.4rem 0;
-        color: var(--text);
-      }
-      .manuscript-body-rendered p {
-        margin-bottom: 1rem;
+        font-size: 1.05rem;
         line-height: 1.8;
       }
-      .manuscript-body-rendered ul {
-        margin: 0.5rem 0 1rem 1.5rem;
+      .manuscript-body-rendered h1,
+      .manuscript-body-rendered h2,
+      .manuscript-body-rendered h3,
+      .manuscript-body-rendered h4,
+      .manuscript-body-rendered h5,
+      .manuscript-body-rendered h6 {
+        font-family: 'Outfit', sans-serif;
+        color: var(--text);
+        margin-top: 2rem;
+        margin-bottom: 0.75rem;
+        line-height: 1.3;
+        font-weight: 700;
+      }
+      .manuscript-body-rendered h1 { font-size: 1.85rem; }
+      .manuscript-body-rendered h2 { font-size: 1.55rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+      .manuscript-body-rendered h3 { font-size: 1.3rem; }
+      .manuscript-body-rendered h4 { font-size: 1.15rem; }
+      .manuscript-body-rendered p {
+        margin-bottom: 1.25rem;
+        line-height: 1.8;
+      }
+      .manuscript-body-rendered ul,
+      .manuscript-body-rendered ol {
+        margin: 0.5rem 0 1.25rem 1.75rem;
         padding-left: 0.5rem;
+        line-height: 1.75;
       }
       .manuscript-body-rendered li {
         margin-bottom: 0.35rem;
       }
       .manuscript-body-rendered blockquote {
-        border-left: 3px solid var(--accent);
-        background: rgba(255, 255, 255, 0.03);
-        margin: 1rem 0;
-        padding: 0.6rem 1rem;
+        border-left: 4px solid var(--accent);
+        background: rgba(13, 148, 136, 0.08);
+        margin: 1.5rem 0;
+        padding: 0.75rem 1.25rem;
+        border-radius: 6px;
         font-style: italic;
+        color: var(--text);
+      }
+      .manuscript-body-rendered table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.5rem 0;
+        font-size: 0.95rem;
+        overflow-x: auto;
+        display: table;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .manuscript-body-rendered th {
+        background: rgba(13, 148, 136, 0.15);
+        color: var(--text);
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border);
+        font-weight: 700;
+        text-align: left;
+        font-family: 'Outfit', sans-serif;
+      }
+      .manuscript-body-rendered td {
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border);
+        color: var(--text);
+        vertical-align: top;
+        line-height: 1.6;
+      }
+      .manuscript-body-rendered tr:nth-child(even) td {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .manuscript-body-rendered img {
+        max-width: 100% !important;
+        height: auto !important;
+        border-radius: 10px;
+        margin: 1.5rem auto;
+        display: block;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+      }
+      .manuscript-body-rendered code {
+        background: rgba(13, 148, 136, 0.12);
+        color: var(--accent);
+        padding: 0.15rem 0.45rem;
+        border-radius: 4px;
+        font-family: 'SFMono-Regular', Consolas, monospace;
+        font-size: 0.88em;
+      }
+      .manuscript-body-rendered pre {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--border);
+        padding: 1rem 1.25rem;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 1.25rem 0;
+      }
+      .manuscript-body-rendered pre code {
+        background: transparent;
+        padding: 0;
+        color: #e2e8f0;
+      }
+      .manuscript-body-rendered hr {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 2rem 0;
+      }
+      .manuscript-body-rendered a {
+        color: var(--accent);
+        text-decoration: underline;
       }
 
       /* Form Elements */
@@ -790,59 +867,17 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     <script is:inline>
       var loadedAssignments = [];
 
-      // --- Helper: Markdown to Rendered HTML ---
+      // --- Helper: Markdown to Full Rendered HTML Webview ---
       function renderMarkdownToHtml(md) {
         if (!md) return '<p style="color:var(--muted);font-style:italic;">No manuscript content provided.</p>';
-        var raw = md.replace(/\r\n/g, '\n').trim();
-        var lines = raw.split('\n');
-        var html = [];
-        var inList = false;
-
-        for (var i = 0; i < lines.length; i++) {
-          var line = lines[i];
-
-          // List item
-          if (line.match(/^[\*\-]\s+(.*)$/)) {
-            var itemText = line.replace(/^[\*\-]\s+/, '');
-            if (!inList) {
-              html.push('<ul style="margin:0.75rem 0 1rem 1.5rem;padding-left:1rem;line-height:1.7;">');
-              inList = true;
-            }
-            html.push('<li style="margin-bottom:0.35rem;">' + parseInlineMd(itemText) + '</li>');
-            continue;
-          } else if (inList) {
-            html.push('</ul>');
-            inList = false;
-          }
-
-          // Headings
-          if (line.startsWith('### ')) {
-            html.push('<h4 style="color:var(--text);margin:1.5rem 0 0.5rem 0;font-size:1.15rem;font-family:\'Outfit\',sans-serif;">' + parseInlineMd(line.substring(4)) + '</h4>');
-          } else if (line.startsWith('## ')) {
-            html.push('<h3 style="color:var(--text);margin:1.75rem 0 0.6rem 0;font-size:1.35rem;font-family:\'Outfit\',sans-serif;border-bottom:1px solid var(--border);padding-bottom:6px;">' + parseInlineMd(line.substring(3)) + '</h3>');
-          } else if (line.startsWith('# ')) {
-            html.push('<h2 style="color:var(--text);margin:2rem 0 0.75rem 0;font-size:1.6rem;font-family:\'Outfit\',sans-serif;">' + parseInlineMd(line.substring(2)) + '</h2>');
-          } else if (line.startsWith('> ')) {
-            html.push('<blockquote style="border-left:4px solid var(--accent);margin:1.25rem 0;padding:0.75rem 1.25rem;background:rgba(13,148,136,0.06);color:var(--text);border-radius:4px;font-style:italic;">' + parseInlineMd(line.substring(2)) + '</blockquote>');
-          } else if (line.match(/^---+$|^___+$/)) {
-            html.push('<hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0;">');
-          } else if (line.trim().length > 0) {
-            html.push('<p style="margin-bottom:1rem;line-height:1.8;color:var(--text);">' + parseInlineMd(line) + '</p>');
+        if (typeof window.marked !== 'undefined' && typeof window.marked.parse === 'function') {
+          try {
+            return window.marked.parse(md, { gfm: true, breaks: false });
+          } catch(e) {
+            console.warn('marked.parse error, falling back:', e);
           }
         }
-        if (inList) html.push('</ul>');
-        return html.join('\n');
-      }
-
-      function parseInlineMd(str) {
-        if (!str) return '';
-        var s = escapeHTML(str);
-        s = s.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
-        s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        s = s.replace(/\*(.*?)\*/g, '<em>$1</em>');
-        s = s.replace(/_(.*?)_/g, '<em>$1</em>');
-        s = s.replace(/`(.*?)`/g, '<code style="background:rgba(13,148,136,0.12);color:var(--accent);padding:0.15rem 0.4rem;border-radius:4px;font-size:0.88em;">$1</code>');
-        return s;
+        return '<div style="white-space:pre-wrap;">' + escapeHTML(md) + '</div>';
       }
 
       function escapeHTML(str) {
