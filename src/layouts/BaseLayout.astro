@@ -104,6 +104,23 @@ const { title, description, currentPage } = Astro.props;
         flex-direction: column;
       }
 
+      /* ---- Responsive Images & Content Media ---- */
+      :global(img) {
+        max-width: 100%;
+        height: auto;
+        box-sizing: border-box;
+      }
+
+      :global(.article-body img),
+      :global(.content img),
+      :global(.article-view img) {
+        max-width: 100% !important;
+        height: auto !important;
+        border-radius: 8px;
+        display: block;
+        margin: 1.5rem auto;
+      }
+
       /* ============================================================
          NAVBAR
          ============================================================ */

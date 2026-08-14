@@ -78,9 +78,8 @@ if (activeSubject && activeTopic) topicArticles = casePosts.filter(p => p.data.s
       .article-view { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; }
       .article-header { border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 2rem; }
       .article-title { font-family: 'Outfit', sans-serif; font-size: 2.5rem; margin: 0.5rem 0; line-height: 1.2; }
-      .article-meta { color: var(--muted); font-size: 0.95rem; display: flex; gap: 1.5rem; }
-      .article-image-container { border-radius: 12px; overflow: hidden; margin-bottom: 2rem; border: 1px solid var(--border); background: #090d16; max-height: 450px; }
-      .article-image { width: 100%; height: auto; display: block; }
+      .article-image-container { border-radius: 12px; overflow: hidden; margin-bottom: 2rem; border: 1px solid var(--border); background: #090d16; max-height: 450px; display: flex; align-items: center; justify-content: center; }
+      .article-image { width: 100%; max-height: 450px; object-fit: cover; display: block; }
       .tldr-box { background: rgba(13, 148, 136, 0.05); border-left: 4px solid var(--accent); padding: 1.25rem; border-radius: 0 12px 12px 0; margin-bottom: 2rem; font-size: 1rem; line-height: 1.6; }
       .article-body { font-size: 1.1rem; line-height: 1.8; }
       .article-body h2 { font-family: 'Outfit', sans-serif; color: var(--text); margin-top: 2rem; }

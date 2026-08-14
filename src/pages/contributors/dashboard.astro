@@ -229,9 +229,9 @@ import exams from '../../data/exams.json';
             <span class="form-hint">Select one or more relevant exams from the managed list</span>
           </div>
 
-          <!-- Cover Image Upload -->
+          <!-- Cover Image Upload & Direct URL -->
           <div class="form-group full-width">
-            <label class="form-label">Article Cover Image <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(Max 1MB)</span></label>
+            <label class="form-label">Article Cover Image <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(Upload file up to 1MB or paste image URL)</span></label>
             <div class="image-upload-row">
               <div id="coverDropZone" class="upload-zone compact" style="flex: 1; min-width: 200px;">
                 <span class="upload-icon">🖼️</span>
@@ -241,6 +241,7 @@ import exams from '../../data/exams.json';
                 <div class="image-preview-container" id="coverPreviewContainer"><img src="" class="image-preview" id="coverImagePreview" alt="Cover preview" /><button type="button" class="clear-img-btn" id="coverClearBtn">&times;</button></div>
               </div>
               <div class="image-upload-fields">
+                <div class="form-group" style="margin-bottom:0.5rem;"><input type="text" id="coverImageUrl" class="form-input" placeholder="Or paste Image URL (e.g. https://... or /images/...)" style="padding:0.6rem 0.75rem;font-size:0.85rem;" /></div>
                 <div class="form-group" style="margin-bottom:0.5rem;"><input type="text" id="coverImageName" class="form-input" placeholder="Image name (alt text)" style="padding:0.6rem 0.75rem;font-size:0.85rem;" /></div>
                 <div class="form-group"><input type="text" id="coverImageDesc" class="form-input" placeholder="Image description / caption" style="padding:0.6rem 0.75rem;font-size:0.85rem;" /></div>
               </div>
@@ -779,12 +780,28 @@ import exams from '../../data/exams.json';
       coverFileInput.addEventListener('change', function() {
         if (coverFileInput.files.length) handleCoverFile(coverFileInput.files[0]);
       });
+      var coverImageUrlInput = document.getElementById('coverImageUrl');
+
+      coverImageUrlInput.addEventListener('input', function() {
+        var url = this.value.trim();
+        if (url) {
+          coverPreview.src = url;
+          coverPreviewContainer.style.display = 'flex';
+          coverFileData = null;
+          coverFileInput.value = '';
+        } else if (!coverFileData) {
+          coverPreview.src = '';
+          coverPreviewContainer.style.display = 'none';
+        }
+      });
+
       coverClearBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         coverFileInput.value = '';
         coverPreview.src = '';
         coverPreviewContainer.style.display = 'none';
         coverFileData = null;
+        if (coverImageUrlInput) coverImageUrlInput.value = '';
         document.getElementById('coverImageName').value = '';
         document.getElementById('coverImageDesc').value = '';
       });
@@ -797,6 +814,7 @@ import exams from '../../data/exams.json';
           coverFileData = { file: file, dataUrl: e.target.result };
           coverPreview.src = e.target.result;
           coverPreviewContainer.style.display = 'flex';
+          if (coverImageUrlInput) coverImageUrlInput.value = '';
         };
         reader.readAsDataURL(file);
       }
@@ -845,8 +863,9 @@ import exams from '../../data/exams.json';
 
         // Exams are already collected in selectedExams (optional)
 
-        // Upload cover image to R2
+        // Upload cover image to R2 or use entered / existing URL
         var coverUrl = '';
+        var rawCoverUrl = coverImageUrlInput ? coverImageUrlInput.value.trim() : '';
         if (coverFileData && coverFileData.dataUrl) {
           var coverName = document.getElementById('coverImageName').value.trim() || 'cover-image';
           var coverDesc = document.getElementById('coverImageDesc').value.trim() || '';
@@ -859,6 +878,10 @@ import exams from '../../data/exams.json';
             submitBtn.textContent = 'Submit Article for Review';
             return;
           }
+        } else if (rawCoverUrl) {
+          coverUrl = rawCoverUrl;
+        } else if (coverPreview.src && coverPreviewContainer.style.display !== 'none' && !coverPreview.src.startsWith('data:')) {
+          coverUrl = coverPreview.src;
         }
 
         // Upload in-text images to R2
@@ -1087,6 +1110,7 @@ import exams from '../../data/exams.json';
           coverFileData = null;
           coverPreview.src = s.image || '';
           coverPreviewContainer.style.display = s.image ? 'flex' : 'none';
+          if (coverImageUrlInput) coverImageUrlInput.value = s.image || '';
           document.getElementById('coverImageName').value = '';
           document.getElementById('coverImageDesc').value = '';
 

@@ -182,6 +182,9 @@ export async function POST({ request, locals }) {
     const finalAuthor = author || existingFm.author || '';
     const finalType = type || existingFm.type || 'general';
     const finalTopic = (topic !== undefined && topic !== '') ? topic : existingFm.topic;
+    const rawImage = image !== undefined ? image : existingFm.image;
+    const finalImage = rawImage && !rawImage.startsWith('data:') ? escapeYAML(rawImage.trim()) : '';
+    const imageLine = finalImage ? `image: "${finalImage}"\n` : '';
 
     const frontmatter = `---
 title: "${escapeYAML(finalTitle)}"
@@ -192,7 +195,7 @@ type: "${escapeYAML(finalType)}"
 subjects: ${subjectsYAML}
 topic: "${escapeYAML(finalTopic)}"
 exams: ${examsYAML}
----
+${imageLine}---
 
 ${sanitizeBody(articleBody || '')}`;
 

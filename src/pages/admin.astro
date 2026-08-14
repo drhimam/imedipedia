@@ -389,6 +389,16 @@ if (Astro.request) {
           <div id="adminEditExamChips" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;"></div>
         </div>
         <div class="form-group">
+          <label class="form-label">Cover Image URL</label>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <input class="form-input" type="text" id="adminEditImageUrl" placeholder="https://... or /images/..." oninput="updateAdminEditImagePreview(this.value)">
+            <button type="button" class="topbar-btn" style="padding:0.5rem 0.75rem;font-size:0.8rem;" onclick="document.getElementById('adminEditImageUrl').value='';updateAdminEditImagePreview('');">Clear</button>
+          </div>
+          <div id="adminEditImagePreviewContainer" style="display:none;margin-top:0.5rem;border-radius:8px;overflow:hidden;border:1px solid var(--border);max-height:160px;background:#090d16;justify-content:center;">
+            <img id="adminEditImagePreview" src="" alt="Cover preview" style="max-height:160px;max-width:100%;object-fit:cover;">
+          </div>
+        </div>
+        <div class="form-group">
           <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">
             <span>Description</span>
             <button type="button" class="ai-btn" id="aiSummarizeBtn" onclick="aiSummarizeEdit()" title="Generate a 2-3 sentence summary from the article body">✨ Summarize</button>
@@ -493,6 +503,16 @@ if (Astro.request) {
         <div class="form-group">
           <label class="form-label">Description</label>
           <input class="form-input" type="text" id="articleEditDescription" maxlength="1000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cover Image URL</label>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <input class="form-input" type="text" id="articleEditImageUrl" placeholder="https://... or /images/..." oninput="updateArticleEditImagePreview(this.value)">
+            <button type="button" class="topbar-btn" style="padding:0.5rem 0.75rem;font-size:0.8rem;" onclick="document.getElementById('articleEditImageUrl').value='';updateArticleEditImagePreview('');">Clear</button>
+          </div>
+          <div id="articleEditImagePreviewContainer" style="display:none;margin-top:0.5rem;border-radius:8px;overflow:hidden;border:1px solid var(--border);max-height:160px;background:#090d16;justify-content:center;">
+            <img id="articleEditImagePreview" src="" alt="Cover preview" style="max-height:160px;max-width:100%;object-fit:cover;">
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">
@@ -1495,6 +1515,19 @@ if (Astro.request) {
     }
   }
 
+  function updateAdminEditImagePreview(url) {
+    const container = document.getElementById('adminEditImagePreviewContainer');
+    const img = document.getElementById('adminEditImagePreview');
+    const val = (url || '').trim();
+    if (val) {
+      img.src = val;
+      container.style.display = 'flex';
+    } else {
+      img.src = '';
+      container.style.display = 'none';
+    }
+  }
+
   // Admin edit submission
   async function editAdminSubmission(id) {
     try {
@@ -1511,6 +1544,8 @@ if (Astro.request) {
       document.getElementById('adminEditTopic').value = s.topic || '';
       document.getElementById('adminEditDescription').value = s.description || '';
       document.getElementById('adminEditBody').value = s.body || '';
+      document.getElementById('adminEditImageUrl').value = s.image || '';
+      updateAdminEditImagePreview(s.image || '');
 
       // Subjects: parse JSON array
       adminEditSelectedSubjects = [];
@@ -1560,6 +1595,8 @@ if (Astro.request) {
     renderAdminEditExamChips();
     document.getElementById('adminEditSubjectSearch').value = '';
     document.getElementById('adminEditExamSearch').value = '';
+    document.getElementById('adminEditImageUrl').value = '';
+    updateAdminEditImagePreview('');
     var dd = document.getElementById('adminEditSubjectDropdown');
     if (dd) dd.style.display = 'none';
     var edd = document.getElementById('adminEditExamDropdown');
@@ -1578,6 +1615,7 @@ if (Astro.request) {
       topic: document.getElementById('adminEditTopic').value.trim(),
       subjects: adminEditSelectedSubjects,
       exams: adminEditSelectedExams,
+      image: document.getElementById('adminEditImageUrl').value.trim(),
       description: document.getElementById('adminEditDescription').value.trim(),
       body: document.getElementById('adminEditBody').value.trim(),
     };
@@ -2343,6 +2381,19 @@ if (Astro.request) {
   }
 
   // ========== EDIT PUBLISHED ARTICLE ==========
+  function updateArticleEditImagePreview(url) {
+    const container = document.getElementById('articleEditImagePreviewContainer');
+    const img = document.getElementById('articleEditImagePreview');
+    const val = (url || '').trim();
+    if (val) {
+      img.src = val;
+      container.style.display = 'flex';
+    } else {
+      img.src = '';
+      container.style.display = 'none';
+    }
+  }
+
   async function editPublishedArticle(path, name) {
     if (!path) { alert('Missing file path.'); return; }
     const statusEl = document.getElementById('articleEditStatus');
@@ -2350,6 +2401,8 @@ if (Astro.request) {
     document.getElementById('articleEditPath').value = path;
     document.getElementById('articleEditTitle').value = '';
     document.getElementById('articleEditDescription').value = '';
+    document.getElementById('articleEditImageUrl').value = '';
+    updateArticleEditImagePreview('');
     document.getElementById('articleEditBody').value = '';
     document.getElementById('articleEditModalOverlay').style.display = 'flex';
     try {
@@ -2358,6 +2411,8 @@ if (Astro.request) {
       if (!resp.ok || data.error) throw new Error(data.error || ('Failed (' + resp.status + ')'));
       document.getElementById('articleEditTitle').value = data.title || '';
       document.getElementById('articleEditDescription').value = data.description || '';
+      document.getElementById('articleEditImageUrl').value = data.image || '';
+      updateArticleEditImagePreview(data.image || '');
       document.getElementById('articleEditBody').value = data.body || '';
       statusEl.textContent = 'Loaded: ' + (name || path);
       statusEl.className = 'alert alert-info';
@@ -2371,6 +2426,8 @@ if (Astro.request) {
 
   function closeArticleEditModal() {
     document.getElementById('articleEditModalOverlay').style.display = 'none';
+    document.getElementById('articleEditImageUrl').value = '';
+    updateArticleEditImagePreview('');
   }
 
   async function aiRewriteArticle(action) {
@@ -2397,6 +2454,7 @@ if (Astro.request) {
           filePath: path,
           title,
           description: document.getElementById('articleEditDescription').value.trim(),
+          image: document.getElementById('articleEditImageUrl').value.trim(),
           body
         })
       });
