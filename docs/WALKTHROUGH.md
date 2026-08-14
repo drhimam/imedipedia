@@ -773,36 +773,93 @@ All KB endpoints require admin/co-admin.
 
 Centralized branded HTML email builder with:
 
-- **Theme:** Indigo (#6366f1 primary, #4f46e5 dark)
+- **Theme:** Indigo (`#6366f1` primary, `#4f46e5` dark)
 - **Layout:** Gradient header → white body → gray footer
 - **All inline CSS** (email client compatible)
 - **Components:**
   - `buildEmail({ subject, preview, content })` — Full HTML document wrapper
-  - `buildButton(text, href)` — CTA button styled with brand color
-  - `buildInfoBox(content, type)` — Info/success/warning/danger boxes
-  - `escapeHTML(str)` — HTML entity escaping
+  - `buildButton(text, href, { fullWidth? })` — CTA button styled with brand color
+  - `buildInfoBox(content, type)` — Info/success/warning/danger alert boxes
+  - `formatSenderAddress(fromEmail, defaultName)` — Formats RFC 5322 sender with display name
+  - `escapeHTML(str)` — HTML entity escaping to prevent injection
 
-### 8.2 Email Templates
+### 8.2 Sender Display Name Formatting (`formatSenderAddress`)
 
-| Template | Trigger | Subject |
-|----------|---------|---------|
-| `buildAcceptanceEmail` | Admin accepts application | "Welcome to iMedipedia — Your Contributor Account is Ready" |
-| `buildRejectionEmail` | Admin rejects application | "Update on Your iMedipedia Contributor Application" |
+When emails were sent with raw email addresses (e.g. `Source: "info@imedipedia.org"`), receiving email clients (Gmail, Apple Mail, Outlook) displayed the sender as **"info"** (the local part before the `@`).
+
+To ensure all outgoing emails appear with the official brand name **"iMedipedia Admin"**, the application uses the `formatSenderAddress` helper across all email dispatchers:
+
+```javascript
+/**
+ * Formats a sender email address with an explicit display name for AWS SES.
+ * When email clients receive `"iMedipedia Admin" <info@imedipedia.org>`,
+ * they show "iMedipedia Admin" as the sender rather than "info".
+ */
+export function formatSenderAddress(fromEmail, defaultName = 'iMedipedia Admin') {
+  if (!fromEmail) return '';
+  const trimmed = fromEmail.trim();
+
+  // If already formatted with angles (e.g. "Name <email@domain.com>")
+  if (trimmed.includes('<') && trimmed.includes('>')) {
+    if (trimmed.startsWith('<')) {
+      return `"${defaultName}" ${trimmed}`;
+    }
+    return trimmed;
+  }
+
+  // Bare email address (e.g. "info@imedipedia.org") -> "iMedipedia Admin" <info@imedipedia.org>
+  return `"${defaultName}" <${trimmed}>`;
+}
+```
+
+#### Sender Name Configuration:
+- **Environment Variable:** `SES_FROM_NAME` (optional; defaults to `"iMedipedia Admin"`)
+- **Sender Address:** `SES_FROM_EMAIL` (e.g. `info@imedipedia.org` or `support@imedipedia.com`)
+- **Resulting SES `Source` Header:** `"iMedipedia Admin" <info@imedipedia.org>`
+
+### 8.3 Email Templates Reference
+
+| Template | Trigger | Subject Format |
+|----------|---------|----------------|
+| `buildAcceptanceEmail` | Admin accepts contributor application | "Welcome to iMedipedia — Your Contributor Account is Ready" |
+| `buildRejectionEmail` | Admin rejects contributor application | "Update on Your iMedipedia Contributor Application" |
+| `buildReviewerApprovedEmail` | Admin approves peer reviewer application | "Welcome to the iMedipedia Peer Review Board 🩺 — Account Credentials" |
 | `buildPasswordResetEmail` | User requests forgot password | "Reset Your iMedipedia Password" |
-| `buildSubmissionReceivedEmail` | Contributor submits article | "We've Received Your Article Submission: "[title]"" |
-| `buildSubmissionApprovedEmail` | Admin approves submission | "Your Article Has Been Approved: "[title]"" |
-| `buildSubmissionRejectedEmail` | Admin rejects submission | "Update on Your Article Submission: "[title]"" |
+| `buildSubmissionReceivedEmail` | Contributor submits article | "We've Received Your Article Submission: \"[title]\"" |
+| `buildSubmissionApprovedEmail` | Admin approves submission | "Your Article Has Been Approved: \"[title]\"" |
+| `buildSubmissionRejectedEmail` | Admin rejects submission | "Update on Your Article Submission: \"[title]\"" |
+| `buildArticleInReviewEmail` | Admin assigns reviewers to manuscript | "Your Manuscript is Under Peer Review: \"[title]\"" |
+| `buildPeerReviewInviteEmail` | Admin assigns peer reviewer | "Peer Review Request: \"[title]\"" |
+| `buildPeerReviewFeedbackEmail` | Reviewer completes review evaluation | "Peer Review Completed: \"[title]\"" |
+| `buildPeerReviewSubmittedAdminEmail` | Reviewer submits evaluation | "[Review Completed] \"[title]\" ([recommendation])" |
+| `buildNewsletterWelcomeEmail` | User subscribes to digest | "Welcome to iMedipedia Weekly Research Digest 📬" |
+| `buildNewsletterEmail` | Admin sends weekly newsletter | "[Custom Newsletter Subject]" |
 
-### 8.3 SES Configuration
+### 8.4 Endpoints Using Email Dispatch
+
+All 10 email-sending API endpoints format the sender name via `formatSenderAddress`:
+
+1. [`/api/admin/email`](file:///d:/antigravity/Medblog/src/pages/api/admin/email.js) — Admin direct email composer
+2. [`/api/admin/application-review`](file:///d:/antigravity/Medblog/src/pages/api/admin/application-review.js) — Contributor onboarding
+3. [`/api/admin/reviewer-applications`](file:///d:/antigravity/Medblog/src/pages/api/admin/reviewer-applications.js) — Reviewer board onboarding & temp credentials
+4. [`/api/admin/assign-reviewers`](file:///d:/antigravity/Medblog/src/pages/api/admin/assign-reviewers.js) — Peer reviewer invitations & author notices
+5. [`/api/admin/review`](file:///d:/antigravity/Medblog/src/pages/api/admin/review.js) — Article acceptance / revision notices
+6. [`/api/admin/newsletter/send`](file:///d:/antigravity/Medblog/src/pages/api/admin/newsletter/send.js) — Weekly newsletter broadcast
+7. [`/api/auth/forgot-password`](file:///d:/antigravity/Medblog/src/pages/api/auth/forgot-password.js) — Password reset link
+8. [`/api/reviewers/assignments`](file:///d:/antigravity/Medblog/src/pages/api/reviewers/assignments.js) — Evaluation submission notices (to author and admin)
+9. [`/api/submissions/create`](file:///d:/antigravity/Medblog/src/pages/api/submissions/create.js) — Article submission receipt
+10. [`/api/subscribe`](file:///d:/antigravity/Medblog/src/pages/api/subscribe.js) — Newsletter subscription confirmation
+
+### 8.5 SES Configuration & Known Workers Issue
 
 - **SDK:** `@aws-sdk/client-ses` v3.600.0
 - **Region:** `AWS_REGION` env var (default: `ca-central-1`)
 - **Credentials:** `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY`
-- **From:** `SES_FROM_EMAIL` env var
+- **From Address:** `SES_FROM_EMAIL` (e.g. `info@imedipedia.org`)
+- **From Display Name:** `SES_FROM_NAME` (default: `"iMedipedia Admin"`)
 
-### 8.4 Known SES Issue
-
-`@aws-sdk/client-ses` v3.600.0 triggers `DOMParser` during response deserialization in Cloudflare Workers. The email IS sent successfully (AWS processes `SendEmailCommand`), but parsing the XML/response fails. Email sending is wrapped in try/catch in all endpoints to prevent this from breaking the API response.
+> **⚠️ Known SES Deserialization Quirk:**
+> `@aws-sdk/client-ses` v3.600.0 triggers `DOMParser` during response deserialization in Cloudflare Workers. The email **is delivered successfully** by Amazon SES (which finishes `SendEmailCommand`), but parsing the XML response body inside the Worker runtime throws a non-fatal parsing error. All endpoints wrap SES calls in safe `try/catch` blocks so that email delivery never blocks user workflows.
 
 ---
 
@@ -925,7 +982,8 @@ Set in Cloudflare Dashboard → Pages → Settings → Environment variables. Th
 | `AWS_REGION` | Yes (for SES) | AWS SES region (e.g., `ca-central-1`) |
 | `AWS_ACCESS_KEY_ID` | Yes (for SES) | AWS IAM access key |
 | `AWS_SECRET_ACCESS_KEY` | Yes (for SES) | AWS IAM secret key |
-| `SES_FROM_EMAIL` | Yes (for SES) | Verified sender email |
+| `SES_FROM_EMAIL` | Yes (for SES) | Verified sender email address (e.g. `info@imedipedia.org`) |
+| `SES_FROM_NAME` | Optional | Sender display name formatted in email clients (default: `iMedipedia Admin`) |
 | `R2_PUBLIC_URL` | Yes | Public R2 bucket URL |
 | `R2_ACCOUNT_ID` | Yes | Cloudflare account ID |
 | `R2_ACCESS_KEY_ID` | Optional | S3-compatible R2 access key (for local dev fallback) |
