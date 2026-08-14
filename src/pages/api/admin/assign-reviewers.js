@@ -233,3 +233,55 @@ export async function POST({ request, locals }) {
     });
   }
 }
+
+/**
+ * DELETE /api/admin/assign-reviewers
+ * Body: { assignmentId }
+ */
+export async function DELETE({ request, locals }) {
+  const db = locals.runtime?.env?.D1_DB || locals.runtime?.env?.DB;
+  if (!db) {
+    return new Response(JSON.stringify({ error: "D1 database connection binding is missing." }), {
+      status: 500, headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const user = await getSessionUser(db, request);
+  if (!user || !isAdmin(user)) {
+    return new Response(JSON.stringify({ error: "Forbidden." }), {
+      status: 403, headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  let body;
+  try { body = await request.json(); } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body." }), {
+      status: 400, headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const { assignmentId } = body;
+  if (!assignmentId) {
+    return new Response(JSON.stringify({ error: "assignmentId is required." }), {
+      status: 400, headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  try {
+    // Delete peer review if exists
+    await db.prepare("DELETE FROM peer_reviews WHERE assignment_id = ?").bind(assignmentId).run();
+    // Delete assignment
+    await db.prepare("DELETE FROM peer_review_assignments WHERE id = ?").bind(assignmentId).run();
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: "Review assignment deleted successfully."
+    }), {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: `Deletion failed: ${err.message}` }), {
+      status: 500, headers: { "Content-Type": "application/json" }
+    });
+  }
+}

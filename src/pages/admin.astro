@@ -3463,7 +3463,49 @@ if (Astro.request) {
 
   // ========== PEER REVIEWERS MANAGEMENT ==========
   let loadedReviewersRoster = [];
-  let loadedReviewAssignments = [];
+  let _allReviewAssignments = [];
+  let currentReviewStatusPage = 1;
+  let currentReviewStatusSearch = '';
+
+  let _allReviewerApplications = [];
+  let currentReviewerAppsPage = 1;
+  let currentReviewerAppsSearch = '';
+
+  let _allActiveReviewers = [];
+  let currentActiveReviewersPage = 1;
+  let currentActiveReviewersSearch = '';
+
+  // Helper: Numbered Pagination Controls ([ < Prev ] [ 1 ] [ 2 ] [ 3 ] [ Next > ])
+  function renderNumberedPagination(currentPage, totalPages, changeFnName) {
+    if (totalPages <= 1) return '';
+    let html = `<div class="pagination-ctrl" style="display:flex;gap:0.35rem;align-items:center;justify-content:flex-end;margin-top:1.25rem;flex-wrap:wrap;">`;
+    html += `<button class="page-btn" onclick="${changeFnName}(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>&larr; Prev</button>`;
+
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    if (endPage - startPage < 4) {
+      startPage = Math.max(1, endPage - 4);
+    }
+
+    if (startPage > 1) {
+      html += `<button class="page-btn" onclick="${changeFnName}(1)">1</button>`;
+      if (startPage > 2) html += `<span style="padding:0 0.25rem;color:var(--muted);font-size:0.85rem;">...</span>`;
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+      const isActive = p === currentPage;
+      html += `<button class="page-btn ${isActive ? 'active' : ''}" style="${isActive ? 'background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700;' : ''}" onclick="${changeFnName}(${p})">${p}</button>`;
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) html += `<span style="padding:0 0.25rem;color:var(--muted);font-size:0.85rem;">...</span>`;
+      html += `<button class="page-btn" onclick="${changeFnName}(${totalPages})">${totalPages}</button>`;
+    }
+
+    html += `<button class="page-btn" onclick="${changeFnName}(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>Next &rarr;</button>`;
+    html += `</div>`;
+    return html;
+  }
 
   window.switchReviewerSubtab = function(tabName) {
     const subtabs = ['status', 'apps', 'board'];
@@ -3486,6 +3528,18 @@ if (Astro.request) {
     loadActiveReviewers();
   };
 
+  // --- Subtab 1: Review Status & Evaluations ---
+  window.handleReviewStatusSearch = function() {
+    currentReviewStatusSearch = (document.getElementById('reviewStatusSearch')?.value || '').trim();
+    currentReviewStatusPage = 1;
+    renderReviewStatusTable();
+  };
+
+  window.changeReviewStatusPage = function(page) {
+    currentReviewStatusPage = page;
+    renderReviewStatusTable();
+  };
+
   async function loadReviewStatusTable() {
     const container = document.getElementById('reviewStatusTable');
     if (!container) return;
@@ -3494,173 +3548,241 @@ if (Astro.request) {
     try {
       const resp = await fetch('/api/admin/assign-reviewers');
       const data = await resp.json();
-      loadedReviewAssignments = data.assignments || [];
+      _allReviewAssignments = data.assignments || [];
 
       // Update badge count
       const badgeEl = document.getElementById('evalCountBadge');
-      if (badgeEl) badgeEl.textContent = loadedReviewAssignments.length;
+      if (badgeEl) badgeEl.textContent = _allReviewAssignments.length;
 
-      if (!loadedReviewAssignments.length) {
-        container.innerHTML = '<p style="color:var(--muted);padding:1.5rem 0;text-align:center;">No manuscripts have been assigned for peer review yet. Click <strong>"🩺 Send to Reviewer(s)"</strong> in the Submissions tab to initiate reviews.</p>';
-        return;
-      }
-
-      const recColors = {
-        accept: '#10b981',
-        minor_revisions: '#f59e0b',
-        major_revisions: '#ea580c',
-        reject: '#ef4444'
-      };
-      const recLabels = {
-        accept: '✅ Accept',
-        minor_revisions: '✏️ Minor Rev',
-        major_revisions: '🔄 Major Rev',
-        reject: '❌ Reject'
-      };
-
-      let html = `<table class="data-table"><thead><tr>
-        <th>Manuscript</th><th>Author</th><th>Assigned Reviewer</th><th>Assigned</th><th>Status</th><th>Recommendation</th><th>Scores (Acc/Str/Ev)</th><th>Actions</th>
-      </tr></thead><tbody>`;
-
-      loadedReviewAssignments.forEach(a => {
-        const isDone = a.assignment_status === 'completed' || !!a.recommendation;
-        const recBadge = isDone && a.recommendation
-          ? `<span class="badge" style="background:${recColors[a.recommendation] ? recColors[a.recommendation] + '22' : 'rgba(99,102,241,0.15)'};color:${recColors[a.recommendation] || 'var(--accent)'};font-weight:700;">${recLabels[a.recommendation] || a.recommendation}</span>`
-          : '<span style="color:var(--muted);font-size:0.85rem;">—</span>';
-
-        const scoresDisplay = isDone && (a.clinical_accuracy_score || a.structure_score || a.evidence_score)
-          ? `<span style="font-family:monospace;font-size:0.88rem;font-weight:600;">${a.clinical_accuracy_score || '—'} / ${a.structure_score || '—'} / ${a.evidence_score || '—'}</span>`
-          : '<span style="color:var(--muted);font-size:0.85rem;">—</span>';
-
-        html += `
-        <tr>
-          <td>
-            <strong class="truncate" style="max-width:200px;display:block;" title="${esc(a.submission_title || 'Manuscript')}">${esc(a.submission_title || 'Manuscript')}</strong>
-            <span style="font-size:0.75rem;color:var(--muted);">${esc(a.submission_type || 'general')} ${a.submission_topic ? '• ' + esc(a.submission_topic) : ''}</span>
-          </td>
-          <td><span class="truncate" style="max-width:130px;display:block;" title="${esc(a.submission_author || '—')}">${esc(a.submission_author || '—')}</span></td>
-          <td>
-            <strong class="truncate" style="max-width:150px;display:block;" title="${esc(a.reviewer_name || a.reviewer_username || 'Reviewer')}">${esc(a.reviewer_name || a.reviewer_username || 'Reviewer')}</strong>
-            <span style="font-size:0.75rem;color:var(--muted);">${esc(a.reviewer_email || '')}</span>
-          </td>
-          <td style="font-size:0.85rem;white-space:nowrap;">${a.assigned_at ? new Date(a.assigned_at * 1000).toLocaleDateString() : '—'}</td>
-          <td>
-            <span class="badge" style="background:${isDone ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)'};color:${isDone ? '#10b981' : '#f59e0b'};">
-              ${isDone ? '✅ Completed' : '⏳ In Review'}
-            </span>
-          </td>
-          <td>${recBadge}</td>
-          <td>${scoresDisplay}</td>
-          <td style="white-space:nowrap;">
-            <button class="action-btn" style="background:rgba(99,102,241,0.15);color:var(--accent);border:1px solid rgba(99,102,241,0.3);padding:0.35rem 0.65rem;border-radius:6px;font-size:0.8rem;cursor:pointer;" onclick="viewPeerReviews(${a.submission_id}, '${esc(a.submission_title || '').replace(/'/g, "\\'")}')" title="View Full Review Scorecard & Comments">
-              👁 Scorecard
-            </button>
-            ${a.reviewer_email ? `
-              <button class="action-btn" style="background:rgba(255,255,255,0.06);color:var(--text);border:1px solid var(--border);padding:0.35rem 0.65rem;border-radius:6px;font-size:0.8rem;cursor:pointer;margin-left:0.25rem;" onclick="openEmailModal('${esc(a.reviewer_email)}')" title="Send email to reviewer">
-                ✉️
-              </button>
-            ` : ''}
-          </td>
-        </tr>`;
-      });
-
-      html += `</tbody></table>`;
-      container.innerHTML = html;
+      renderReviewStatusTable();
     } catch (err) {
       container.innerHTML = `<p class="alert alert-error">Error loading review status: ${esc(err.message)}</p>`;
     }
   }
 
+  function renderReviewStatusTable() {
+    const container = document.getElementById('reviewStatusTable');
+    if (!container) return;
+
+    const filtered = _allReviewAssignments.filter(a => {
+      if (!currentReviewStatusSearch) return true;
+      const q = currentReviewStatusSearch.toLowerCase();
+      return (a.submission_title || '').toLowerCase().includes(q) ||
+             (a.submission_author || '').toLowerCase().includes(q) ||
+             (a.submission_topic || '').toLowerCase().includes(q) ||
+             (a.reviewer_name || '').toLowerCase().includes(q) ||
+             (a.reviewer_email || '').toLowerCase().includes(q) ||
+             (a.recommendation || '').toLowerCase().includes(q) ||
+             (a.assignment_status || '').toLowerCase().includes(q);
+    });
+
+    const limit = 10;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / limit));
+    if (currentReviewStatusPage > totalPages) currentReviewStatusPage = totalPages;
+    const startIndex = (currentReviewStatusPage - 1) * limit;
+    const pageItems = filtered.slice(startIndex, startIndex + limit);
+
+    let html = `
+      <div class="table-controls">
+        <input type="text" id="reviewStatusSearch" class="table-search" placeholder="Search evaluations (title, author, reviewer, recommendation)..." value="${esc(currentReviewStatusSearch)}" onkeyup="if(event.key==='Enter') handleReviewStatusSearch()">
+        <div style="font-size:0.85rem;color:var(--muted);">Showing ${pageItems.length} of ${filtered.length} assignments</div>
+      </div>
+    `;
+
+    if (!pageItems.length) {
+      html += '<p style="color:var(--muted);padding:1.5rem 0;text-align:center;">No matching manuscript review assignments found.</p>';
+      container.innerHTML = html;
+      return;
+    }
+
+    const recColors = {
+      accept: '#10b981',
+      minor_revisions: '#f59e0b',
+      major_revisions: '#ea580c',
+      reject: '#ef4444'
+    };
+    const recLabels = {
+      accept: '✅ Accept',
+      minor_revisions: '✏️ Minor Rev',
+      major_revisions: '🔄 Major Rev',
+      reject: '❌ Reject'
+    };
+
+    html += `<table class="data-table"><thead><tr>
+      <th>Manuscript</th><th>Author</th><th>Assigned Reviewer</th><th>Assigned</th><th>Status</th><th>Recommendation</th><th>Scores</th><th>Actions</th>
+    </tr></thead><tbody>`;
+
+    pageItems.forEach(a => {
+      const isDone = a.assignment_status === 'completed' || !!a.recommendation;
+      const recBadge = isDone && a.recommendation
+        ? `<span class="badge" style="background:${recColors[a.recommendation] ? recColors[a.recommendation] + '22' : 'rgba(99,102,241,0.15)'};color:${recColors[a.recommendation] || 'var(--accent)'};font-weight:700;">${recLabels[a.recommendation] || a.recommendation}</span>`
+        : '<span style="color:var(--muted);font-size:0.85rem;">—</span>';
+
+      const scoresDisplay = isDone && (a.clinical_accuracy_score || a.structure_score || a.evidence_score)
+        ? `<span style="font-family:monospace;font-size:0.88rem;font-weight:600;">${a.clinical_accuracy_score || '—'} / ${a.structure_score || '—'} / ${a.evidence_score || '—'}</span>`
+        : '<span style="color:var(--muted);font-size:0.85rem;">—</span>';
+
+      html += `
+      <tr>
+        <td>
+          <strong class="truncate" style="max-width:200px;display:block;" title="${esc(a.submission_title || 'Manuscript')}">${esc(a.submission_title || 'Manuscript')}</strong>
+          <span style="font-size:0.75rem;color:var(--muted);">${esc(a.submission_type || 'general')} ${a.submission_topic ? '• ' + esc(a.submission_topic) : ''}</span>
+        </td>
+        <td><span class="truncate" style="max-width:130px;display:block;" title="${esc(a.submission_author || '—')}">${esc(a.submission_author || '—')}</span></td>
+        <td>
+          <strong class="truncate" style="max-width:150px;display:block;" title="${esc(a.reviewer_name || a.reviewer_username || 'Reviewer')}">${esc(a.reviewer_name || a.reviewer_username || 'Reviewer')}</strong>
+          <span style="font-size:0.75rem;color:var(--muted);">${esc(a.reviewer_email || '')}</span>
+        </td>
+        <td style="font-size:0.85rem;white-space:nowrap;">${a.assigned_at ? new Date(a.assigned_at * 1000).toLocaleDateString() : '—'}</td>
+        <td>
+          <span class="badge" style="background:${isDone ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)'};color:${isDone ? '#10b981' : '#f59e0b'};">
+            ${isDone ? '✅ Completed' : '⏳ In Review'}
+          </span>
+        </td>
+        <td>${recBadge}</td>
+        <td>${scoresDisplay}</td>
+        <td>
+          <div class="dropdown">
+            <button onclick="toggleDropdown('rev-status-drop-${a.id}')" class="dropdown-btn">⋮</button>
+            <div id="rev-status-drop-${a.id}" class="dropdown-content">
+              <button onclick="viewPeerReviews(${a.submission_id}, '${esc(a.submission_title || '').replace(/'/g, "\\'")}')">👁 View Scorecard</button>
+              ${a.reviewer_email ? `<button onclick="openEmailModal('${esc(a.reviewer_email)}')">✉️ Email Reviewer</button>` : ''}
+              <button onclick="deleteReviewAssignment(${a.id}, '${esc(a.submission_title || '').replace(/'/g, "\\'")}')" style="color:#ef4444;">🗑 Delete Assignment</button>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    html += renderNumberedPagination(currentReviewStatusPage, totalPages, 'changeReviewStatusPage');
+    container.innerHTML = html;
+  }
+
+  window.deleteReviewAssignment = async function(assignmentId, manuscriptTitle) {
+    if (!confirm(`Are you sure you want to delete this peer reviewer assignment for "${manuscriptTitle}"?`)) return;
+    try {
+      const resp = await fetch('/api/admin/assign-reviewers', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignmentId })
+      });
+      const data = await resp.json();
+      alert(data.message || data.error);
+      loadReviewStatusTable();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
+
+  // --- Subtab 2: Reviewer Applications ---
+  window._loadedReviewerAppsMap = {};
+
+  window.handleReviewerAppsSearch = function() {
+    currentReviewerAppsSearch = (document.getElementById('reviewerAppsSearch')?.value || '').trim();
+    currentReviewerAppsPage = 1;
+    renderReviewerApplications();
+  };
+
+  window.changeReviewerAppsPage = function(page) {
+    currentReviewerAppsPage = page;
+    renderReviewerApplications();
+  };
+
   async function loadReviewerApplications() {
     const container = document.getElementById('reviewerAppsTable');
+    if (!container) return;
     container.innerHTML = '<p style="color:var(--muted);">Loading reviewer applications...</p>';
+
     try {
       const resp = await fetch('/api/admin/reviewer-applications');
       const data = await resp.json();
-      const apps = data.applications || [];
+      _allReviewerApplications = data.applications || [];
 
       // Update badge count with pending applications
-      const pendingCount = apps.filter(a => a.status === 'pending').length;
+      const pendingCount = _allReviewerApplications.filter(a => a.status === 'pending').length;
       const appsBadgeEl = document.getElementById('appsCountBadge');
       if (appsBadgeEl) appsBadgeEl.textContent = pendingCount;
 
-      if (!apps.length) {
-        container.innerHTML = '<p style="color:var(--muted);padding:1rem 0;">No reviewer applications found.</p>';
-        return;
-      }
-
-      let html = `<table class="data-table"><thead><tr>
-        <th>Applicant</th><th>Email</th><th>Affiliation</th><th>Specialties</th><th>Status</th><th>Date</th><th>Actions</th>
-      </tr></thead><tbody>`;
-
-      apps.forEach(app => {
-        let specs = [];
-        try { specs = JSON.parse(app.specialties || '[]'); } catch { specs = [app.specialties]; }
-
-        html += `
-        <tr>
-          <td><strong class="truncate" style="max-width:160px;" title="${esc(app.name)}">${esc(app.name)}</strong></td>
-          <td><span class="truncate" style="max-width:160px;" title="${esc(app.email)}">${esc(app.email)}</span></td>
-          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(app.title_affiliation)}">${esc(app.title_affiliation)}</td>
-          <td><span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent);">${esc(specs.slice(0, 2).join(', '))}</span></td>
-          <td><span class="badge badge-${app.status}">${app.status}</span></td>
-          <td>${new Date(app.created_at * 1000).toLocaleDateString()}</td>
-          <td>
-            ${app.status === 'pending' ? `
-              <button class="action-btn btn-approve" onclick="reviewReviewerApp(${app.id}, 'approve')">✅ Accept</button>
-              <button class="action-btn btn-reject" onclick="reviewReviewerApp(${app.id}, 'reject')">❌ Reject</button>
-            ` : `<span style="font-size:0.8rem;color:var(--muted);">Processed</span>`}
-          </td>
-        </tr>`;
-      });
-      html += `</tbody></table>`;
-      container.innerHTML = html;
+      renderReviewerApplications();
     } catch (e) {
       container.innerHTML = `<p class="alert alert-error">Error: ${esc(e.message)}</p>`;
     }
   }
 
-  async function loadActiveReviewers() {
-    const container = document.getElementById('activeReviewersTable');
-    container.innerHTML = '<p style="color:var(--muted);">Loading active peer review board...</p>';
-    try {
-      const resp = await fetch('/api/reviewers/apply');
-      const data = await resp.json();
-      loadedReviewersRoster = data.reviewers || [];
+  function renderReviewerApplications() {
+    const container = document.getElementById('reviewerAppsTable');
+    if (!container) return;
 
-      // Update badge count
-      const boardBadgeEl = document.getElementById('boardCountBadge');
-      if (boardBadgeEl) boardBadgeEl.textContent = loadedReviewersRoster.length;
+    window._loadedReviewerAppsMap = {};
+    _allReviewerApplications.forEach(app => { window._loadedReviewerAppsMap[app.id] = app; });
 
-      if (!loadedReviewersRoster.length) {
-        container.innerHTML = '<p style="color:var(--muted);padding:1rem 0;">No active peer reviewers found.</p>';
-        return;
-      }
+    const filtered = _allReviewerApplications.filter(app => {
+      if (!currentReviewerAppsSearch) return true;
+      const q = currentReviewerAppsSearch.toLowerCase();
+      return (app.name || '').toLowerCase().includes(q) ||
+             (app.email || '').toLowerCase().includes(q) ||
+             (app.title_affiliation || '').toLowerCase().includes(q) ||
+             (app.specialties || '').toLowerCase().includes(q) ||
+             (app.status || '').toLowerCase().includes(q);
+    });
 
-      let html = `<table class="data-table"><thead><tr>
-        <th>Reviewer</th><th>Email</th><th>Role</th><th>Affiliation</th><th>Specialty</th>
-      </tr></thead><tbody>`;
+    const limit = 10;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / limit));
+    if (currentReviewerAppsPage > totalPages) currentReviewerAppsPage = totalPages;
+    const startIndex = (currentReviewerAppsPage - 1) * limit;
+    const pageItems = filtered.slice(startIndex, startIndex + limit);
 
-      loadedReviewersRoster.forEach(r => {
-        let aff = '';
-        try { aff = JSON.parse(r.affiliation || '[]').join(', '); } catch { aff = r.affiliation || ''; }
-        let spec = '';
-        try { spec = JSON.parse(r.specialty || '[]').join(', '); } catch { spec = r.specialty || ''; }
+    let html = `
+      <div class="table-controls">
+        <input type="text" id="reviewerAppsSearch" class="table-search" placeholder="Search reviewer applications (name, email, specialty)..." value="${esc(currentReviewerAppsSearch)}" onkeyup="if(event.key==='Enter') handleReviewerAppsSearch()">
+        <div style="font-size:0.85rem;color:var(--muted);">Showing ${pageItems.length} of ${filtered.length} applications</div>
+      </div>
+    `;
 
-        html += `
-        <tr>
-          <td><strong class="truncate" style="max-width:180px;" title="${esc(r.full_name || r.username)}">${esc(r.full_name || r.username)}</strong></td>
-          <td>${esc(r.email || '—')}</td>
-          <td><span class="badge badge-approved">${esc(r.role)}</span></td>
-          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(aff || '—')}">${esc(aff || '—')}</td>
-          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(spec || '—')}">${esc(spec || '—')}</td>
-        </tr>`;
-      });
-      html += `</tbody></table>`;
+    if (!pageItems.length) {
+      html += '<p style="color:var(--muted);padding:1.5rem 0;text-align:center;">No matching reviewer applications found.</p>';
       container.innerHTML = html;
-    } catch (e) {
-      container.innerHTML = `<p class="alert alert-error">Error: ${esc(e.message)}</p>`;
+      return;
     }
+
+    html += `<table class="data-table"><thead><tr>
+      <th>Applicant</th><th>Email</th><th>Affiliation</th><th>Specialties</th><th>Status</th><th>Date</th><th>Actions</th>
+    </tr></thead><tbody>`;
+
+    pageItems.forEach(app => {
+      let specs = [];
+      try { specs = JSON.parse(app.specialties || '[]'); } catch { specs = [app.specialties]; }
+
+      html += `
+      <tr>
+        <td><strong class="truncate" style="max-width:160px;" title="${esc(app.name)}">${esc(app.name)}</strong></td>
+        <td><span class="truncate" style="max-width:160px;" title="${esc(app.email)}">${esc(app.email)}</span></td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(app.title_affiliation)}">${esc(app.title_affiliation)}</td>
+        <td><span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent);">${esc(specs.slice(0, 2).join(', '))}</span></td>
+        <td><span class="badge badge-${app.status}">${app.status}</span></td>
+        <td>${new Date(app.created_at * 1000).toLocaleDateString()}</td>
+        <td>
+          <div class="dropdown">
+            <button onclick="toggleDropdown('rev-app-drop-${app.id}')" class="dropdown-btn">⋮</button>
+            <div id="rev-app-drop-${app.id}" class="dropdown-content">
+              ${app.status === 'pending' ? `
+                <button onclick="reviewReviewerApp(${app.id}, 'approve')">✅ Accept</button>
+                <button onclick="reviewReviewerApp(${app.id}, 'reject')">❌ Reject</button>
+              ` : `<button disabled style="opacity:0.5;cursor:default;">Processed</button>`}
+              <button onclick="openEmailModal('${esc(app.email)}')">✉️ Send Email</button>
+              <button onclick="downloadReviewerAppAsText(${app.id})">📄 Download Text</button>
+              <button onclick="downloadReviewerAppAsPdf(${app.id})">📑 Download PDF</button>
+              <button onclick="deleteReviewerApp(${app.id}, '${esc(app.name).replace(/'/g, "\\'")}')" style="color:#ef4444;">🗑 Delete</button>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    html += renderNumberedPagination(currentReviewerAppsPage, totalPages, 'changeReviewerAppsPage');
+    container.innerHTML = html;
   }
 
   window.reviewReviewerApp = async function(applicationId, action) {
@@ -3674,6 +3796,155 @@ if (Astro.request) {
       const data = await resp.json();
       alert(data.message || data.error);
       loadReviewersTab();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
+
+  window.deleteReviewerApp = async function(id, name) {
+    if (!confirm(`Are you sure you want to delete the reviewer application for "${name}"?`)) return;
+    try {
+      const resp = await fetch('/api/admin/reviewer-applications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      const data = await resp.json();
+      alert(data.message || data.error);
+      loadReviewerApplications();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
+
+  window.downloadReviewerAppAsText = function(id) {
+    const app = window._loadedReviewerAppsMap[id];
+    if (!app) return;
+    const content = `Peer Reviewer Application\n\nName: ${app.name}\nEmail: ${app.email}\nAffiliation: ${app.title_affiliation}\nSpecialties: ${app.specialties}\nQualifications: ${app.qualifications}\nStatus: ${app.status}\nAdmin Notes: ${app.admin_notes || 'None'}\nDate: ${new Date(app.created_at * 1000).toLocaleString()}`;
+    downloadTextFile(`Reviewer-App-${app.name}.txt`, content);
+  };
+
+  window.downloadReviewerAppAsPdf = function(id) {
+    const app = window._loadedReviewerAppsMap[id];
+    if (!app) return;
+    const content = `<h1>Peer Reviewer Application: ${esc(app.name)}</h1><p><strong>Email:</strong> ${esc(app.email)}</p><p><strong>Affiliation:</strong> ${esc(app.title_affiliation)}</p><p><strong>Specialties:</strong> ${esc(app.specialties)}</p><p><strong>Status:</strong> ${esc(app.status)}</p><h3>Qualifications & Clinical Background</h3><p>${esc(app.qualifications || 'N/A').replace(/\n/g, '<br>')}</p><p><strong>Admin Notes:</strong> ${esc(app.admin_notes || 'None')}</p>`;
+    generatePdfFromHtml(`Reviewer Application: ${app.name}`, content);
+  };
+
+  // --- Subtab 3: Active Review Board ---
+  window.handleActiveReviewersSearch = function() {
+    currentActiveReviewersSearch = (document.getElementById('activeReviewersSearch')?.value || '').trim();
+    currentActiveReviewersPage = 1;
+    renderActiveReviewers();
+  };
+
+  window.changeActiveReviewersPage = function(page) {
+    currentActiveReviewersPage = page;
+    renderActiveReviewers();
+  };
+
+  async function loadActiveReviewers() {
+    const container = document.getElementById('activeReviewersTable');
+    if (!container) return;
+    container.innerHTML = '<p style="color:var(--muted);">Loading active peer review board...</p>';
+    try {
+      const resp = await fetch('/api/reviewers/apply');
+      const data = await resp.json();
+      _allActiveReviewers = data.reviewers || [];
+      loadedReviewersRoster = _allActiveReviewers;
+
+      // Update badge count
+      const boardBadgeEl = document.getElementById('boardCountBadge');
+      if (boardBadgeEl) boardBadgeEl.textContent = _allActiveReviewers.length;
+
+      renderActiveReviewers();
+    } catch (e) {
+      container.innerHTML = `<p class="alert alert-error">Error: ${esc(e.message)}</p>`;
+    }
+  }
+
+  function renderActiveReviewers() {
+    const container = document.getElementById('activeReviewersTable');
+    if (!container) return;
+
+    const filtered = _allActiveReviewers.filter(r => {
+      if (!currentActiveReviewersSearch) return true;
+      const q = currentActiveReviewersSearch.toLowerCase();
+      return (r.full_name || '').toLowerCase().includes(q) ||
+             (r.username || '').toLowerCase().includes(q) ||
+             (r.email || '').toLowerCase().includes(q) ||
+             (r.affiliation || '').toLowerCase().includes(q) ||
+             (r.specialty || '').toLowerCase().includes(q);
+    });
+
+    const limit = 10;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / limit));
+    if (currentActiveReviewersPage > totalPages) currentActiveReviewersPage = totalPages;
+    const startIndex = (currentActiveReviewersPage - 1) * limit;
+    const pageItems = filtered.slice(startIndex, startIndex + limit);
+
+    let html = `
+      <div class="table-controls">
+        <input type="text" id="activeReviewersSearch" class="table-search" placeholder="Search active reviewers (name, email, specialty)..." value="${esc(currentActiveReviewersSearch)}" onkeyup="if(event.key==='Enter') handleActiveReviewersSearch()">
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <span style="font-size:0.85rem;color:var(--muted);">Showing ${pageItems.length} of ${filtered.length} reviewers</span>
+          <button class="btn btn-sm" onclick="openEmailModal('all')">✉️ Email All Reviewers</button>
+        </div>
+      </div>
+    `;
+
+    if (!pageItems.length) {
+      html += '<p style="color:var(--muted);padding:1.5rem 0;text-align:center;">No matching active reviewers found.</p>';
+      container.innerHTML = html;
+      return;
+    }
+
+    html += `<table class="data-table"><thead><tr>
+      <th>Reviewer</th><th>Email</th><th>Role</th><th>Affiliation</th><th>Specialty</th><th>Actions</th>
+    </tr></thead><tbody>`;
+
+    pageItems.forEach(r => {
+      let aff = '';
+      try { aff = JSON.parse(r.affiliation || '[]').join(', '); } catch { aff = r.affiliation || ''; }
+      let spec = '';
+      try { spec = JSON.parse(r.specialty || '[]').join(', '); } catch { spec = r.specialty || ''; }
+
+      html += `
+      <tr>
+        <td><strong class="truncate" style="max-width:180px;" title="${esc(r.full_name || r.username)}">${esc(r.full_name || r.username)}</strong></td>
+        <td>${esc(r.email || '—')}</td>
+        <td><span class="badge badge-approved">${esc(r.role)}</span></td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(aff || '—')}">${esc(aff || '—')}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(spec || '—')}">${esc(spec || '—')}</td>
+        <td>
+          <div class="dropdown">
+            <button onclick="toggleDropdown('rev-board-drop-${r.id}')" class="dropdown-btn">⋮</button>
+            <div id="rev-board-drop-${r.id}" class="dropdown-content">
+              <button onclick="viewUser('${r.id}', 'view')">👁 View Profile</button>
+              ${r.email ? `<button onclick="openEmailModal('${esc(r.email)}')">✉️ Send Email</button>` : ''}
+              <button onclick="deleteActiveReviewer('${r.id}', '${esc(r.full_name || r.username).replace(/'/g, "\\'")}')" style="color:#ef4444;">🗑 Delete Reviewer</button>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    html += renderNumberedPagination(currentActiveReviewersPage, totalPages, 'changeActiveReviewersPage');
+    container.innerHTML = html;
+  }
+
+  window.deleteActiveReviewer = async function(id, name) {
+    if (!confirm(`Are you sure you want to remove reviewer "${name}" from the Peer Review Board?`)) return;
+    try {
+      const resp = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      const data = await resp.json();
+      alert(data.message || data.error);
+      loadActiveReviewers();
     } catch (e) {
       alert('Error: ' + e.message);
     }
