@@ -170,9 +170,8 @@ export async function POST({ request, locals }) {
           await db.prepare("UPDATE users SET role = 'reviewer' WHERE id = ?").bind(userId).run();
         }
       } else {
-        // Create new reviewer user
-        const baseUsername = app.name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 12) || 'rev';
-        username = `${baseUsername}_${Math.floor(100 + Math.random() * 900)}`;
+        // Create new reviewer user with username = email
+        username = app.email.toLowerCase().trim();
         password = generatePassword();
         const passwordHash = await hashPassword(password);
         userId = crypto.randomUUID().replace(/-/g, '');
@@ -190,7 +189,7 @@ export async function POST({ request, locals }) {
           username,
           passwordHash,
           app.name,
-          app.email,
+          app.email.toLowerCase().trim(),
           JSON.stringify(affArray),
           JSON.stringify(specArray),
           app.qualifications || ''

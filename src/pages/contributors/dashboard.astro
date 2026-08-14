@@ -418,22 +418,47 @@ import exams from '../../data/exams.json';
       }
 
       // Update sidebar
-      document.getElementById('sideName').textContent = user.username;
-      document.getElementById('sideRole').textContent = user.role || 'Contributor';
-      var initial = user.username.charAt(0).toUpperCase();
+      document.getElementById('sideName').textContent = user.full_name || user.username;
+      document.getElementById('sideRole').textContent = user.role === 'reviewer' ? 'Peer Reviewer' : (user.role || 'Contributor');
+      var initial = (user.full_name || user.username).charAt(0).toUpperCase();
       document.getElementById('avatarInitial').textContent = initial;
 
-      // Show Assigned Reviews Tab if user is a reviewer or admin
-      var isReviewer = user.role === 'reviewer' || user.role === 'admin' || user.role === 'co-admin';
+      var isReviewer = user.role === 'reviewer';
+      var isAdmin = user.role === 'admin' || user.role === 'co-admin';
       var reviewsTabBtn = document.getElementById('reviewsTabBtn');
-      if (isReviewer && reviewsTabBtn) {
-        reviewsTabBtn.style.display = 'block';
+      var submitTabBtn = document.getElementById('submitTabBtn');
+      var submissionsTabBtn = document.getElementById('submissionsTabBtn');
+
+      if (isReviewer) {
+        // Pure reviewer: Hide Contributor authoring tabs due to conflict of interest
+        if (submitTabBtn) submitTabBtn.style.display = 'none';
+        if (submissionsTabBtn) submissionsTabBtn.style.display = 'none';
+        if (reviewsTabBtn) reviewsTabBtn.style.display = 'block';
+
+        // Adjust overview text & hide author statistics
+        var overviewTitle = document.querySelector('#overviewPanel .panel-title');
+        var overviewDesc = document.querySelector('#overviewPanel .panel-desc');
+        var statsGrid = document.querySelector('#overviewPanel .stats-grid');
+        if (overviewTitle) overviewTitle.textContent = 'Peer Reviewer Dashboard';
+        if (overviewDesc) overviewDesc.textContent = 'Welcome back to the iMedipedia Peer Review Portal. Evaluate assigned manuscripts, assess scientific validity, and guide medical authors.';
+        if (statsGrid) statsGrid.style.display = 'none';
+
+        // Default direct to reviews tab for reviewers
+        setTimeout(function() {
+          if (reviewsTabBtn) reviewsTabBtn.click();
+        }, 50);
+      } else if (isAdmin) {
+        // Admins can see everything
+        if (reviewsTabBtn) reviewsTabBtn.style.display = 'block';
+      } else {
+        // Regular contributor
+        if (reviewsTabBtn) reviewsTabBtn.style.display = 'none';
       }
 
       // Check URL parameters for tab
       var urlParams = new URLSearchParams(window.location.search);
       var initialTab = urlParams.get('tab');
-      if (initialTab && initialTab === 'reviews' && isReviewer) {
+      if (initialTab && initialTab === 'reviews' && (isReviewer || isAdmin)) {
         setTimeout(function() {
           if (reviewsTabBtn) reviewsTabBtn.click();
         }, 100);
@@ -1337,8 +1362,31 @@ import exams from '../../data/exams.json';
           coverContainer.style.display = 'none';
         }
 
+        function renderMarkdownToHtml(md) {
+          if (!md) return '<p style="color:var(--muted);font-style:italic;">No content provided.</p>';
+          // Sanitize special HTML chars first
+          var escaped = escapeHTML(md);
+          // Headings
+          escaped = escaped.replace(/^### (.*$)/gim, '<h4 style="color:var(--text);margin:1.25rem 0 0.5rem 0;font-size:1.1rem;">$1</h4>');
+          escaped = escaped.replace(/^## (.*$)/gim, '<h3 style="color:var(--text);margin:1.5rem 0 0.6rem 0;font-size:1.25rem;border-bottom:1px solid var(--border);padding-bottom:4px;">$1</h3>');
+          escaped = escaped.replace(/^# (.*$)/gim, '<h2 style="color:var(--text);margin:1.75rem 0 0.75rem 0;font-size:1.4rem;">$1</h2>');
+          // Bold / Italic
+          escaped = escaped.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+          escaped = escaped.replace(/\*(.*?)\*/gim, '<em>$1</em>');
+          // Blockquotes
+          escaped = escaped.replace(/^\> (.*$)/gim, '<blockquote style="border-left:3px solid var(--accent);margin:1rem 0;padding:0.5rem 1rem;background:rgba(99,102,241,0.05);color:var(--text);font-style:italic;">$1</blockquote>');
+          // Bullet lists
+          escaped = escaped.replace(/^\- (.*$)/gim, '<li style="margin-left:1.5rem;margin-bottom:0.25rem;">$1</li>');
+          escaped = escaped.replace(/^\* (.*$)/gim, '<li style="margin-left:1.5rem;margin-bottom:0.25rem;">$1</li>');
+          // Paragraphs & Linebreaks
+          escaped = escaped.replace(/\n\n+/g, '</p><p style="margin-bottom:1rem;line-height:1.7;">');
+          escaped = '<p style="margin-bottom:1rem;line-height:1.7;">' + escaped + '</p>';
+          escaped = escaped.replace(/\n/g, '<br>');
+          return escaped;
+        }
+
         document.getElementById('evalArticleDescription').textContent = a.description ? ('Abstract / Summary: ' + a.description) : 'No abstract provided.';
-        document.getElementById('evalArticleBody').textContent = a.body || '';
+        document.getElementById('evalArticleBody').innerHTML = renderMarkdownToHtml(a.body || '');
 
         // Pre-fill existing evaluation if already reviewed
         document.getElementById('evalRecommendation').value = a.recommendation || 'accept';

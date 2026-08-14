@@ -187,16 +187,20 @@ export async function POST({ request, locals }) {
   }
 
   try {
-    const user = await db.prepare("SELECT * FROM users WHERE username = ?").bind(username).first();
+    const cleanIdentifier = String(username).trim();
+    const user = await db.prepare(
+      "SELECT * FROM users WHERE username = ? OR LOWER(email) = LOWER(?)"
+    ).bind(cleanIdentifier, cleanIdentifier).first();
+
     if (!user) {
-      return new Response(JSON.stringify({ error: "Invalid username or password." }), {
+      return new Response(JSON.stringify({ error: "Invalid email/username or password." }), {
         status: 401, headers: { "Content-Type": "application/json" }
       });
     }
 
     const isValid = await verifyPassword(password, user.password_hash);
     if (!isValid) {
-      return new Response(JSON.stringify({ error: "Invalid username or password." }), {
+      return new Response(JSON.stringify({ error: "Invalid email/username or password." }), {
         status: 401, headers: { "Content-Type": "application/json" }
       });
     }
@@ -232,7 +236,10 @@ export async function POST({ request, locals }) {
     return new Response(JSON.stringify({
       success: true,
       user: {
+        id: user.id,
         username: user.username,
+        email: user.email,
+        full_name: user.full_name,
         role: user.role,
         force_password_change: !!user.force_password_change
       }

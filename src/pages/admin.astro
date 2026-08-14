@@ -577,6 +577,13 @@ if (Astro.request) {
           <textarea class="form-input form-textarea" id="emailBody" style="min-height:200px;" required></textarea>
         </div>
         <div class="edit-modal-actions">
+          <button type="button" class="topbar-btn" onclick="closeEmailModal()" style="padding:0.6rem 1.25rem;">Cancel</button>
+          <button type="button" class="btn" id="emailSendBtn" onclick="sendBulkEmail()">Send Email</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Assign Peer Reviewers Modal -->
   <div class="view-modal-overlay" id="assignReviewersModalOverlay" style="display:none;">
     <div class="view-modal" style="max-width:650px;">
