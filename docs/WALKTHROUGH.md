@@ -1670,6 +1670,27 @@ CREATE TABLE IF NOT EXISTS peer_reviews (
 
 ---
 
+### 22.8 Peer Reviewer Subtab Tooling, Pagination, Dropdowns & Profile Inspector Fix
+1. **Search & Filter Bars Above All Subtabs:**
+   - **Review Status & Evaluations:** Instant keyword search across manuscript titles, lead authors, medical topics, reviewer names, reviewer emails, recommendation badges, and review progress.
+   - **Reviewer Applications:** Search across applicant clinician names, emails, academic affiliations, medical specialties, and application review status.
+   - **Active Review Board:** Live search across reviewer names, usernames, emails, affiliations, and specialties.
+2. **10-Per-Page Numbered Pagination Engine:**
+   - Unified pagination with `< Prev`, numbered pages `1`, `2`, `3`..., `Next >`.
+   - The current active page is prominently highlighted with `--accent` background.
+   - Displays real-time matching record counts (e.g., `Showing 10 of 28 assignments`).
+3. **Three-Dot Action Dropdown Menus (`⋮`):**
+   - **Subtab 1 (Review Status):** `👁 View Scorecard`, `✉️ Email Reviewer`, `🗑 Delete Assignment` (`DELETE /api/admin/assign-reviewers`).
+   - **Subtab 2 (Applications):** `✅ Accept`, `❌ Reject`, `✉️ Send Email`, `📄 Download Text`, `📑 Download PDF`, `🗑 Delete Application` (`DELETE /api/admin/reviewer-applications`).
+   - **Subtab 3 (Active Board):** `👁 View Profile`, `✉️ Send Email`, `🗑 Delete Reviewer` (`DELETE /api/admin/users`).
+4. **Active Review Board "View Profile" Modal Architecture & Fix:**
+   - **In-Memory Cache Synchronization:** Updated `renderActiveReviewers()` to register active reviewers directly into `window._loadedUsers[r.id] = r`, preventing cache misses when accessing the tab directly.
+   - **Multi-Tier Fallback in `viewUser()`:** If an ID is missing from `_loadedUsers`, `viewUser(id, mode)` automatically falls back to search `_allActiveReviewers` and `loadedReviewersRoster`.
+   - **Global Modal Closer (`closeAdminViewModal`):** Exposed `window.closeAdminViewModal` globally for close buttons, cancel actions, and backdrop clicks.
+   - **Reviewer Role in Profile Editor:** Added `<option value="reviewer">` to the role selector in edit mode and configured `saveUserEdit()` to refresh both `loadUsers()` and `loadActiveReviewers()`.
+
+---
+
 > **Document maintained by:** Google Antigravity  
 > **Repository:** https://github.com/drhimam/imedipedia  
 > **Production:** https://imedipedia.com (or https://imedipedia.pages.dev)
