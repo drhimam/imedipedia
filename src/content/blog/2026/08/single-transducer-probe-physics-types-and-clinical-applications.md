@@ -1,6 +1,6 @@
 ---
 title: "Single Transducer Probe: Physics, Types, and Clinical Applications"
-pubDate: 2026-08-13
+pubDate: 2026-08-14
 description: "A single transducer probe is the fundamental handheld device in diagnostic ultrasound, containing piezoelectric elements that generate and receive sound waves. Its performance is governed by a key trade-off between frequency and depth, with higher frequencies providing better resolution for superficial structures and lower frequencies enabling deeper penetration. Proper probe selection and understanding its physics are critical clinical skills that directly impact image quality, artifact recognition, and diagnostic accuracy."
 author: "iMedipedia Desk"
 type: "education"
@@ -9,6 +9,9 @@ topic: "Single Transducer Probe"
 exams: ["ARDMS SPI", "FRCR Part 1"]
 image: "https://pub-de453f39846f4eaaad0901e220a5894f.r2.dev/covers/2026/08/66232fae06f1cb98-single-transducer-probe-physics-types-and-clinical-applications.png"
 ---
+
+![Single Transducer Probe: Physics, Types, and Clinical Applications](https://pub-de453f39846f4eaaad0901e220a5894f.r2.dev/covers/2026/08/811f989169839c75-single-transducer-probe-physics-types-and-clinical-applications.png)
+
 
 ## Background
 A **single transducer probe** is the fundamental handheld device used in diagnostic ultrasound. It contains one array of piezoelectric elements that converts electrical energy into acoustic energy (and vice versa) to generate and receive sound waves. Its design dictates the shape of the ultrasound beam, the field of view, and the optimal depth of imaging, making it a critical determinant of image quality and clinical utility.
