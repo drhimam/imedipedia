@@ -1,8 +1,8 @@
 # iMedipedia — Implementation Walkthrough
 
-> **Last Updated:** 2026-08-13
+> **Last Updated:** 2026-08-14
 > **Platform:** Medical Research & Education Platform
-> **Live URL:** https://imedipedia.pages.dev
+> **Live URL:** https://imedipedia.com (or https://imedipedia.pages.dev)
 
 ---
 

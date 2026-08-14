@@ -144,7 +144,8 @@ export async function POST({ request, locals }) {
         "UPDATE applications SET status = 'approved', admin_notes = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ?"
       ).bind(reason || '', now, user.id, applicationId).run();
 
-      const loginUrl = 'https://imedipedia.pages.dev/contributors';
+      const origin = new URL(request.url).origin || 'https://imedipedia.com';
+      const loginUrl = `${origin}/contributors`;
       const htmlBody = buildAcceptanceEmail({ name: app.name, username, password, loginUrl });
 
       let emailResult = '';

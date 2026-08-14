@@ -211,7 +211,8 @@ export async function POST({ request, locals }) {
     const userEmail = user.email || '';
     if (userEmail) {
       try {
-        const dashboardUrl = 'https://imedipedia.pages.dev/contributors/dashboard';
+        const origin = new URL(request.url).origin || 'https://imedipedia.com';
+        const dashboardUrl = `${origin}/contributors/dashboard`;
         const htmlBody = buildSubmissionReceivedEmail({
           name: user.full_name || user.username,
           title: cleanTitle,

@@ -105,7 +105,8 @@ export async function POST({ request, locals }) {
     const env = locals.runtime?.env || {};
     const contributorEmail = submission.contributor_email || '';
     const contributorName = submission.contributor_name || submission.contributor_username || 'Contributor';
-    const dashboardUrl = 'https://imedipedia.pages.dev/contributors/dashboard';
+    const origin = new URL(request.url).origin || 'https://imedipedia.com';
+    const dashboardUrl = `${origin}/contributors/dashboard`;
 
     if (contributorEmail) {
       try {

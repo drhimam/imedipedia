@@ -16,6 +16,11 @@ const { title, description, currentPage } = Astro.props;
     <meta name="color-scheme" content="dark light" />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
+    <link rel="canonical" href={new URL(Astro.url.pathname, 'https://imedipedia.com').href} />
+    <meta property="og:site_name" content="iMedipedia" />
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:url" content={new URL(Astro.url.pathname, 'https://imedipedia.com').href} />
 
     <!-- Preconnect to Google Fonts (eliminates @import render-blocking) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

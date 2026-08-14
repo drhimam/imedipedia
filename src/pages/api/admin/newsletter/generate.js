@@ -64,14 +64,14 @@ export async function POST({ request, locals }) {
     markdownBody += `*In-depth systematic reviews, pathophysiological insights, and breakthrough medical research.*\n\n`;
     if (generalArticles.length > 0) {
       generalArticles.slice(0, 3).forEach((art, idx) => {
-        const link = `https://imedipedia.org/general?article=${art.slug}`;
+        const link = `https://imedipedia.com/general?article=${art.slug}`;
         markdownBody += `#### ${idx + 1}. [${art.title}](${link})\n`;
         markdownBody += `**Author:** ${art.author || 'iMedipedia Author'} | **Subject:** ${art.subject || 'General Medicine'}\n\n`;
         markdownBody += `${art.description || 'Comprehensive clinical overview and critical analysis.'}\n\n`;
         markdownBody += `👉 [Read Full Research Article &rarr;](${link})\n\n`;
       });
     } else {
-      markdownBody += `*Top general medical and physiology reviews are being indexed for this cycle. Visit the [Research Digest](https://imedipedia.org/general) to explore all published works.*\n\n`;
+      markdownBody += `*Top general medical and physiology reviews are being indexed for this cycle. Visit the [Research Digest](https://imedipedia.com/general) to explore all published works.*\n\n`;
     }
     markdownBody += `---\n\n`;
 
@@ -80,14 +80,14 @@ export async function POST({ request, locals }) {
     markdownBody += `*Evidence-based management algorithms, diagnostic criteria, and clinical practice standards.*\n\n`;
     if (guidelineArticles.length > 0) {
       guidelineArticles.slice(0, 3).forEach((art, idx) => {
-        const link = `https://imedipedia.org/blog/${art.slug}`;
+        const link = `https://imedipedia.com/blog/${art.slug}`;
         markdownBody += `#### ${idx + 1}. [${art.title}](${link})\n`;
         markdownBody += `**Clinical Topic:** ${art.topic || art.subject || 'Clinical Protocol'} | **Author:** ${art.author || 'Editorial Board'}\n\n`;
         markdownBody += `${art.description || 'Summary of key recommendations and clinical practice considerations.'}\n\n`;
         markdownBody += `👉 [Access Clinical Protocol &rarr;](${link})\n\n`;
       });
     } else {
-      markdownBody += `*Explore the latest evidence-based management protocols in our [Clinical Guidelines](https://imedipedia.org/clinical-guidelines) section.*\n\n`;
+      markdownBody += `*Explore the latest evidence-based management protocols in our [Clinical Guidelines](https://imedipedia.com/clinical-guidelines) section.*\n\n`;
     }
     markdownBody += `---\n\n`;
 
@@ -96,14 +96,14 @@ export async function POST({ request, locals }) {
     markdownBody += `*Diagnostic dilemmas, rare clinical presentations, and management pearls from real patient encounters.*\n\n`;
     if (caseArticles.length > 0) {
       caseArticles.slice(0, 3).forEach((art, idx) => {
-        const link = `https://imedipedia.org/blog/${art.slug}`;
+        const link = `https://imedipedia.com/blog/${art.slug}`;
         markdownBody += `#### ${idx + 1}. [${art.title}](${link})\n`;
         markdownBody += `**Presentation:** ${art.subject || 'Clinical Case'} | **Author:** ${art.author || 'Clinician Contributor'}\n\n`;
         markdownBody += `${art.description || 'Clinical history, examination findings, differential diagnosis, and outcome.'}\n\n`;
         markdownBody += `👉 [Explore Case Presentation &rarr;](${link})\n\n`;
       });
     } else {
-      markdownBody += `*Review real-world patient cases and differential diagnostic pearls in our [Case Reports](https://imedipedia.org/cases) library.*\n\n`;
+      markdownBody += `*Review real-world patient cases and differential diagnostic pearls in our [Case Reports](https://imedipedia.com/cases) library.*\n\n`;
     }
     markdownBody += `---\n\n`;
 
@@ -112,14 +112,14 @@ export async function POST({ request, locals }) {
     markdownBody += `*High-yield exam prep, physics principles, and CME modules for USMLE, MRCP, FRCR, and ARDMS.*\n\n`;
     if (educationArticles.length > 0) {
       educationArticles.slice(0, 3).forEach((art, idx) => {
-        const link = `https://imedipedia.org/blog/${art.slug}`;
+        const link = `https://imedipedia.com/blog/${art.slug}`;
         markdownBody += `#### ${idx + 1}. [${art.title}](${link})\n`;
         markdownBody += `**Exam Relevance:** ${art.topic || art.subject || 'Board Preparation'} | **Author:** ${art.author || 'Faculty Reviewer'}\n\n`;
         markdownBody += `${art.description || 'Key concepts, board-style question rationales, and high-yield study notes.'}\n\n`;
         markdownBody += `👉 [Review Learning Module &rarr;](${link})\n\n`;
       });
     } else {
-      markdownBody += `*Access board review modules and practice questions in our [CME & Education](https://imedipedia.org/education) portal.*\n\n`;
+      markdownBody += `*Access board review modules and practice questions in our [CME & Education](https://imedipedia.com/education) portal.*\n\n`;
     }
     markdownBody += `---\n\n`;
 
