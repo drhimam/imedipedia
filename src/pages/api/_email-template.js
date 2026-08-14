@@ -555,6 +555,31 @@ function escapeHTML(str) {
     .replace(/'/g, '&#039;');
 }
 
+/**
+ * Formats a sender email address with an explicit display name for AWS SES.
+ * When email clients receive `"iMedipedia Admin" <info@imedipedia.org>`,
+ * they show "iMedipedia Admin" as the sender rather than "info".
+ *
+ * @param {string} fromEmail - Raw email or formatted address
+ * @param {string} [defaultName="iMedipedia Admin"] - Sender display name
+ * @returns {string} Formatted RFC 5322 sender address
+ */
+export function formatSenderAddress(fromEmail, defaultName = 'iMedipedia Admin') {
+  if (!fromEmail) return '';
+  const trimmed = fromEmail.trim();
+
+  // If already formatted with angles (e.g. "Name <email@domain.com>")
+  if (trimmed.includes('<') && trimmed.includes('>')) {
+    if (trimmed.startsWith('<')) {
+      return `"${defaultName}" ${trimmed}`;
+    }
+    return trimmed;
+  }
+
+  // Bare email address (e.g. "info@imedipedia.org")
+  return `"${defaultName}" <${trimmed}>`;
+}
+
 export { escapeHTML };
 
 

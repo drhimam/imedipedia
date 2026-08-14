@@ -1,5 +1,5 @@
 export const prerender = false;
-import { buildSubmissionApprovedEmail, buildSubmissionRejectedEmail } from "../_email-template.js";
+import { buildSubmissionApprovedEmail, buildSubmissionRejectedEmail, formatSenderAddress } from "../_email-template.js";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 
 async function getSessionUser(db, request) {
@@ -33,8 +33,9 @@ async function sendSESEmail(env, to, subject, htmlBody) {
     region: awsRegion,
     credentials: { accessKeyId, secretAccessKey },
   });
+  const senderName = env.SES_FROM_NAME || 'iMedipedia Admin';
   await client.send(new SendEmailCommand({
-    Source: fromEmail,
+    Source: formatSenderAddress(fromEmail, senderName),
     Destination: { ToAddresses: [to] },
     Message: {
       Subject: { Data: subject, Charset: "UTF-8" },

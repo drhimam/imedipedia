@@ -1,4 +1,5 @@
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { formatSenderAddress } from "../_email-template.js";
 
 export const prerender = false;
 
@@ -61,12 +62,14 @@ export async function POST({ request, locals }) {
       return new Response(JSON.stringify({ error: "No valid recipients found." }), { status: 400 });
     }
 
+    const senderName = locals.runtime?.env?.SES_FROM_NAME || 'iMedipedia Admin';
+
     // Send emails in batches if there are many, but for now just send individually to avoid SES limits per call
     let sentCount = 0;
     for (const email of toAddresses) {
       try {
         const sendEmailCommand = new SendEmailCommand({
-          Source: fromEmail,
+          Source: formatSenderAddress(fromEmail, senderName),
           Destination: { ToAddresses: [email] },
           Message: {
             Subject: { Charset: "UTF-8", Data: subject },

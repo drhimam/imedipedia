@@ -1,7 +1,7 @@
 export const prerender = false;
 
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
-import { buildNewsletterWelcomeEmail } from "./_email-template.js";
+import { buildNewsletterWelcomeEmail, formatSenderAddress } from "./_email-template.js";
 
 export async function POST({ request, locals }) {
   const db = locals.runtime?.env?.D1_DB || locals.runtime?.env?.DB;
@@ -47,6 +47,7 @@ export async function POST({ request, locals }) {
     const awsSecretKey = locals.runtime?.env?.AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
     const awsRegion = locals.runtime?.env?.AWS_REGION || process.env.AWS_REGION || "us-east-1";
     const fromEmail = locals.runtime?.env?.SES_FROM_EMAIL || process.env.SES_FROM_EMAIL || "newsletter@imedipedia.org";
+    const senderName = locals.runtime?.env?.SES_FROM_NAME || process.env.SES_FROM_NAME || "iMedipedia Admin";
 
     if (awsAccessKey && awsSecretKey) {
       try {
@@ -56,7 +57,7 @@ export async function POST({ request, locals }) {
         });
         const html = buildNewsletterWelcomeEmail({ email: cleanEmail, unsubscribeUrl });
         const command = new SendEmailCommand({
-          Source: fromEmail,
+          Source: formatSenderAddress(fromEmail, senderName),
           Destination: { ToAddresses: [cleanEmail] },
           Message: {
             Subject: { Data: "Welcome to iMedipedia Weekly Research Digest 📬", Charset: "UTF-8" },

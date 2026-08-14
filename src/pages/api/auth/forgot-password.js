@@ -1,5 +1,5 @@
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
-import { buildPasswordResetEmail } from "../_email-template.js";
+import { buildPasswordResetEmail, formatSenderAddress } from "../_email-template.js";
 
 export const prerender = false;
 
@@ -93,8 +93,10 @@ export async function POST({ request, locals }) {
       resetLink,
     });
 
+    const senderName = locals.runtime?.env?.SES_FROM_NAME || import.meta.env.SES_FROM_NAME || "iMedipedia Admin";
+
     const sendEmailCommand = new SendEmailCommand({
-      Source: fromEmail,
+      Source: formatSenderAddress(fromEmail, senderName),
       Destination: {
         ToAddresses: [user.email || user.username],
       },

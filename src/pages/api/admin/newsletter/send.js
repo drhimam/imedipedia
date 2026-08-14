@@ -1,7 +1,7 @@
 export const prerender = false;
 
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
-import { buildNewsletterEmail } from "../../_email-template.js";
+import { buildNewsletterEmail, formatSenderAddress } from "../../_email-template.js";
 
 async function getSessionUser(db, request) {
   const cookieHeader = request.headers.get("cookie") || "";
@@ -66,6 +66,7 @@ export async function POST({ request, locals }) {
     const awsSecretKey = locals.runtime?.env?.AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
     const awsRegion = locals.runtime?.env?.AWS_REGION || process.env.AWS_REGION || "us-east-1";
     const fromEmail = locals.runtime?.env?.SES_FROM_EMAIL || process.env.SES_FROM_EMAIL || "newsletter@imedipedia.org";
+    const senderName = locals.runtime?.env?.SES_FROM_NAME || process.env.SES_FROM_NAME || "iMedipedia Admin";
 
     if (!awsAccessKey || !awsSecretKey) {
       return new Response(JSON.stringify({ error: "AWS SES credentials not configured in environment." }), { status: 500 });
@@ -93,7 +94,7 @@ export async function POST({ request, locals }) {
 
       try {
         const command = new SendEmailCommand({
-          Source: fromEmail,
+          Source: formatSenderAddress(fromEmail, senderName),
           Destination: { ToAddresses: [sub.email] },
           Message: {
             Subject: { Data: newsletter.subject, Charset: "UTF-8" },
