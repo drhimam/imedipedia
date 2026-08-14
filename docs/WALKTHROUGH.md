@@ -1495,52 +1495,157 @@ The AI Generator (`POST /api/admin/newsletter/generate`) indexes and categorizes
 Previously, cover images could only be supplied via local file drag-and-drop. Cover image management now supports direct URL input and live preview across all editing surfaces:
 1. **Author/Contributor Dashboard (`/contributors/dashboard`):** Added a dedicated `"Or paste Image URL (e.g. https://... or /images/...)"` text input under the cover upload zone. Inputting a URL immediately updates the live preview box and populates `coverUrl` when saving via `PUT /api/submissions/:id`.
 2. **Admin Submissions Edit Modal (`#adminEditModalOverlay`):** Added a **Cover Image URL** text field with real-time preview and clear button. Populates existing `s.image` when loading a submission and updates the submission payload.
-3. **Admin Published Articles Edit Modal (`#articleEditModalOverlay`):** Added a **Cover Image URL** field and preview container for live Git-backed articles. When saving via `POST /api/admin/update-article`, the backend parses and serializes `image: "..."` into the YAML frontmatter written to GitHub.
+3. **Admin Published Articles Edit## 22. Peer Review Board & Multi-Reviewer Evaluation Architecture
 
-### 21.3 Global Image Alignment & Overflow Prevention
-- **Base Layout Global Reset (`src/layouts/BaseLayout.astro`):** Added `:global(img) { max-width: 100%; height: auto; box-sizing: border-box; }` and explicitly scoped `:global(.article-body img), :global(.content img), :global(.article-view img)` to `max-width: 100% !important; height: auto !important; margin: 1.5rem auto; display: block;`. This prevents high-resolution or wide markdown images from overflowing past the right container margin.
-- **Cover Image Containment:** Across [`general.astro`](file:///d:/antigravity/Medblog/src/pages/general.astro), [`cases.astro`](file:///d:/antigravity/Medblog/src/pages/cases.astro), [`education.astro`](file:///d:/antigravity/Medblog/src/pages/education.astro), and [`[...slug].astro`](file:///d:/antigravity/Medblog/src/pages/blog/%5B...slug%5D.astro), cover images inside `.article-image-container` and `.cover-image-container` now use `width: 100%; max-height: 450px; object-fit: cover; display: block;` to maintain aspect ratios within columns without clipping or horizontal overflow.
+### 22.1 Architecture Overview & Conflict of Interest (COI) Isolation
+iMedipedia provides an independent, double-grounded peer review architecture. To maintain editorial integrity and avoid conflict of interest:
+- **Contributors / Medical Authors:** Access the publishing hub at [`/contributors`](file:///d:/antigravity/Medblog/src/pages/contributors.astro) and [`/contributors/dashboard`](file:///d:/antigravity/Medblog/src/pages/contributors/dashboard.astro) to submit and edit drafts.
+- **Peer Reviewers:** Access the dedicated Reviewer Portal at [`/reviewers/login`](file:///d:/antigravity/Medblog/src/pages/reviewers/login.astro) and [`/reviewers/dashboard`](file:///d:/antigravity/Medblog/src/pages/reviewers/dashboard.astro) to evaluate assigned manuscripts without access to contributor authoring tools.
+- **Editorial Board / Admins:** Access [`/admin`](file:///d:/antigravity/Medblog/src/pages/admin.astro) to oversee reviewer applications, assign multiple specialist reviewers to submissions, inspect completed scorecards, and make final publication decisions.
 
----
+```mermaid
+flowchart TD
+    A[Public: /reviewers] -->|Apply to Review Board| B[peer_review_applications in D1]
+    B -->|Admin Approval| C[Admin Portal: /admin]
+    C -->|Auto-Provision Account| D[users: role='reviewer', username=email]
+    D -->|Welcome Email via SES| E[Reviewer Credentials Dispatched]
+    
+    F[Author Submits Article] --> G[submissions: status='pending']
+    G -->|Admin Assigns Reviewers| H[peer_review_assignments in D1]
+    H -->|Status Updates| I[submissions: status='in_review']
+    H -->|SES Invites| J[Reviewer Notification Email]
+    H -->|SES Alert| K[Author In-Review Email]
 
-## 22. Peer Review Board & Multi-Reviewer Evaluation Architecture
-
-### 22.1 End-to-End Peer Review Workflow
-iMedipedia introduces an authenticated middle-tier peer review process for prospective submissions before final acceptance and publishing:
-1. **Public Review Board Showcase (`/reviewers`):**
-   - Publicly showcases approved clinician and academic reviewers with affiliations, specialties, ORCID links, and bios.
-   - Includes **"Join as Peer Reviewer"** modal (`POST /api/reviewers/apply`) capturing degrees, certifications, and clinical subspecialties.
-2. **Editorial Board Review & Account Provisioning (`/admin` → "Peer Reviewers" tab):**
-   - Admins evaluate applicant credentials with 1-click **Accept / Reject** (`POST /api/admin/reviewer-applications`).
-   - On approval, the system generates a secure account with `role: 'reviewer'`, sets `force_password_change: 1`, and dispatches welcome credentials via AWS SES (`buildReviewerApprovedEmail`).
-3. **Multi-Reviewer Assignment (`/admin` → "Submissions" tab):**
-   - Admin clicks **"🩺 Send to Reviewer(s)"** on any submission to open the reviewer roster modal.
-   - Admins can assign 1 or multiple specialist reviewers simultaneously (`POST /api/admin/assign-reviewers`).
-   - Submission status updates to **`in_review`** (`<span class="badge badge-published">In Review</span>`).
-   - **Automated SES Triggers:**
-     - **To Reviewer:** Dispatches `buildPeerReviewInviteEmail` with direct link to reviewer portal.
-     - **To Contributor:** Dispatches `buildArticleInReviewEmail` notifying author of named reviewer assignment.
-4. **Authenticated Review Evaluation Portal (`/contributors/dashboard?tab=reviews`):**
-   - Logged-in reviewers access the **"🩺 Assigned Reviews"** tab to view assigned manuscripts.
-   - Side-by-side manuscript reader and standardized clinical rubric:
-     - **Recommendation:** Accept / Minor Revisions / Major Revisions / Reject
-     - **Scoring (1–5):** Clinical Accuracy, Structure & Clarity, Evidence Base
-     - **Author Comments:** Actionable clinical feedback
-     - **Editor Notes:** Confidential feedback for editorial board
-   - Reviewer submissions (`POST /api/reviewers/assignments`) mark assignment status as `completed`.
-   - **Direct Author Feedback Email:** Automatically sends `buildPeerReviewFeedbackEmail` containing rubric scores and comments with a 1-click button for the author to edit and refine their draft in `/contributors/dashboard`.
-5. **Admin Evaluation Scorecards:**
-   - Admins click **"📝 View Peer Reviews"** on submissions to inspect reviewer scorecards, author remarks, and confidential editor notes.
-
-### 22.2 Database Schema (`schema.sql`)
-- **`peer_review_applications`:** Tracks public join applications, credentials, and review status.
-- **`peer_review_assignments`:** Tracks multi-reviewer assignments per submission.
-- **`peer_reviews`:** Stores clinical rubric scores (1–5), recommendation, author comments, and confidential editor notes.
+    J -->|Login| L[Dedicated Reviewer Portal: /reviewers/login]
+    L --> M[Reviewer Dashboard: /reviewers/dashboard]
+    M -->|Webview Modal + Rubric| N[Local marked.js GFM Table Engine]
+    N -->|Submit Evaluation| O[peer_reviews in D1]
+    O -->|SES Feedback Email| P[Author Notified with Rubric & Comments]
+    O -->|Admin Scorecard Modal| Q[Editorial Board Final Decision]
+```
 
 ---
 
-> **Document maintained by:** Google Antigravity
-> **Repository:** https://github.com/drhimam/imedipedia
+### 22.2 Dedicated Peer Reviewer Portal & Login (`/reviewers/login`)
+- **Dedicated Route:** [`src/pages/reviewers/login.astro`](file:///d:/antigravity/Medblog/src/pages/reviewers/login.astro)
+- **Credentialed Access:** Reviewers authenticate using their registered email and password. Supports TOTP/MFA authenticator verification and self-service password resets (`/api/auth/forgot-password`).
+- **Direct Entry Points:**
+  - Hero CTA on [`/reviewers`](file:///d:/antigravity/Medblog/src/pages/reviewers.astro) (**"🔑 Peer Reviewer Login &rarr;"**).
+  - Navigation bar overflow menu (**"Reviewer Login"**).
+  - Footer direct links (**"Peer Reviewer Login"** and **"Reviewer Dashboard"**).
+  - Link in [`/contributors`](file:///d:/antigravity/Medblog/src/pages/contributors.astro) login card redirecting reviewers to their dedicated portal.
+
+---
+
+### 22.3 Dedicated Peer Reviewer Dashboard (`/reviewers/dashboard`)
+- **Dedicated Route:** [`src/pages/reviewers/dashboard.astro`](file:///d:/antigravity/Medblog/src/pages/reviewers/dashboard.astro)
+- **Zero Authoring Clutter:** Contains no draft submission forms or taxonomy editors, enforcing clean role separation.
+- **Reviewer Profile & Live Metrics:**
+  - Sidebar showing Reviewer Name, Email, and **🩺 Peer Reviewer** badge.
+  - Stat Cards: **Pending Reviews**, **Evaluations Completed**, and **Total Assigned**.
+- **Interactive Tabs:**
+  1. **📋 Assigned Manuscripts (Pending):** Interactive table showing manuscript title, lead author, category, topic, assigned date, status badge (`⏳ Pending Review`), and **"🩺 Review Manuscript"** action button.
+  2. **✅ Completed Reviews Archive:** History of evaluations submitted by this reviewer, displaying recommendation badges (`Accept`, `Minor Revisions`, `Major Revisions`, `Reject`), clinical accuracy ratings, and an **"👁 View / Edit"** button.
+  3. **⚙️ Reviewer Profile & Credentials:** Interface for updating academic affiliations, clinical subspecialties (comma-separated chips), research biography, and changing passwords.
+  4. **🚪 Sign Out:** Clears session storage and redirects to `/reviewers/login`.
+
+---
+
+### 22.4 Full Markdown & GFM Table Rendering Engine (`marked.min.js`)
+To ensure peer reviewers read manuscripts as fully rendered web articles rather than raw markdown syntax:
+- **Local Engine Bundle:** Placed [`public/marked.min.js`](file:///d:/antigravity/Medblog/public/marked.min.js) in the project's public directory for 0-latency, offline-capable, and edge-compatible execution.
+- **GFM Table Support:** Converts markdown tables (`| Col 1 | Col 2 |`) into styled HTML `<table>` elements with prominent headers, borders, zebra row striping, and responsive horizontal scroll wrappers.
+- **Article-Identical Styling:** The reader pane (`.manuscript-body-rendered`) uses the exact same typography, headings (`#`, `##`, `###`), clinical blockquotes (`>`), bullet lists (`-`, `*`), inline/block code syntax, and cover banners as published articles on `https://imedipedia.com`.
+- **Integrated Across All Modals:** Used across the Reviewer Dashboard (`/reviewers/dashboard`), Contributor Dashboard (`/contributors/dashboard`), and Admin Submissions Inspector (`/admin`).
+
+---
+
+### 22.5 Standardized Clinical Evaluation Rubric
+Inside the Review Modal ([`src/pages/reviewers/dashboard.astro`](file:///d:/antigravity/Medblog/src/pages/reviewers/dashboard.astro)), reviewers evaluate manuscripts using a structured rubric:
+1. **Overall Editorial Recommendation:**
+   - ✅ *Accept (Publish Ready)*
+   - ✏️ *Minor Revisions Suggested*
+   - 🔄 *Major Revisions Required*
+   - ❌ *Reject (Does not meet standards)*
+2. **Clinical Accuracy & Medical Validity (1 to 5):**
+   - 5/5 — Highly accurate, evidence-aligned
+   - 4/5 — Clinically sound with minor nuances
+   - 3/5 — Acceptable, needs minor factual clarity
+   - 2/5 — Questionable claims / needs revision
+   - 1/5 — Major clinical inaccuracies
+3. **Manuscript Structure & Clarity (1 to 5):** Logical flow, heading hierarchy, and clarity of medical terminology.
+4. **Evidence Base & Citations (1 to 5):** Literature support, guideline alignment, and reference rigor.
+5. **Detailed Author Feedback Remarks:** Mandatory structured feedback delivered directly to the author.
+6. **Confidential Notes for Editorial Board:** Optional private comments visible only to admins and Editors-in-Chief.
+
+---
+
+### 22.6 Multi-Reviewer Assignment & Automated Author Feedback Loop
+1. **Admin Assignment Modal (`/admin`):**
+   - Admins open any submission and click **"🩺 Send to Reviewer(s)"**.
+   - Selects 1 or multiple specialist reviewers from the live reviewer roster loaded from D1 (`/api/reviewers/apply`).
+   - Dispatches assignment payload (`POST /api/admin/assign-reviewers`).
+   - Automatically switches submission status to **`in_review`** (`<span class="badge badge-published">In Review</span>`).
+2. **Automated AWS SES Notifications:**
+   - **Reviewer Invitation (`buildPeerReviewInviteEmail`):** Reviewer receives an invite email with manuscript title, author name, category, and direct login link.
+   - **Author Status Notification (`buildArticleInReviewEmail`):** Author is notified that their manuscript has been sent for peer evaluation.
+3. **Instant Author Feedback Delivery (`POST /api/reviewers/assignments`):**
+   - When a reviewer submits their scorecard, the system updates `peer_review_assignments.status = 'completed'` and stores scores in `peer_reviews`.
+   - Automatically dispatches `buildPeerReviewFeedbackEmail` to the author containing full rubric scores, recommendation, and remarks, with a 1-click button to edit and refine their draft in the Author Dashboard.
+4. **Admin Scorecard Viewer (`/admin`):**
+   - Clicking **"📝 View Peer Reviews"** on any submission opens a modal displaying all completed reviewer evaluations, scores, author feedback, and confidential editorial notes.
+
+---
+
+### 22.7 Database Schema (`schema.sql`)
+```sql
+-- 1. Reviewer Board Applications
+CREATE TABLE IF NOT EXISTS peer_review_applications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  title_affiliation TEXT NOT NULL,
+  specialties TEXT NOT NULL,
+  qualifications TEXT,
+  status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+  admin_notes TEXT,
+  created_at INTEGER NOT NULL,
+  reviewed_at INTEGER,
+  reviewed_by TEXT
+);
+
+-- 2. Multi-Reviewer Assignments per Manuscript
+CREATE TABLE IF NOT EXISTS peer_review_assignments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  reviewer_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'declined')),
+  assigned_by TEXT NOT NULL REFERENCES users(id),
+  assigned_at INTEGER NOT NULL,
+  completed_at INTEGER
+);
+
+-- 3. Standardized Rubric Evaluations
+CREATE TABLE IF NOT EXISTS peer_reviews (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  assignment_id INTEGER NOT NULL UNIQUE REFERENCES peer_review_assignments(id) ON DELETE CASCADE,
+  submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  reviewer_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  recommendation TEXT NOT NULL CHECK(recommendation IN ('accept', 'minor_revisions', 'major_revisions', 'reject')),
+  clinical_accuracy_score INTEGER NOT NULL CHECK(clinical_accuracy_score BETWEEN 1 AND 5),
+  structure_score INTEGER NOT NULL CHECK(structure_score BETWEEN 1 AND 5),
+  evidence_score INTEGER NOT NULL CHECK(evidence_score BETWEEN 1 AND 5),
+  author_comments TEXT NOT NULL,
+  editor_notes TEXT,
+  created_at INTEGER NOT NULL
+);
+```
+
+---
+
+> **Document maintained by:** Google Antigravity  
+> **Repository:** https://github.com/drhimam/imedipedia  
 > **Production:** https://imedipedia.com (or https://imedipedia.pages.dev)
+
 
 
