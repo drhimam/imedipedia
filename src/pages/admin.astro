@@ -206,21 +206,55 @@ if (Astro.request) {
     <div class="tab-panel" id="tab-reviewers">
       <div id="reviewersStatus" class="alert alert-info" style="margin-bottom:1rem;display:none;"></div>
 
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
-        <div>
-          <h3 style="font-family:'Outfit',sans-serif;margin:0;font-size:1.3rem;">Peer Reviewer Applications</h3>
-          <p style="color:var(--muted);font-size:0.85rem;margin:0.25rem 0 0 0;">Review pending applications from clinicians and academicians requesting to join the review board.</p>
-        </div>
+      <!-- Side-by-Side Reviewer Subtabs Navigation -->
+      <div style="display:flex;gap:0.5rem;border-bottom:1px solid var(--border);padding-bottom:0.75rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center;">
+        <button class="filter-chip active" id="subtab-btn-status" onclick="switchReviewerSubtab('status')" style="display:inline-flex;align-items:center;gap:0.45rem;">
+          <span>📝 Review Status &amp; Evaluations</span>
+          <span class="badge" id="evalCountBadge" style="background:rgba(99,102,241,0.2);color:var(--accent);font-size:0.75rem;padding:0.1rem 0.45rem;border-radius:10px;">0</span>
+        </button>
+        <button class="filter-chip" id="subtab-btn-apps" onclick="switchReviewerSubtab('apps')" style="display:inline-flex;align-items:center;gap:0.45rem;">
+          <span>📥 Reviewer Applications</span>
+          <span class="badge" id="appsCountBadge" style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:0.75rem;padding:0.1rem 0.45rem;border-radius:10px;">0</span>
+        </button>
+        <button class="filter-chip" id="subtab-btn-board" onclick="switchReviewerSubtab('board')" style="display:inline-flex;align-items:center;gap:0.45rem;">
+          <span>🩺 Active Review Board</span>
+          <span class="badge" id="boardCountBadge" style="background:rgba(16,185,129,0.2);color:#10b981;font-size:0.75rem;padding:0.1rem 0.45rem;border-radius:10px;">0</span>
+        </button>
       </div>
-      <div id="reviewerAppsTable" style="overflow-x:auto;margin-bottom:2.5rem;"></div>
 
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
-        <div>
-          <h3 style="font-family:'Outfit',sans-serif;margin:0;font-size:1.3rem;">Active Peer Review Board</h3>
-          <p style="color:var(--muted);font-size:0.85rem;margin:0.25rem 0 0 0;">Approved medical reviewers available for manuscript assignments.</p>
+      <!-- Subtab 1: Combined Review Status & Evaluations -->
+      <div id="subtab-panel-status" class="reviewer-subtab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <h3 style="font-family:'Outfit',sans-serif;margin:0;font-size:1.3rem;">Manuscript Review Status &amp; Scorecards</h3>
+            <p style="color:var(--muted);font-size:0.85rem;margin:0.25rem 0 0 0;">Real-time tracking of multi-reviewer assignments, evaluation scores, author feedback, and confidential editorial notes.</p>
+          </div>
+          <button class="btn btn-sm btn-secondary" onclick="loadReviewStatusTable()">🔄 Refresh Status</button>
         </div>
+        <div id="reviewStatusTable" style="overflow-x:auto;"></div>
       </div>
-      <div id="activeReviewersTable" style="overflow-x:auto;"></div>
+
+      <!-- Subtab 2: Reviewer Applications -->
+      <div id="subtab-panel-apps" class="reviewer-subtab-panel" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <h3 style="font-family:'Outfit',sans-serif;margin:0;font-size:1.3rem;">Peer Reviewer Applications</h3>
+            <p style="color:var(--muted);font-size:0.85rem;margin:0.25rem 0 0 0;">Review pending applications from clinicians and academicians requesting to join the review board.</p>
+          </div>
+        </div>
+        <div id="reviewerAppsTable" style="overflow-x:auto;"></div>
+      </div>
+
+      <!-- Subtab 3: Active Review Board -->
+      <div id="subtab-panel-board" class="reviewer-subtab-panel" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <h3 style="font-family:'Outfit',sans-serif;margin:0;font-size:1.3rem;">Active Peer Review Board</h3>
+            <p style="color:var(--muted);font-size:0.85rem;margin:0.25rem 0 0 0;">Approved medical reviewers available for manuscript assignments.</p>
+          </div>
+        </div>
+        <div id="activeReviewersTable" style="overflow-x:auto;"></div>
+      </div>
     </div>
 
     <!-- Articles Tab -->
@@ -3429,11 +3463,113 @@ if (Astro.request) {
 
   // ========== PEER REVIEWERS MANAGEMENT ==========
   let loadedReviewersRoster = [];
+  let loadedReviewAssignments = [];
+
+  window.switchReviewerSubtab = function(tabName) {
+    const subtabs = ['status', 'apps', 'board'];
+    subtabs.forEach(t => {
+      const btn = document.getElementById('subtab-btn-' + t);
+      const panel = document.getElementById('subtab-panel-' + t);
+      if (btn) {
+        if (t === tabName) btn.classList.add('active');
+        else btn.classList.remove('active');
+      }
+      if (panel) {
+        panel.style.display = (t === tabName) ? 'block' : 'none';
+      }
+    });
+  };
 
   window.loadReviewersTab = function() {
+    loadReviewStatusTable();
     loadReviewerApplications();
     loadActiveReviewers();
   };
+
+  async function loadReviewStatusTable() {
+    const container = document.getElementById('reviewStatusTable');
+    if (!container) return;
+    container.innerHTML = '<p style="color:var(--muted);">Loading manuscript review evaluations...</p>';
+
+    try {
+      const resp = await fetch('/api/admin/assign-reviewers');
+      const data = await resp.json();
+      loadedReviewAssignments = data.assignments || [];
+
+      // Update badge count
+      const badgeEl = document.getElementById('evalCountBadge');
+      if (badgeEl) badgeEl.textContent = loadedReviewAssignments.length;
+
+      if (!loadedReviewAssignments.length) {
+        container.innerHTML = '<p style="color:var(--muted);padding:1.5rem 0;text-align:center;">No manuscripts have been assigned for peer review yet. Click <strong>"🩺 Send to Reviewer(s)"</strong> in the Submissions tab to initiate reviews.</p>';
+        return;
+      }
+
+      const recColors = {
+        accept: '#10b981',
+        minor_revisions: '#f59e0b',
+        major_revisions: '#ea580c',
+        reject: '#ef4444'
+      };
+      const recLabels = {
+        accept: '✅ Accept',
+        minor_revisions: '✏️ Minor Rev',
+        major_revisions: '🔄 Major Rev',
+        reject: '❌ Reject'
+      };
+
+      let html = `<table class="data-table"><thead><tr>
+        <th>Manuscript</th><th>Author</th><th>Assigned Reviewer</th><th>Assigned</th><th>Status</th><th>Recommendation</th><th>Scores (Acc/Str/Ev)</th><th>Actions</th>
+      </tr></thead><tbody>`;
+
+      loadedReviewAssignments.forEach(a => {
+        const isDone = a.assignment_status === 'completed' || !!a.recommendation;
+        const recBadge = isDone && a.recommendation
+          ? `<span class="badge" style="background:${recColors[a.recommendation] ? recColors[a.recommendation] + '22' : 'rgba(99,102,241,0.15)'};color:${recColors[a.recommendation] || 'var(--accent)'};font-weight:700;">${recLabels[a.recommendation] || a.recommendation}</span>`
+          : '<span style="color:var(--muted);font-size:0.85rem;">—</span>';
+
+        const scoresDisplay = isDone && (a.clinical_accuracy_score || a.structure_score || a.evidence_score)
+          ? `<span style="font-family:monospace;font-size:0.88rem;font-weight:600;">${a.clinical_accuracy_score || '—'} / ${a.structure_score || '—'} / ${a.evidence_score || '—'}</span>`
+          : '<span style="color:var(--muted);font-size:0.85rem;">—</span>';
+
+        html += `
+        <tr>
+          <td>
+            <strong class="truncate" style="max-width:200px;display:block;" title="${esc(a.submission_title || 'Manuscript')}">${esc(a.submission_title || 'Manuscript')}</strong>
+            <span style="font-size:0.75rem;color:var(--muted);">${esc(a.submission_type || 'general')} ${a.submission_topic ? '• ' + esc(a.submission_topic) : ''}</span>
+          </td>
+          <td><span class="truncate" style="max-width:130px;display:block;" title="${esc(a.submission_author || '—')}">${esc(a.submission_author || '—')}</span></td>
+          <td>
+            <strong class="truncate" style="max-width:150px;display:block;" title="${esc(a.reviewer_name || a.reviewer_username || 'Reviewer')}">${esc(a.reviewer_name || a.reviewer_username || 'Reviewer')}</strong>
+            <span style="font-size:0.75rem;color:var(--muted);">${esc(a.reviewer_email || '')}</span>
+          </td>
+          <td style="font-size:0.85rem;white-space:nowrap;">${a.assigned_at ? new Date(a.assigned_at * 1000).toLocaleDateString() : '—'}</td>
+          <td>
+            <span class="badge" style="background:${isDone ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)'};color:${isDone ? '#10b981' : '#f59e0b'};">
+              ${isDone ? '✅ Completed' : '⏳ In Review'}
+            </span>
+          </td>
+          <td>${recBadge}</td>
+          <td>${scoresDisplay}</td>
+          <td style="white-space:nowrap;">
+            <button class="action-btn" style="background:rgba(99,102,241,0.15);color:var(--accent);border:1px solid rgba(99,102,241,0.3);padding:0.35rem 0.65rem;border-radius:6px;font-size:0.8rem;cursor:pointer;" onclick="viewPeerReviews(${a.submission_id}, '${esc(a.submission_title || '').replace(/'/g, "\\'")}')" title="View Full Review Scorecard & Comments">
+              👁 Scorecard
+            </button>
+            ${a.reviewer_email ? `
+              <button class="action-btn" style="background:rgba(255,255,255,0.06);color:var(--text);border:1px solid var(--border);padding:0.35rem 0.65rem;border-radius:6px;font-size:0.8rem;cursor:pointer;margin-left:0.25rem;" onclick="openEmailModal('${esc(a.reviewer_email)}')" title="Send email to reviewer">
+                ✉️
+              </button>
+            ` : ''}
+          </td>
+        </tr>`;
+      });
+
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    } catch (err) {
+      container.innerHTML = `<p class="alert alert-error">Error loading review status: ${esc(err.message)}</p>`;
+    }
+  }
 
   async function loadReviewerApplications() {
     const container = document.getElementById('reviewerAppsTable');
@@ -3441,7 +3577,14 @@ if (Astro.request) {
     try {
       const resp = await fetch('/api/admin/reviewer-applications');
       const data = await resp.json();
-      if (!data.applications?.length) {
+      const apps = data.applications || [];
+
+      // Update badge count with pending applications
+      const pendingCount = apps.filter(a => a.status === 'pending').length;
+      const appsBadgeEl = document.getElementById('appsCountBadge');
+      if (appsBadgeEl) appsBadgeEl.textContent = pendingCount;
+
+      if (!apps.length) {
         container.innerHTML = '<p style="color:var(--muted);padding:1rem 0;">No reviewer applications found.</p>';
         return;
       }
@@ -3450,7 +3593,7 @@ if (Astro.request) {
         <th>Applicant</th><th>Email</th><th>Affiliation</th><th>Specialties</th><th>Status</th><th>Date</th><th>Actions</th>
       </tr></thead><tbody>`;
 
-      data.applications.forEach(app => {
+      apps.forEach(app => {
         let specs = [];
         try { specs = JSON.parse(app.specialties || '[]'); } catch { specs = [app.specialties]; }
 
@@ -3485,6 +3628,10 @@ if (Astro.request) {
       const data = await resp.json();
       loadedReviewersRoster = data.reviewers || [];
 
+      // Update badge count
+      const boardBadgeEl = document.getElementById('boardCountBadge');
+      if (boardBadgeEl) boardBadgeEl.textContent = loadedReviewersRoster.length;
+
       if (!loadedReviewersRoster.length) {
         container.innerHTML = '<p style="color:var(--muted);padding:1rem 0;">No active peer reviewers found.</p>';
         return;
@@ -3505,8 +3652,8 @@ if (Astro.request) {
           <td><strong class="truncate" style="max-width:180px;" title="${esc(r.full_name || r.username)}">${esc(r.full_name || r.username)}</strong></td>
           <td>${esc(r.email || '—')}</td>
           <td><span class="badge badge-approved">${esc(r.role)}</span></td>
-          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(aff || '—')}</td>
-          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(spec || '—')}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(aff || '—')}">${esc(aff || '—')}</td>
+          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(spec || '—')}">${esc(spec || '—')}</td>
         </tr>`;
       });
       html += `</tbody></table>`;
@@ -3699,7 +3846,23 @@ if (Astro.request) {
     document.getElementById('peerReviewDetailsModalOverlay').style.display = 'none';
   };
 
-  // Load on page load
+  // Handle initial tab from URL params (e.g. ?tab=reviewers&subtab=status)
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTab = urlParams.get('tab');
+  const initialSubtab = urlParams.get('subtab');
+
   loadUserInfo();
-  loadApplications();
+  if (initialTab) {
+    const tabBtn = document.querySelector(`.tab-nav-btn[data-main-tab="${initialTab}"]`);
+    if (tabBtn) {
+      tabBtn.click();
+      if (initialTab === 'reviewers' && initialSubtab) {
+        setTimeout(() => switchReviewerSubtab(initialSubtab), 50);
+      }
+    } else {
+      loadApplications();
+    }
+  } else {
+    loadApplications();
+  }
 </script>

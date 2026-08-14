@@ -483,6 +483,68 @@ export function buildReviewerApprovedEmail({ name, username, password, loginUrl 
   });
 }
 
+export function buildPeerReviewSubmittedAdminEmail({ reviewerName, reviewerEmail, articleTitle, authorName, recommendation, scores, authorComments, editorNotes, adminDashboardUrl }) {
+  const recColors = {
+    accept: '#16a34a',
+    minor_revisions: '#d97706',
+    major_revisions: '#ea580c',
+    reject: '#dc2626'
+  };
+  const recLabels = {
+    accept: 'Accept / Publish Ready',
+    minor_revisions: 'Minor Revisions Suggested',
+    major_revisions: 'Major Revisions Required',
+    reject: 'Unsuitable / Reject'
+  };
+  const recColor = recColors[recommendation] || '#4f46e5';
+  const recLabel = recLabels[recommendation] || recommendation;
+
+  const content = `
+    <h2 style="margin:0 0 8px;color:${TEXT_COLOR};font-size:22px;">Peer Review Evaluation Completed 🩺</h2>
+    <p style="margin:0 0 16px;color:${MUTED_COLOR};font-size:15px;line-height:1.6;">
+      Hello Editorial Board,<br><br>
+      A peer review evaluation has been submitted by <strong>${escapeHTML(reviewerName)}</strong> (${escapeHTML(reviewerEmail || 'Reviewer')}) for the following manuscript:
+    </p>
+
+    ${buildInfoBox(`
+      <strong>Manuscript Title:</strong> ${escapeHTML(articleTitle)}<br>
+      <strong>Lead Author:</strong> ${escapeHTML(authorName)}<br>
+      <strong>Reviewer:</strong> ${escapeHTML(reviewerName)} (${escapeHTML(reviewerEmail || 'N/A')})<br>
+      <strong>Editorial Recommendation:</strong> <span style="color:${recColor};font-weight:700;">${escapeHTML(recLabel)}</span><br>
+      <strong>Clinical/Medical Accuracy:</strong> ${scores.clinical_accuracy}/5<br>
+      <strong>Manuscript Structure & Clarity:</strong> ${scores.structure}/5<br>
+      <strong>Evidence Base & Citations:</strong> ${scores.evidence}/5
+    `, recommendation === 'accept' ? 'success' : 'info')}
+
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:20px 0;">
+      <h4 style="margin:0 0 8px 0;color:${TEXT_COLOR};font-size:15px;">Reviewer's Feedback for Author:</h4>
+      <div style="font-size:14px;line-height:1.7;color:#334155;white-space:pre-wrap;">${escapeHTML(authorComments)}</div>
+    </div>
+
+    ${editorNotes ? `
+      <div style="background:#fffbeb;border:1px solid #fef3c7;border-left:4px solid #f59e0b;border-radius:8px;padding:16px;margin:20px 0;">
+        <h4 style="margin:0 0 8px 0;color:#92400e;font-size:15px;">🔒 Confidential Notes for Editorial Board:</h4>
+        <div style="font-size:14px;line-height:1.7;color:#78350f;white-space:pre-wrap;">${escapeHTML(editorNotes)}</div>
+      </div>
+    ` : ''}
+
+    <p style="margin:16px 0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">
+      You can inspect the full evaluation scorecard, review manuscript edits, or proceed with publication directly in the Admin Portal.
+    </p>
+
+    ${buildButton('Open Admin Review Status', adminDashboardUrl)}
+
+    <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      <strong>— iMedipedia Peer Review System</strong>
+    </p>
+  `;
+  return buildEmail({
+    subject: `[Review Completed] "${articleTitle}" — ${recLabel}`,
+    preview: `Peer review completed by ${reviewerName} for "${articleTitle}" (${recLabel}).`,
+    content,
+  });
+}
+
 function escapeHTML(str) {
   if (!str) return '';
   return String(str)

@@ -65,23 +65,35 @@ export async function GET({ request, locals }) {
 
   const url = new URL(request.url);
   const subId = url.searchParams.get('submissionId');
-  if (!subId) {
-    return new Response(JSON.stringify({ error: "submissionId is required." }), {
-      status: 400, headers: { "Content-Type": "application/json" }
-    });
-  }
 
   try {
-    const assignments = await db.prepare(
-      `SELECT a.*, u.full_name as reviewer_name, u.email as reviewer_email, u.specialty as reviewer_specialty,
-              r.recommendation, r.clinical_accuracy_score, r.structure_score, r.evidence_score,
-              r.author_comments, r.editor_notes, r.created_at as review_submitted_at
-       FROM peer_review_assignments a
-       JOIN users u ON a.reviewer_user_id = u.id
-       LEFT JOIN peer_reviews r ON a.id = r.assignment_id
-       WHERE a.submission_id = ?
-       ORDER BY a.assigned_at DESC`
-    ).bind(subId).all();
+    let assignments;
+    if (subId) {
+      assignments = await db.prepare(
+        `SELECT a.*, s.title as submission_title, s.author as submission_author, s.status as submission_status, s.type as submission_type, s.topic as submission_topic,
+                u.full_name as reviewer_name, u.username as reviewer_username, u.email as reviewer_email, u.specialty as reviewer_specialty,
+                r.id as review_id, r.recommendation, r.clinical_accuracy_score, r.structure_score, r.evidence_score,
+                r.author_comments, r.editor_notes, r.created_at as review_submitted_at
+         FROM peer_review_assignments a
+         JOIN submissions s ON a.submission_id = s.id
+         JOIN users u ON a.reviewer_user_id = u.id
+         LEFT JOIN peer_reviews r ON a.id = r.assignment_id
+         WHERE a.submission_id = ?
+         ORDER BY a.assigned_at DESC`
+      ).bind(subId).all();
+    } else {
+      assignments = await db.prepare(
+        `SELECT a.*, s.title as submission_title, s.author as submission_author, s.status as submission_status, s.type as submission_type, s.topic as submission_topic,
+                u.full_name as reviewer_name, u.username as reviewer_username, u.email as reviewer_email, u.specialty as reviewer_specialty,
+                r.id as review_id, r.recommendation, r.clinical_accuracy_score, r.structure_score, r.evidence_score,
+                r.author_comments, r.editor_notes, r.created_at as review_submitted_at
+         FROM peer_review_assignments a
+         JOIN submissions s ON a.submission_id = s.id
+         JOIN users u ON a.reviewer_user_id = u.id
+         LEFT JOIN peer_reviews r ON a.id = r.assignment_id
+         ORDER BY a.assigned_at DESC`
+      ).all();
+    }
 
     return new Response(JSON.stringify({
       success: true,

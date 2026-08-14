@@ -1,5 +1,5 @@
 export const prerender = false;
-import { buildPeerReviewFeedbackEmail } from "../_email-template.js";
+import { buildPeerReviewFeedbackEmail, buildPeerReviewSubmittedAdminEmail } from "../_email-template.js";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 
 async function getSessionUser(db, request) {
@@ -217,9 +217,39 @@ export async function POST({ request, locals }) {
       }
     }
 
+    // Send Admin Notification Email
+    const adminEmail = env.SES_ADMIN_EMAIL || env.ADMIN_EMAIL || 'admin@imedipedia.com';
+    try {
+      const adminDashboardUrl = `${origin}/admin`;
+      const adminEmailHtml = buildPeerReviewSubmittedAdminEmail({
+        reviewerName: user.full_name || user.username || 'Peer Reviewer',
+        reviewerEmail: user.email || '',
+        articleTitle: assignment.article_title,
+        authorName,
+        recommendation,
+        scores: {
+          clinical_accuracy: accuracyScore,
+          structure: structureScore,
+          evidence: evidenceScore
+        },
+        authorComments: authorComments.trim(),
+        editorNotes: (editorNotes || '').trim(),
+        adminDashboardUrl
+      });
+
+      await sendSESEmail(
+        env,
+        adminEmail,
+        `[Review Completed] "${assignment.article_title}" (${recommendation})`,
+        adminEmailHtml
+      );
+    } catch (adminEmailErr) {
+      console.error("Failed to send review notification email to admin:", adminEmailErr);
+    }
+
     return new Response(JSON.stringify({
       success: true,
-      message: "Peer review submitted successfully and feedback delivered to the author."
+      message: "Peer review submitted successfully. Feedback delivered to author and notification sent to Editorial Board."
     }), {
       status: 200, headers: { "Content-Type": "application/json" }
     });

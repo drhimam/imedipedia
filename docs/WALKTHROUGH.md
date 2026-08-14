@@ -1580,20 +1580,24 @@ Inside the Review Modal ([`src/pages/reviewers/dashboard.astro`](file:///d:/anti
 
 ---
 
-### 22.6 Multi-Reviewer Assignment & Automated Author Feedback Loop
+### 22.6 Multi-Reviewer Assignment, Dual Notification Loop & Side-by-Side Admin Hub
 1. **Admin Assignment Modal (`/admin`):**
    - Admins open any submission and click **"🩺 Send to Reviewer(s)"**.
    - Selects 1 or multiple specialist reviewers from the live reviewer roster loaded from D1 (`/api/reviewers/apply`).
    - Dispatches assignment payload (`POST /api/admin/assign-reviewers`).
    - Automatically switches submission status to **`in_review`** (`<span class="badge badge-published">In Review</span>`).
-2. **Automated AWS SES Notifications:**
+2. **Automated AWS SES Notifications on Assignment:**
    - **Reviewer Invitation (`buildPeerReviewInviteEmail`):** Reviewer receives an invite email with manuscript title, author name, category, and direct login link.
    - **Author Status Notification (`buildArticleInReviewEmail`):** Author is notified that their manuscript has been sent for peer evaluation.
-3. **Instant Author Feedback Delivery (`POST /api/reviewers/assignments`):**
-   - When a reviewer submits their scorecard, the system updates `peer_review_assignments.status = 'completed'` and stores scores in `peer_reviews`.
-   - Automatically dispatches `buildPeerReviewFeedbackEmail` to the author containing full rubric scores, recommendation, and remarks, with a 1-click button to edit and refine their draft in the Author Dashboard.
-4. **Admin Scorecard Viewer (`/admin`):**
-   - Clicking **"📝 View Peer Reviews"** on any submission opens a modal displaying all completed reviewer evaluations, scores, author feedback, and confidential editorial notes.
+3. **Dual Notification on Review Submission (`POST /api/reviewers/assignments`):**
+   - When a reviewer submits their evaluation, the system marks `peer_review_assignments.status = 'completed'` and stores the rubric in `peer_reviews`.
+   - **Email 1 (To Author):** Dispatches `buildPeerReviewFeedbackEmail` containing rubric scores and author feedback remarks with a 1-click button to refine the draft in the Author Dashboard.
+   - **Email 2 (To Editorial Board / Admin):** Dispatches `buildPeerReviewSubmittedAdminEmail` directly to `admin@imedipedia.com` containing the full evaluation scorecard, author remarks, **🔒 Confidential Editorial Notes**, and a 1-click button to open the Admin Review Status hub.
+4. **Side-by-Side Subtabs in Admin Dashboard ("Peer Reviewers" Tab):**
+   - **Subtab 1 — 📝 Review Status & Evaluations (`#subtab-panel-status`):** Real-time combined table joining `peer_review_assignments` + `peer_reviews` + `submissions`. Displays manuscript title, author, assigned reviewer, assignment status (`⏳ In Review` / `✅ Completed`), recommendation badge, and numerical scores (`Accuracy / Structure / Evidence`). Features an **"👁 Scorecard"** button that opens the full reviewer scorecard modal.
+   - **Subtab 2 — 📥 Reviewer Applications (`#subtab-panel-apps`):** Real-time list of applicant clinicians and academicians with Accept/Reject actions and a live badge count of pending applications.
+   - **Subtab 3 — 🩺 Active Review Board (`#subtab-panel-board`):** Roster of approved peer reviewers with active subspecialty tags and email links.
+   - **URL Query Param Routing:** Deep-linking supported via `/admin?tab=reviewers&subtab=status`.
 
 ---
 
