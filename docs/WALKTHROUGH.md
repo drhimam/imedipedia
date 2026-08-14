@@ -28,6 +28,7 @@
 18. [Studio Context Attachments](#18-studio-context-attachments)
 19. [Admin Dashboard UI & Workflow Enhancements](#19-admin-dashboard-ui--workflow-enhancements)
 20. [Weekly Newsletter & Digest Generation Workflow](#20-weekly-newsletter--digest-generation-workflow)
+21. [Custom Domain & Cover Image Alignment Architecture](#21-custom-domain--cover-image-alignment-architecture)
 
 ---
 
@@ -1482,8 +1483,27 @@ The AI Generator (`POST /api/admin/newsletter/generate`) indexes and categorizes
 
 ---
 
+## 21. Custom Domain & Cover Image Alignment Architecture
+
+### 21.1 Custom Domain Configuration (`https://imedipedia.com`)
+- **Astro Config (`astro.config.mjs`):** Configured `site: 'https://imedipedia.com'` for global canonical resolving and absolute URL generation.
+- **Global SEO & Open Graph Metadata (`src/layouts/BaseLayout.astro`):** Injected `<link rel="canonical">` and Open Graph meta properties (`og:site_name`, `og:title`, `og:description`, `og:url`) resolving automatically against the active pathname on `https://imedipedia.com`.
+- **Transactional & Digest Email URLs:** Email links in `src/pages/api/submissions/create.js`, `src/pages/api/admin/review.js`, `src/pages/api/admin/application-review.js`, and `src/pages/api/admin/newsletter/generate.js` dynamically resolve against the incoming `request.url` origin with a production fallback to `https://imedipedia.com`.
+
+### 21.2 Cover Image URL Option Across All Edit Modals
+Previously, cover images could only be supplied via local file drag-and-drop. Cover image management now supports direct URL input and live preview across all editing surfaces:
+1. **Author/Contributor Dashboard (`/contributors/dashboard`):** Added a dedicated `"Or paste Image URL (e.g. https://... or /images/...)"` text input under the cover upload zone. Inputting a URL immediately updates the live preview box and populates `coverUrl` when saving via `PUT /api/submissions/:id`.
+2. **Admin Submissions Edit Modal (`#adminEditModalOverlay`):** Added a **Cover Image URL** text field with real-time preview and clear button. Populates existing `s.image` when loading a submission and updates the submission payload.
+3. **Admin Published Articles Edit Modal (`#articleEditModalOverlay`):** Added a **Cover Image URL** field and preview container for live Git-backed articles. When saving via `POST /api/admin/update-article`, the backend parses and serializes `image: "..."` into the YAML frontmatter written to GitHub.
+
+### 21.3 Global Image Alignment & Overflow Prevention
+- **Base Layout Global Reset (`src/layouts/BaseLayout.astro`):** Added `:global(img) { max-width: 100%; height: auto; box-sizing: border-box; }` and explicitly scoped `:global(.article-body img), :global(.content img), :global(.article-view img)` to `max-width: 100% !important; height: auto !important; margin: 1.5rem auto; display: block;`. This prevents high-resolution or wide markdown images from overflowing past the right container margin.
+- **Cover Image Containment:** Across [`general.astro`](file:///d:/antigravity/Medblog/src/pages/general.astro), [`cases.astro`](file:///d:/antigravity/Medblog/src/pages/cases.astro), [`education.astro`](file:///d:/antigravity/Medblog/src/pages/education.astro), and [`[...slug].astro`](file:///d:/antigravity/Medblog/src/pages/blog/%5B...slug%5D.astro), cover images inside `.article-image-container` and `.cover-image-container` now use `width: 100%; max-height: 450px; object-fit: cover; display: block;` to maintain aspect ratios within columns without clipping or horizontal overflow.
+
+---
+
 > **Document maintained by:** Google Antigravity
 > **Repository:** https://github.com/drhimam/imedipedia
-> **Production:** https://imedipedia.pages.dev
+> **Production:** https://imedipedia.com (or https://imedipedia.pages.dev)
 
 
