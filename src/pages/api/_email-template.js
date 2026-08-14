@@ -332,6 +332,157 @@ export function buildNewsletterEmail({ title, subject, htmlBody, unsubscribeUrl 
   });
 }
 
+export function buildPeerReviewInviteEmail({ reviewerName, articleTitle, articleType, reviewUrl }) {
+  const content = `
+    <h2 style="margin:0 0 8px;color:${TEXT_COLOR};font-size:22px;">Peer Review Invitation 🔬</h2>
+    <p style="margin:0 0 16px;color:${MUTED_COLOR};font-size:15px;line-height:1.6;">
+      Dear ${escapeHTML(reviewerName)},<br><br>
+      You have been selected and invited by the iMedipedia Editorial Board to conduct a formal peer review for the following manuscript:
+    </p>
+
+    ${buildInfoBox(`
+      <strong>Manuscript Title:</strong> ${escapeHTML(articleTitle)}<br>
+      <strong>Category:</strong> ${escapeHTML(articleType || 'Clinical Research')}<br>
+      <strong>Review Status:</strong> Pending Peer Evaluation
+    `, 'info')}
+
+    <p style="margin:16px 0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">
+      Please log in to your Peer Reviewer Dashboard to examine the full article text and complete the standardized clinical evaluation rubric.
+    </p>
+
+    ${buildButton('Open Review Portal', reviewUrl)}
+
+    <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      Thank you for advancing open, rigorous medical science.<br><br>
+      <strong>— The iMedipedia Editorial Board</strong>
+    </p>
+  `;
+  return buildEmail({
+    subject: `Peer Review Request: "${articleTitle}"`,
+    preview: `You have been invited to peer review the manuscript "${articleTitle}" on iMedipedia.`,
+    content,
+  });
+}
+
+export function buildArticleInReviewEmail({ authorName, articleTitle, reviewerNames, dashboardUrl }) {
+  const reviewersList = reviewerNames && reviewerNames.length > 0
+    ? reviewerNames.map(n => `• ${escapeHTML(n)}`).join('<br>')
+    : 'Assigned expert peer reviewers';
+
+  const content = `
+    <h2 style="margin:0 0 8px;color:${TEXT_COLOR};font-size:22px;">Article Sent for Peer Review ⏳</h2>
+    <p style="margin:0 0 16px;color:${MUTED_COLOR};font-size:15px;line-height:1.6;">
+      Dear ${escapeHTML(authorName)},<br><br>
+      Your article has entered the formal peer review stage. The editorial board has assigned your manuscript to our specialist medical reviewers:
+    </p>
+
+    ${buildInfoBox(`
+      <strong>Manuscript:</strong> ${escapeHTML(articleTitle)}<br>
+      <strong>Status:</strong> <span style="color:#6366f1;font-weight:600;">In Review</span><br>
+      <strong>Reviewer Panel:</strong><br>${reviewersList}
+    `, 'info')}
+
+    <p style="margin:16px 0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">
+      Once the reviewer completes their evaluation, you will receive a direct notification containing their detailed remarks and recommendation.
+    </p>
+
+    ${buildButton('Track in Dashboard', dashboardUrl)}
+
+    <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      <strong>— The iMedipedia Editorial Team</strong>
+    </p>
+  `;
+  return buildEmail({
+    subject: `Your Article is Under Peer Review: "${articleTitle}"`,
+    preview: `Your manuscript "${articleTitle}" has been assigned to peer reviewers.`,
+    content,
+  });
+}
+
+export function buildPeerReviewFeedbackEmail({ authorName, articleTitle, reviewerName, recommendation, scores, authorComments, dashboardUrl }) {
+  const recColors = {
+    accept: '#16a34a',
+    minor_revisions: '#d97706',
+    major_revisions: '#ea580c',
+    reject: '#dc2626'
+  };
+  const recLabels = {
+    accept: 'Accept / Publish Ready',
+    minor_revisions: 'Minor Revisions Suggested',
+    major_revisions: 'Major Revisions Required',
+    reject: 'Unsuitable / Reject'
+  };
+  const recColor = recColors[recommendation] || '#4f46e5';
+  const recLabel = recLabels[recommendation] || recommendation;
+
+  const content = `
+    <h2 style="margin:0 0 8px;color:${TEXT_COLOR};font-size:22px;">Peer Review Feedback Received 📝</h2>
+    <p style="margin:0 0 16px;color:${MUTED_COLOR};font-size:15px;line-height:1.6;">
+      Dear ${escapeHTML(authorName)},<br><br>
+      Peer review evaluation has been submitted for your manuscript by <strong>${escapeHTML(reviewerName)}</strong>:
+    </p>
+
+    ${buildInfoBox(`
+      <strong>Manuscript:</strong> ${escapeHTML(articleTitle)}<br>
+      <strong>Recommendation:</strong> <span style="color:${recColor};font-weight:700;">${escapeHTML(recLabel)}</span><br>
+      <strong>Scientific/Clinical Accuracy:</strong> ${scores.clinical_accuracy}/5<br>
+      <strong>Structure & Clarity:</strong> ${scores.structure}/5<br>
+      <strong>Evidence Base & References:</strong> ${scores.evidence}/5
+    `, recommendation === 'accept' ? 'success' : 'warning')}
+
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:20px 0;">
+      <h4 style="margin:0 0 8px 0;color:${TEXT_COLOR};font-size:15px;">Reviewer's Detailed Comments & Suggestions:</h4>
+      <div style="font-size:14px;line-height:1.7;color:#334155;white-space:pre-wrap;">${escapeHTML(authorComments)}</div>
+    </div>
+
+    <p style="margin:16px 0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">
+      You can make any requested revisions to your article right now by clicking below and using the <strong>✏️ Edit</strong> option on your Author Dashboard.
+    </p>
+
+    ${buildButton('Edit Article in Dashboard', dashboardUrl)}
+
+    <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      <strong>— The iMedipedia Editorial Team</strong>
+    </p>
+  `;
+  return buildEmail({
+    subject: `Peer Review Feedback: "${articleTitle}" (${recLabel})`,
+    preview: `Peer review feedback has been submitted for "${articleTitle}".`,
+    content,
+  });
+}
+
+export function buildReviewerApprovedEmail({ name, username, password, loginUrl }) {
+  const content = `
+    <h2 style="margin:0 0 8px;color:${TEXT_COLOR};font-size:22px;">Welcome to the Peer Review Board! 🩺</h2>
+    <p style="margin:0 0 16px;color:${MUTED_COLOR};font-size:15px;line-height:1.6;">
+      Dear ${escapeHTML(name)},<br><br>
+      Congratulations! Your application to join the <strong>iMedipedia Peer Review Board</strong> has been approved. You now have access to review incoming clinical submissions, evaluate medical evidence, and guide prospective authors.
+    </p>
+
+    ${buildInfoBox(`
+      <strong>Username:</strong> <code style="color:${BRAND_COLOR};font-size:15px;">${escapeHTML(username)}</code><br>
+      <strong>Temporary Password:</strong> <code style="color:${BRAND_COLOR};font-size:15px;">${escapeHTML(password)}</code><br>
+      <span style="font-size:12px;color:${MUTED_COLOR};">You will be prompted to change this password upon initial login.</span>
+    `, 'success')}
+
+    <p style="margin:16px 0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">
+      Please log in to complete your public reviewer profile (academic affiliations, clinical specialties, and ORCID profile).
+    </p>
+
+    ${buildButton('Access Reviewer Portal', loginUrl)}
+
+    <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      <strong>— The iMedipedia Editorial Board</strong>
+    </p>
+  `;
+  return buildEmail({
+    subject: 'Welcome to iMedipedia — Your Peer Reviewer Account is Ready',
+    preview: `Congratulations ${name}, your peer reviewer application has been approved!`,
+    content,
+  });
+}
+
 function escapeHTML(str) {
   if (!str) return '';
   return String(str)
@@ -343,4 +494,5 @@ function escapeHTML(str) {
 }
 
 export { escapeHTML };
+
 

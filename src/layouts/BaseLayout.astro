@@ -680,6 +680,7 @@ const { title, description, currentPage } = Astro.props;
           <a href="/clinical-guidelines" class:list={["nav-link", { active: currentPage === 'clinical-guidelines' }]}>Clinical Guidelines</a>
           <a href="/cases" class:list={["nav-link", { active: currentPage === 'cases' }]}>Case Reports</a>
           <a href="/education" class:list={["nav-link", { active: currentPage === 'education' }]}>CME &amp; Learning</a>
+          <a href="/reviewers" class:list={["nav-link", { active: currentPage === 'reviewers' }]}>Peer Review</a>
         </div>
 
         <!-- Desktop overflow (three-dot) menu -->
@@ -764,12 +765,13 @@ const { title, description, currentPage } = Astro.props;
         </div>
 
         <div>
-          <h4 class="footer-heading">Contributors</h4>
+          <h4 class="footer-heading">Contributors &amp; Reviewers</h4>
           <div class="footer-links">
             <a href="/contributors" class="footer-link">Our Medical Authors</a>
+            <a href="/reviewers" class="footer-link">Peer Review Board</a>
             <a href="/contributors" class="footer-link">Join as Contributor</a>
-            <a href="/contributors/dashboard" class="footer-link">Author Dashboard</a>
-            <a href="/contributors" class="footer-link">Editorial Board</a>
+            <a href="/reviewers" class="footer-link">Join as Peer Reviewer</a>
+            <a href="/contributors/dashboard" class="footer-link">Portal Dashboard</a>
           </div>
         </div>
 

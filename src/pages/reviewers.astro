@@ -1,0 +1,266 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Peer Review Board - iMedipedia Medical Research"
+  currentPage="reviewers"
+>
+  <slot name="head">
+    <style>
+      .main-content { max-width: 1100px; margin: 3.5rem auto; padding: 0 1.5rem; flex-grow: 1; width: 100%; box-sizing: border-box; }
+      .portal-header { text-align: center; margin-bottom: 3.5rem; }
+      .portal-header h1 { font-family: 'Outfit', sans-serif; font-size: 3rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 0.5rem; }
+      .portal-header p { color: var(--muted); font-size: 1.1rem; max-width: 650px; margin: 0 auto; line-height: 1.6; }
+      
+      .hero-cta { display: flex; justify-content: center; gap: 1rem; margin-top: 2rem; }
+      .btn { background: var(--accent); color: #ffffff; border: none; padding: 0.85rem 1.75rem; font-size: 1rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; text-decoration: none; }
+      .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 14px var(--accent-glow); }
+      .btn-secondary { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); }
+      .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+      /* Review Process Cards */
+      .process-section { margin-bottom: 4.5rem; }
+      .process-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+      .process-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; transition: transform 0.2s, border-color 0.2s; }
+      .process-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+      .process-icon { font-size: 2.2rem; margin-bottom: 1rem; display: inline-block; }
+      .process-title { font-family: 'Outfit', sans-serif; font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text); }
+      .process-desc { color: var(--muted); font-size: 0.95rem; line-height: 1.6; }
+
+      /* Reviewer Gallery */
+      .gallery-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+      .gallery-title { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 800; margin: 0; }
+      .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem; }
+      .reviewer-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s; }
+      .reviewer-card:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: 0 10px 30px var(--accent-glow); }
+      .reviewer-avatar { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid var(--border); margin-bottom: 1.25rem; background: #090d16; }
+      .reviewer-name { font-family: 'Outfit', sans-serif; font-size: 1.35rem; font-weight: 700; margin: 0 0 0.4rem 0; color: var(--text); }
+      .reviewer-affiliation { color: var(--muted); font-size: 0.9rem; margin-bottom: 0.75rem; font-weight: 500; }
+      .reviewer-specialties { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: center; margin-bottom: 1rem; }
+      .spec-badge { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--accent); background: rgba(13, 148, 136, 0.1); padding: 0.25rem 0.6rem; border-radius: 12px; }
+      .reviewer-bio { color: var(--muted); font-size: 0.88rem; line-height: 1.5; margin-bottom: 1.25rem; flex-grow: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+      /* Modal */
+      .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(3, 7, 18, 0.65); backdrop-filter: blur(8px); z-index: 1000; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; }
+      .modal-overlay.active { display: flex; opacity: 1; }
+      .modal-content { background: var(--bg); border: 1px solid var(--border); border-radius: 24px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 2.5rem; position: relative; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4); }
+      .modal-close { position: absolute; top: 1.25rem; right: 1.25rem; background: transparent; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; }
+      .modal-close:hover { color: var(--text); }
+      .form-group { margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.4rem; }
+      .form-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+      .form-input, .form-textarea { padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 0.95rem; }
+      .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--accent); }
+      .form-textarea { resize: vertical; min-height: 100px; font-family: inherit; }
+      .alert { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem; margin-bottom: 1rem; display: none; }
+      .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; }
+      .alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; }
+
+      @media (max-width: 768px) {
+        .process-grid { grid-template-columns: 1fr; }
+        .portal-header h1 { font-size: 2.2rem; }
+        .hero-cta { flex-direction: column; }
+      }
+    </style>
+  </slot>
+
+  <main class="main-content">
+    <header class="portal-header">
+      <h1>Peer Review Board</h1>
+      <p>iMedipedia upholds the highest standards of scientific and clinical rigor through structured, independent peer review by practicing physicians, academicians, and medical researchers.</p>
+      
+      <div class="hero-cta">
+        <button id="joinReviewerBtn" class="btn">🩺 Join as Peer Reviewer</button>
+        <a href="/contributors" class="btn btn-secondary">Author &amp; Reviewer Login &rarr;</a>
+      </div>
+    </header>
+
+    <!-- Standards & Rigor Section -->
+    <section class="process-section">
+      <div class="process-grid">
+        <div class="process-card">
+          <span class="process-icon">🔬</span>
+          <h3 class="process-title">1. Clinical Rigor</h3>
+          <p class="process-desc">Manuscripts are evaluated for pathophysiological validity, evidence classification, diagnostic criteria, and pharmacological safety.</p>
+        </div>
+        <div class="process-card">
+          <span class="process-icon">🛡️</span>
+          <h3 class="process-title">2. Double-Grounded Rubric</h3>
+          <p class="process-desc">Standardized scoring across Clinical Accuracy, Article Clarity, and Evidence Base with actionable feedback delivered to authors.</p>
+        </div>
+        <div class="process-card">
+          <span class="process-icon">⚡</span>
+          <h3 class="process-title">3. Collaborative Revisions</h3>
+          <p class="process-desc">Authors receive structured reviewer recommendations to refine manuscripts before final publication to the medical community.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Showcase Gallery Section -->
+    <section class="gallery-section">
+      <div class="gallery-header">
+        <div>
+          <h2 class="gallery-title">Distinguished Review Board</h2>
+          <p style="color:var(--muted);margin:0.25rem 0 0 0;font-size:0.95rem;">Meet the clinicians and researchers reviewing our medical manuscripts.</p>
+        </div>
+      </div>
+
+      <div class="gallery-grid" id="reviewersGrid">
+        <p style="color:var(--muted);text-align:center;grid-column:1/-1;">Loading review board members...</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Join Modal -->
+  <div class="modal-overlay" id="reviewerModalOverlay">
+    <div class="modal-content">
+      <button class="modal-close" id="closeReviewerModal">&times;</button>
+      <h2 style="font-family:'Outfit',sans-serif;font-size:1.75rem;margin-top:0;margin-bottom:0.5rem;">Join the Peer Review Board</h2>
+      <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.5rem;line-height:1.5;">Apply to evaluate prospective medical articles, case presentations, and clinical review digests in your subspecialty.</p>
+      
+      <div class="alert alert-error" id="modalAlertError"></div>
+      <div class="alert alert-success" id="modalAlertSuccess"></div>
+
+      <form id="reviewerApplyForm">
+        <div class="form-group">
+          <label class="form-label" for="revName">Full Name &amp; Degrees *</label>
+          <input type="text" id="revName" class="form-input" placeholder="e.g. Dr. Eleanor Vance, MD, PhD" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="revEmail">Institutional / Medical Email *</label>
+          <input type="email" id="revEmail" class="form-input" placeholder="e.g. dr.vance@hospital.org" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="revAffiliation">Primary Academic / Hospital Affiliation *</label>
+          <input type="text" id="revAffiliation" class="form-input" placeholder="e.g. Department of Cardiology, Johns Hopkins Medicine" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="revSpecialties">Clinical Specialties / Subspecialties *</label>
+          <input type="text" id="revSpecialties" class="form-input" placeholder="e.g. Cardiology, Electrophysiology, Heart Failure (comma separated)" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="revQualifications">Qualifications, Board Certifications &amp; Experience *</label>
+          <textarea id="revQualifications" class="form-textarea" placeholder="Please list your clinical training, board certifications, faculty appointments, or prior peer review experience..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="revOrcid">ORCID iD, PubMed or Academic Profile Link <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+          <input type="text" id="revOrcid" class="form-input" placeholder="https://orcid.org/0000-... or PubMed URL" />
+        </div>
+
+        <button type="submit" id="submitAppBtn" class="btn" style="width:100%;margin-top:1rem;">Submit Application for Review</button>
+      </form>
+    </div>
+  </div>
+
+  <script is:inline>
+    // Modal management
+    const overlay = document.getElementById('reviewerModalOverlay');
+    const joinBtn = document.getElementById('joinReviewerBtn');
+    const closeBtn = document.getElementById('closeReviewerModal');
+    const form = document.getElementById('reviewerApplyForm');
+    const submitBtn = document.getElementById('submitAppBtn');
+    const alertErr = document.getElementById('modalAlertError');
+    const alertSucc = document.getElementById('modalAlertSuccess');
+
+    joinBtn.addEventListener('click', () => { overlay.classList.add('active'); });
+    closeBtn.addEventListener('click', () => { overlay.classList.remove('active'); });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('active'); });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertErr.style.display = 'none';
+      alertSucc.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting application...';
+
+      const payload = {
+        name: document.getElementById('revName').value.trim(),
+        email: document.getElementById('revEmail').value.trim(),
+        title_affiliation: document.getElementById('revAffiliation').value.trim(),
+        specialties: document.getElementById('revSpecialties').value.trim(),
+        qualifications: document.getElementById('revQualifications').value.trim(),
+        orcid_or_portfolio: document.getElementById('revOrcid').value.trim(),
+      };
+
+      try {
+        const resp = await fetch('/api/reviewers/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+          form.reset();
+          alertSucc.textContent = data.message || 'Application submitted successfully!';
+          alertSucc.style.display = 'block';
+          setTimeout(() => { overlay.classList.remove('active'); alertSucc.style.display = 'none'; }, 3000);
+        } else {
+          alertErr.textContent = data.error || 'Submission failed. Please check your information.';
+          alertErr.style.display = 'block';
+        }
+      } catch (err) {
+        alertErr.textContent = 'Network error: ' + err.message;
+        alertErr.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Application for Review';
+      }
+    });
+
+    // Load active reviewers gallery
+    async function loadReviewers() {
+      const grid = document.getElementById('reviewersGrid');
+      try {
+        const resp = await fetch('/api/reviewers/apply');
+        const data = await resp.json();
+        if (!data.reviewers || data.reviewers.length === 0) {
+          grid.innerHTML = '<p style="color:var(--muted);text-align:center;grid-column:1/-1;">No reviewers listed yet. Apply to be the first!</p>';
+          return;
+        }
+
+        grid.innerHTML = data.reviewers.map(r => {
+          let aff = '';
+          try {
+            const affArr = JSON.parse(r.affiliation || '[]');
+            aff = Array.isArray(affArr) ? affArr.join(', ') : r.affiliation;
+          } catch { aff = r.affiliation || ''; }
+
+          let specs = [];
+          try {
+            const specArr = JSON.parse(r.specialty || '[]');
+            specs = Array.isArray(specArr) ? specArr : [r.specialty];
+          } catch { specs = r.specialty ? [r.specialty] : []; }
+
+          const avatar = r.avatar_url || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300';
+
+          return `
+            <div class="reviewer-card">
+              <img src="${escapeHTML(avatar)}" class="reviewer-avatar" alt="${escapeHTML(r.full_name || r.username)}" />
+              <h3 class="reviewer-name">${escapeHTML(r.full_name || r.username)}</h3>
+              <div class="reviewer-affiliation">${escapeHTML(aff || 'iMedipedia Peer Review Board')}</div>
+              <div class="reviewer-specialties">
+                ${specs.map(s => `<span class="spec-badge">${escapeHTML(s)}</span>`).join('')}
+              </div>
+              <div class="reviewer-bio">${escapeHTML(r.bio || 'Medical peer reviewer specializing in clinical evidence evaluation and research methodology.')}</div>
+            </div>
+          `;
+        }).join('');
+
+      } catch (e) {
+        grid.innerHTML = '<p style="color:var(--muted);text-align:center;grid-column:1/-1;">Could not load review board members.</p>';
+      }
+    }
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    loadReviewers();
+  </script>
+</BaseLayout>

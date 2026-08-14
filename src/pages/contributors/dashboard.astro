@@ -158,8 +158,9 @@ import exams from '../../data/exams.json';
       </div>
       <div class="tab-menu">
         <button class="tab-btn active" data-tab="overview">📊 Overview</button>
-        <button class="tab-btn" data-tab="submit">✍️ Submit Article</button>
-        <button class="tab-btn" data-tab="submissions">🗂️ My Submissions</button>
+        <button class="tab-btn" data-tab="submit" id="submitTabBtn">✍️ Submit Article</button>
+        <button class="tab-btn" data-tab="submissions" id="submissionsTabBtn">🗂️ My Submissions</button>
+        <button class="tab-btn" data-tab="reviews" id="reviewsTabBtn" style="display:none;">🩺 Assigned Reviews</button>
         <a href="/contributors/settings" class="tab-btn" style="text-decoration:none;">⚙️ Settings</a>
       </div>
       <button class="btn-logout" onclick="sessionStorage.clear();window.location.href='/contributors';" style="width:100%;">Logout</button>
@@ -287,9 +288,111 @@ import exams from '../../data/exams.json';
         </div>
       </div>
 
+      <!-- Assigned Peer Reviews Panel (For Reviewers & Admins) -->
+      <div id="reviewsPanel" class="tab-panel">
+        <h2 class="panel-title">Manuscripts Assigned for Peer Review</h2>
+        <p class="panel-desc">Review assigned manuscripts, evaluate scientific rigor, and provide constructive feedback to authors.</p>
+        <div class="table-container">
+          <table class="submissions-table">
+            <thead><tr><th>Manuscript Title</th><th>Author</th><th>Type</th><th>Assigned Date</th><th>Status</th><th>Evaluation</th></tr></thead>
+            <tbody id="reviewsTableBody">
+              <tr><td colspan="6" class="empty-state">Loading assigned reviews...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- View Submission Modal -->
       <div class="view-modal-overlay" id="viewModalOverlay" style="display:none;">
         <div class="view-modal" id="viewModalContent"></div>
+      </div>
+
+      <!-- Peer Review Evaluation Modal -->
+      <div class="view-modal-overlay" id="reviewModalOverlay" style="display:none;">
+        <div class="view-modal" style="max-width:900px;max-height:90vh;overflow-y:auto;">
+          <div class="view-modal-header" style="border-bottom:1px solid var(--border);padding-bottom:1rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <h2 id="evalArticleTitle" style="font-family:'Outfit',sans-serif;margin:0 0 0.25rem 0;font-size:1.6rem;">Evaluate Manuscript</h2>
+              <div id="evalArticleMeta" style="color:var(--muted);font-size:0.85rem;"></div>
+            </div>
+            <button class="view-modal-close" onclick="closeReviewModal()">&times;</button>
+          </div>
+
+          <div id="evalStatusAlert" class="alert" style="display:none;margin-bottom:1rem;"></div>
+
+          <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:2rem;">
+            <!-- Left: Article Reader -->
+            <div style="background:rgba(0,0,0,0.15);padding:1.5rem;border-radius:12px;border:1px solid var(--border);max-height:550px;overflow-y:auto;">
+              <h3 style="margin-top:0;font-size:1.1rem;color:var(--accent);">📖 Manuscript Content</h3>
+              <div id="evalArticleCover" style="margin-bottom:1rem;"></div>
+              <div id="evalArticleDescription" style="font-style:italic;color:var(--muted);margin-bottom:1rem;padding:0.75rem;background:rgba(99,102,241,0.05);border-left:3px solid var(--accent);border-radius:4px;"></div>
+              <div id="evalArticleBody" style="line-height:1.7;font-size:0.95rem;white-space:pre-wrap;"></div>
+            </div>
+
+            <!-- Right: Standardized Review Rubric -->
+            <form id="evalForm" onsubmit="return false;">
+              <input type="hidden" id="evalAssignmentId" />
+
+              <div class="form-group" style="margin-bottom:1rem;">
+                <label class="form-label" style="color:var(--text);font-weight:700;">Overall Recommendation *</label>
+                <select class="form-select" id="evalRecommendation" required style="font-weight:600;">
+                  <option value="accept">✅ Accept (Publish Ready)</option>
+                  <option value="minor_revisions">✏️ Minor Revisions Suggested</option>
+                  <option value="major_revisions">⚠️ Major Revisions Required</option>
+                  <option value="reject">❌ Unsuitable / Reject</option>
+                </select>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-bottom:1rem;">
+                <div class="form-group">
+                  <label class="form-label" style="font-size:0.75rem;">Clinical Accuracy (1-5)</label>
+                  <select class="form-select" id="evalAccuracy">
+                    <option value="5">5 - Flawless</option>
+                    <option value="4">4 - Sound</option>
+                    <option value="3">3 - Minor gaps</option>
+                    <option value="2">2 - Flawed</option>
+                    <option value="1">1 - Inaccurate</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" style="font-size:0.75rem;">Clarity & Structure (1-5)</label>
+                  <select class="form-select" id="evalStructure">
+                    <option value="5">5 - Excellent</option>
+                    <option value="4">4 - Good</option>
+                    <option value="3">3 - Adequate</option>
+                    <option value="2">2 - Disorganized</option>
+                    <option value="1">1 - Poor</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" style="font-size:0.75rem;">Evidence Base (1-5)</label>
+                  <select class="form-select" id="evalEvidence">
+                    <option value="5">5 - Robust</option>
+                    <option value="4">4 - Adequate</option>
+                    <option value="3">3 - Partial</option>
+                    <option value="2">2 - Weak</option>
+                    <option value="1">1 - Uncited</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:1rem;">
+                <label class="form-label" style="color:var(--text);font-weight:700;">Detailed Feedback for Author *</label>
+                <textarea class="form-textarea" id="evalAuthorComments" placeholder="Provide specific clinical and editorial feedback. This will be sent directly to the author..." style="min-height:140px;font-size:0.9rem;" required></textarea>
+              </div>
+
+              <div class="form-group" style="margin-bottom:1.25rem;">
+                <label class="form-label">Confidential Notes for Editorial Board <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+                <textarea class="form-textarea" id="evalEditorNotes" placeholder="Private comments visible only to admins..." style="min-height:60px;font-size:0.85rem;"></textarea>
+              </div>
+
+              <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeReviewModal()">Cancel</button>
+                <button type="button" class="btn" id="evalSubmitBtn" onclick="submitPeerReview()">Submit Review</button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -320,6 +423,22 @@ import exams from '../../data/exams.json';
       var initial = user.username.charAt(0).toUpperCase();
       document.getElementById('avatarInitial').textContent = initial;
 
+      // Show Assigned Reviews Tab if user is a reviewer or admin
+      var isReviewer = user.role === 'reviewer' || user.role === 'admin' || user.role === 'co-admin';
+      var reviewsTabBtn = document.getElementById('reviewsTabBtn');
+      if (isReviewer && reviewsTabBtn) {
+        reviewsTabBtn.style.display = 'block';
+      }
+
+      // Check URL parameters for tab
+      var urlParams = new URLSearchParams(window.location.search);
+      var initialTab = urlParams.get('tab');
+      if (initialTab && initialTab === 'reviews' && isReviewer) {
+        setTimeout(function() {
+          if (reviewsTabBtn) reviewsTabBtn.click();
+        }, 100);
+      }
+
       // Auto-fill author name from user profile
       document.getElementById('artAuthor').value = user.full_name || user.username || '';
 
@@ -335,6 +454,8 @@ import exams from '../../data/exams.json';
           var panel = document.getElementById(panelId); if (panel) panel.classList.add('active');
           if (btn.getAttribute('data-tab') === 'overview' || btn.getAttribute('data-tab') === 'submissions') {
             loadSubmissions();
+          } else if (btn.getAttribute('data-tab') === 'reviews') {
+            loadAssignedReviews();
           }
         });
       });
@@ -1157,6 +1278,144 @@ import exams from '../../data/exams.json';
           }
         } catch(e) {
           showAlert('Network error.', 'error');
+        }
+      }
+
+      // --- Peer Review Logic for Reviewers ---
+      var currentAssignments = [];
+
+      async function loadAssignedReviews() {
+        var tbody = document.getElementById('reviewsTableBody');
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Loading assigned reviews...</td></tr>';
+        try {
+          var res = await fetch('/api/reviewers/assignments');
+          if (res.status === 401) { sessionStorage.clear(); window.location.href = '/contributors'; return; }
+          var data = await res.json();
+          currentAssignments = data.assignments || [];
+
+          if (currentAssignments.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No manuscript review assignments currently pending for your account.</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = currentAssignments.map(function(a) {
+            var assignedDate = new Date(a.assigned_at * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            var isCompleted = a.assignment_status === 'completed';
+            var statusBadge = isCompleted ? '<span class="badge badge-approved">Completed</span>' : '<span class="badge badge-pending">Review Pending</span>';
+            var actionBtn = isCompleted
+              ? '<button class="action-btn-sm btn-view" onclick="openReviewModal(' + a.assignment_id + ')" title="View Evaluation">👁 View Evaluation</button>'
+              : '<button class="action-btn-sm" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:0.35rem 0.75rem;font-weight:600;cursor:pointer;" onclick="openReviewModal(' + a.assignment_id + ')">🩺 Conduct Review</button>';
+
+            return '<tr>' +
+              '<td style="font-weight:600;">' + escapeHTML(a.title) + '</td>' +
+              '<td>' + escapeHTML(a.author || 'Author') + '</td>' +
+              '<td>' + escapeHTML(a.type || 'general') + '</td>' +
+              '<td>' + assignedDate + '</td>' +
+              '<td>' + statusBadge + '</td>' +
+              '<td>' + actionBtn + '</td>' +
+            '</tr>';
+          }).join('');
+        } catch (e) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-state" style="color:#ef4444;">Error loading assigned reviews: ' + escapeHTML(e.message) + '</td></tr>';
+        }
+      }
+
+      function openReviewModal(assignmentId) {
+        var a = currentAssignments.find(function(item) { return item.assignment_id === assignmentId; });
+        if (!a) { alert('Assignment data not found.'); return; }
+
+        document.getElementById('evalAssignmentId').value = a.assignment_id;
+        document.getElementById('evalArticleTitle').textContent = a.title;
+        document.getElementById('evalArticleMeta').textContent = 'Author: ' + (a.author || 'Author') + ' | Category: ' + (a.type || 'general') + ' | Topic: ' + (a.topic || 'General');
+        
+        var coverContainer = document.getElementById('evalArticleCover');
+        if (a.image) {
+          coverContainer.innerHTML = '<img src="' + escapeHTML(a.image) + '" style="width:100%;max-height:220px;object-fit:cover;border-radius:8px;" alt="Cover">';
+          coverContainer.style.display = 'block';
+        } else {
+          coverContainer.innerHTML = '';
+          coverContainer.style.display = 'none';
+        }
+
+        document.getElementById('evalArticleDescription').textContent = a.description ? ('Abstract / Summary: ' + a.description) : 'No abstract provided.';
+        document.getElementById('evalArticleBody').textContent = a.body || '';
+
+        // Pre-fill existing evaluation if already reviewed
+        document.getElementById('evalRecommendation').value = a.recommendation || 'accept';
+        document.getElementById('evalAccuracy').value = String(a.clinical_accuracy_score || 5);
+        document.getElementById('evalStructure').value = String(a.structure_score || 5);
+        document.getElementById('evalEvidence').value = String(a.evidence_score || 5);
+        document.getElementById('evalAuthorComments').value = a.author_comments || '';
+        document.getElementById('evalEditorNotes').value = a.editor_notes || '';
+
+        var isCompleted = a.assignment_status === 'completed';
+        document.getElementById('evalSubmitBtn').textContent = isCompleted ? 'Update Evaluation' : 'Submit Review';
+
+        document.getElementById('evalStatusAlert').style.display = 'none';
+        document.getElementById('reviewModalOverlay').style.display = 'flex';
+      }
+
+      function closeReviewModal() {
+        document.getElementById('reviewModalOverlay').style.display = 'none';
+      }
+
+      async function submitPeerReview() {
+        var assignmentId = document.getElementById('evalAssignmentId').value;
+        var recommendation = document.getElementById('evalRecommendation').value;
+        var clinicalAccuracy = document.getElementById('evalAccuracy').value;
+        var structure = document.getElementById('evalStructure').value;
+        var evidence = document.getElementById('evalEvidence').value;
+        var authorComments = document.getElementById('evalAuthorComments').value.trim();
+        var editorNotes = document.getElementById('evalEditorNotes').value.trim();
+
+        if (!authorComments) {
+          alert('Please provide detailed feedback remarks for the author.');
+          return;
+        }
+
+        var btn = document.getElementById('evalSubmitBtn');
+        btn.disabled = true;
+        var origText = btn.textContent;
+        btn.textContent = 'Submitting & sending email...';
+
+        var alertEl = document.getElementById('evalStatusAlert');
+        alertEl.style.display = 'none';
+
+        try {
+          var res = await fetch('/api/reviewers/assignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              assignmentId: parseInt(assignmentId),
+              recommendation: recommendation,
+              clinicalAccuracy: clinicalAccuracy,
+              structure: structure,
+              evidence: evidence,
+              authorComments: authorComments,
+              editorNotes: editorNotes
+            })
+          });
+          var data = await res.json();
+          if (res.ok && data.success) {
+            alertEl.className = 'alert alert-success';
+            alertEl.textContent = data.message || 'Review submitted successfully!';
+            alertEl.style.display = 'block';
+            setTimeout(function() {
+              closeReviewModal();
+              loadAssignedReviews();
+            }, 1200);
+          } else {
+            alertEl.className = 'alert alert-error';
+            alertEl.textContent = data.error || 'Submission failed.';
+            alertEl.style.display = 'block';
+          }
+        } catch (err) {
+          alertEl.className = 'alert alert-error';
+          alertEl.textContent = 'Network error: ' + err.message;
+          alertEl.style.display = 'block';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = origText;
         }
       }
 

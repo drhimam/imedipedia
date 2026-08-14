@@ -139,3 +139,52 @@ CREATE TABLE IF NOT EXISTS newsletters (
     created_at INTEGER NOT NULL
 );
 
+-- Peer Reviewer Applications Table
+CREATE TABLE IF NOT EXISTS peer_review_applications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    title_affiliation TEXT NOT NULL,
+    specialties TEXT NOT NULL,          -- JSON array string
+    qualifications TEXT NOT NULL,
+    orcid_or_portfolio TEXT DEFAULT '',
+    status TEXT DEFAULT 'pending',      -- pending | approved | rejected
+    admin_notes TEXT DEFAULT '',
+    created_at INTEGER NOT NULL,
+    reviewed_at INTEGER,
+    reviewed_by TEXT,
+    FOREIGN KEY (reviewed_by) REFERENCES users(id)
+);
+
+-- Peer Review Assignments Table (Assigns submissions to reviewers with user_id)
+CREATE TABLE IF NOT EXISTS peer_review_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id INTEGER NOT NULL,
+    reviewer_user_id TEXT NOT NULL,     -- FK to users(id) with role 'reviewer'
+    status TEXT DEFAULT 'pending',       -- pending | in_progress | completed | declined
+    assigned_by TEXT NOT NULL,          -- FK to users(id) (admin)
+    assigned_at INTEGER NOT NULL,
+    completed_at INTEGER,
+    FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewer_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (assigned_by) REFERENCES users(id)
+);
+
+-- Peer Reviews Table (Stores structured evaluation feedback)
+CREATE TABLE IF NOT EXISTS peer_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    assignment_id INTEGER NOT NULL UNIQUE,
+    submission_id INTEGER NOT NULL,
+    reviewer_user_id TEXT NOT NULL,
+    recommendation TEXT NOT NULL,        -- accept | minor_revisions | major_revisions | reject
+    clinical_accuracy_score INTEGER,    -- 1 to 5
+    structure_score INTEGER,            -- 1 to 5
+    evidence_score INTEGER,             -- 1 to 5
+    author_comments TEXT NOT NULL,      -- Feedback delivered to contributor
+    editor_notes TEXT DEFAULT '',       -- Confidential notes for editorial board
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (assignment_id) REFERENCES peer_review_assignments(id) ON DELETE CASCADE,
+    FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewer_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+

@@ -29,6 +29,7 @@
 19. [Admin Dashboard UI & Workflow Enhancements](#19-admin-dashboard-ui--workflow-enhancements)
 20. [Weekly Newsletter & Digest Generation Workflow](#20-weekly-newsletter--digest-generation-workflow)
 21. [Custom Domain & Cover Image Alignment Architecture](#21-custom-domain--cover-image-alignment-architecture)
+22. [Peer Review Board & Multi-Reviewer Evaluation Architecture](#22-peer-review-board--multi-reviewer-evaluation-architecture)
 
 ---
 
@@ -1499,6 +1500,42 @@ Previously, cover images could only be supplied via local file drag-and-drop. Co
 ### 21.3 Global Image Alignment & Overflow Prevention
 - **Base Layout Global Reset (`src/layouts/BaseLayout.astro`):** Added `:global(img) { max-width: 100%; height: auto; box-sizing: border-box; }` and explicitly scoped `:global(.article-body img), :global(.content img), :global(.article-view img)` to `max-width: 100% !important; height: auto !important; margin: 1.5rem auto; display: block;`. This prevents high-resolution or wide markdown images from overflowing past the right container margin.
 - **Cover Image Containment:** Across [`general.astro`](file:///d:/antigravity/Medblog/src/pages/general.astro), [`cases.astro`](file:///d:/antigravity/Medblog/src/pages/cases.astro), [`education.astro`](file:///d:/antigravity/Medblog/src/pages/education.astro), and [`[...slug].astro`](file:///d:/antigravity/Medblog/src/pages/blog/%5B...slug%5D.astro), cover images inside `.article-image-container` and `.cover-image-container` now use `width: 100%; max-height: 450px; object-fit: cover; display: block;` to maintain aspect ratios within columns without clipping or horizontal overflow.
+
+---
+
+## 22. Peer Review Board & Multi-Reviewer Evaluation Architecture
+
+### 22.1 End-to-End Peer Review Workflow
+iMedipedia introduces an authenticated middle-tier peer review process for prospective submissions before final acceptance and publishing:
+1. **Public Review Board Showcase (`/reviewers`):**
+   - Publicly showcases approved clinician and academic reviewers with affiliations, specialties, ORCID links, and bios.
+   - Includes **"Join as Peer Reviewer"** modal (`POST /api/reviewers/apply`) capturing degrees, certifications, and clinical subspecialties.
+2. **Editorial Board Review & Account Provisioning (`/admin` → "Peer Reviewers" tab):**
+   - Admins evaluate applicant credentials with 1-click **Accept / Reject** (`POST /api/admin/reviewer-applications`).
+   - On approval, the system generates a secure account with `role: 'reviewer'`, sets `force_password_change: 1`, and dispatches welcome credentials via AWS SES (`buildReviewerApprovedEmail`).
+3. **Multi-Reviewer Assignment (`/admin` → "Submissions" tab):**
+   - Admin clicks **"🩺 Send to Reviewer(s)"** on any submission to open the reviewer roster modal.
+   - Admins can assign 1 or multiple specialist reviewers simultaneously (`POST /api/admin/assign-reviewers`).
+   - Submission status updates to **`in_review`** (`<span class="badge badge-published">In Review</span>`).
+   - **Automated SES Triggers:**
+     - **To Reviewer:** Dispatches `buildPeerReviewInviteEmail` with direct link to reviewer portal.
+     - **To Contributor:** Dispatches `buildArticleInReviewEmail` notifying author of named reviewer assignment.
+4. **Authenticated Review Evaluation Portal (`/contributors/dashboard?tab=reviews`):**
+   - Logged-in reviewers access the **"🩺 Assigned Reviews"** tab to view assigned manuscripts.
+   - Side-by-side manuscript reader and standardized clinical rubric:
+     - **Recommendation:** Accept / Minor Revisions / Major Revisions / Reject
+     - **Scoring (1–5):** Clinical Accuracy, Structure & Clarity, Evidence Base
+     - **Author Comments:** Actionable clinical feedback
+     - **Editor Notes:** Confidential feedback for editorial board
+   - Reviewer submissions (`POST /api/reviewers/assignments`) mark assignment status as `completed`.
+   - **Direct Author Feedback Email:** Automatically sends `buildPeerReviewFeedbackEmail` containing rubric scores and comments with a 1-click button for the author to edit and refine their draft in `/contributors/dashboard`.
+5. **Admin Evaluation Scorecards:**
+   - Admins click **"📝 View Peer Reviews"** on submissions to inspect reviewer scorecards, author remarks, and confidential editor notes.
+
+### 22.2 Database Schema (`schema.sql`)
+- **`peer_review_applications`:** Tracks public join applications, credentials, and review status.
+- **`peer_review_assignments`:** Tracks multi-reviewer assignments per submission.
+- **`peer_reviews`:** Stores clinical rubric scores (1–5), recommendation, author comments, and confidential editor notes.
 
 ---
 
