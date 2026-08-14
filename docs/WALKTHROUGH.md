@@ -26,6 +26,8 @@
 16. [Knowledge Base & RAG Grounding (Phase 2)](#16-knowledge-base--rag-grounding-phase-2)
 17. [Verifying the RAG Implementation](#17-verifying-the-rag-implementation)
 18. [Studio Context Attachments](#18-studio-context-attachments)
+19. [Admin Dashboard UI & Workflow Enhancements](#19-admin-dashboard-ui--workflow-enhancements)
+20. [Weekly Newsletter & Digest Generation Workflow](#20-weekly-newsletter--digest-generation-workflow)
 
 ---
 
@@ -298,6 +300,30 @@ Categories are no longer free-text. Instead, subjects and exams live in two stat
 |------|-------|-------|---------|
 | `src/data/subjects.json` | `[{ "name": "General Physiology", "parent": "Physiology" }, …]` | 210 subjects, 15 parents | Controlled subject taxonomy for categorization |
 | `src/data/exams.json` | `[{ "name": "USMLE Step 1", "category": "United States" }, …]` | 70 exams, 15 categories | Controlled exam list (kept separate from subjects) |
+
+### 4.11 `subscribers` Table (Weekly Digest Subscribers)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER PRIMARY KEY AUTOINCREMENT | Unique subscriber identifier |
+| `email` | TEXT NOT NULL UNIQUE | Subscriber email address |
+| `name` | TEXT DEFAULT '' | Subscriber name (optional) |
+| `subscribed_at` | INTEGER NOT NULL | Unix timestamp of initial subscription |
+| `unsubscribe_token` | TEXT NOT NULL UNIQUE | Cryptographically secure token for 1-click unsubscriptions |
+| `unsubscribed_at` | INTEGER | Unix timestamp of opt-out (NULL if currently active) |
+
+### 4.12 `newsletters` Table (Weekly Digest Issues)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER PRIMARY KEY AUTOINCREMENT | Unique issue identifier |
+| `issue_number` | INTEGER NOT NULL | Sequential issue number (e.g. 1, 2, 3...) |
+| `title` | TEXT NOT NULL | Digest issue title |
+| `subject` | TEXT NOT NULL | Email subject line for broadcast |
+| `body_md` | TEXT NOT NULL | Markdown content of the weekly digest |
+| `status` | TEXT DEFAULT 'draft' | `draft` or `sent` |
+| `sent_at` | INTEGER | Unix timestamp when broadcasted via SES |
+| `created_at` | INTEGER NOT NULL | Unix timestamp of issue generation |
 
 **Why static JSON?**
 - **Zero D1 reads** — Astro imports the files at build time and embeds them into the page HTML (via `define:vars`), so autocomplete is instant with no per-keystroke API call.
@@ -636,6 +662,54 @@ All KB endpoints require admin/co-admin.
 - **Action:** Deletes the source and its chunks (FK `ON DELETE CASCADE`).
 - **Response:** `{ success: true, message: "Source deleted." }`
 
+### 6.10 Subscription & Newsletter Endpoints
+
+#### `POST /api/subscribe`
+- **Auth:** Public
+- **Body:** `{ email, name? }`
+- **Action:** Validates email, generates random crypto `unsubscribe_token`, upserts into `subscribers` table, and sends a branded welcome email via AWS SES with personalized unsubscribe link.
+- **Response:** `{ success: true, message }`
+
+#### `POST /api/unsubscribe`
+- **Auth:** Public
+- **Body:** `{ token }`
+- **Action:** Validates `unsubscribe_token` and updates `subscribers.unsubscribed_at = timestamp`.
+- **Response:** `{ success: true, message }`
+
+#### `GET /api/admin/newsletter/list`
+- **Auth:** admin/co-admin
+- **Response:** `{ stats: { total, active, unsubscribed }, subscribers: [...], newsletters: [...] }`
+
+#### `POST /api/admin/newsletter/generate`
+- **Auth:** admin/co-admin
+- **Body:** `{ title? }`
+- **Action:** Aggregates approved/published `general` articles from the past 30 days, determines `nextIssue = max(issue_number) + 1`, and synthesizes a structured weekly markdown digest including executive summary, featured articles, and a board review pearl. Saves as `draft` in `newsletters` table.
+- **Response:** `{ success: true, message, newsletter: {...} }`
+
+#### `PUT /api/admin/newsletter/update`
+- **Auth:** admin/co-admin
+- **Body:** `{ id, title, subject, body_md }`
+- **Action:** Updates issue title, email subject, and markdown body in D1.
+- **Response:** `{ success: true, message, newsletter: {...} }`
+
+#### `POST /api/admin/newsletter/send`
+- **Auth:** admin/co-admin
+- **Body:** `{ newsletterId }`
+- **Action:** Fetches target issue and all active subscribers (`unsubscribed_at IS NULL`). Converts markdown to branded HTML email using `buildNewsletterEmail()` from `_email-template.js` with individual personalized unsubscribe URLs, and sends in batches via AWS SES. Updates issue `status = 'sent'` and `sent_at = timestamp`.
+- **Response:** `{ success: true, message, sentCount, failCount }`
+
+#### `POST /api/admin/newsletter/publish`
+- **Auth:** admin/co-admin
+- **Body:** `{ newsletterId }`
+- **Action:** Saves the weekly digest as a published post in `submissions` (`type: "general"`, `topic: "Weekly Digest"`, `subject: "Weekly Digest"`) so it automatically lands on `/general`.
+- **Response:** `{ success: true, message }`
+
+#### `DELETE /api/admin/newsletter/delete`
+- **Auth:** admin/co-admin
+- **Body:** `{ id }`
+- **Action:** Deletes the newsletter issue from `newsletters` table in D1.
+- **Response:** `{ success: true, message }`
+
 ---
 
 ## 7. Pages Reference
@@ -652,6 +726,7 @@ All KB endpoints require admin/co-admin.
 | Contributor Portal | `/contributors` | Static | Contributor listing + application modal |
 | Contributor Profile | `/contributors/[id]` | SSR | Individual profile + published articles |
 | Password Reset | `/contributors/reset-password` | Static | Token-based password reset form |
+| Unsubscribe | `/unsubscribe` | SSR | 1-click newsletter unsubscribe confirmation page |
 | Blog Article | `/blog/[...slug]` | Static | Individual article page |
 
 ### 7.2 Contributor Pages
@@ -672,9 +747,9 @@ All KB endpoints require admin/co-admin.
 | Page | Route | Prerender | Auth | Description |
 |------|-------|-----------|------|-------------|
 | Admin Login | `/admin/login` | Static | None | Username + password login form |
-| Admin Dashboard | `/admin` | SSR (auth check) | admin/co-admin | 6 tabs: Applications, Submissions, Articles, Images, Subjects, Exams |
-| AI Studio | `/admin/studio` | SSR (auth check) | admin/co-admin | Full-page article generation, cover image, inline Context attachments, evidence grounding |
-| Knowledge Base | `/admin/kb` | SSR (auth check) | admin/co-admin | Manage RAG evidence sources (ingest, search, delete) |
+| Admin Dashboard | `/admin` | SSR (auth check) | admin/co-admin | 8 tabs: Applications, Submissions, Articles, Images, Users, Newsletters, Subjects, Exams |
+| AI Studio | `/admin/studio` | SSR (auth check) | admin/co-admin | Full-page AI article writing & cover generation with context attachments & KB grounding |
+| Knowledge Base | `/admin/kb` | SSR (auth check) | admin/co-admin | Evidence source ingestion, chunk embedding, and vector search |
 
 #### Admin Dashboard Features:
 - **Sticky top bar:** Logo, admin badge, user name, Studio (✨) link, KB (📚) link, Settings button (⚙️), Logout button (↪️)
@@ -1317,6 +1392,87 @@ To enable the image and scanned document OCR extraction via the **File Tab**, yo
 
 ---
 
-> **Document maintained by:** Claude Code
+## 19. Admin Dashboard UI & Workflow Enhancements
+
+The Admin Dashboard (`/admin`) received significant UX enhancements to streamline daily content moderation, article management, contributor profile inspections, and table navigation.
+
+### 19.1 Submissions Tab
+- **Global Search & 10-Row Pagination:** Real-time search across submission titles and authors with page navigation (`Prev` / `Next` controls).
+- **Text Truncation:** Long titles and author names are truncated with tooltip display to prevent table squeezing.
+- **Three-Dot Action Menu (`⋮`):** All row actions are grouped into a clean dropdown:
+  - `👁 View / Edit` — Open unified inspection and edit modal.
+  - `🌐 Web Preview` — Opens `/preview/[slug]` in a new tab.
+  - `✅ Approve` / `❌ Reject` — Review submission with optional reviewer feedback notes and automatic contributor email notification.
+  - `🚀 Publish` — Pushes approved articles to GitHub.
+  - `🗑 Delete` — Removes submission from D1.
+
+### 19.2 Articles Tab
+- **GitHub Git Trees API Integration:** Fetches all published markdown articles directly from the repository's `master` branch.
+- **Global Search & Pagination:** Search through published articles with 10-row pagination.
+- **Live Markdown Editor:** Allows admins to load existing articles, make edits directly in the browser, and commit updates back to GitHub.
+
+### 19.3 Images Tab
+- **Clean Table Layout:** Replaced intrusive raw image thumbnail previews in rows with clean metadata rows.
+- **Search & Pagination:** Filter images by folder (`all`, `covers`, `inline`, `uploads`) with pagination.
+- **Three-Dot Action Menu (`⋮`):**
+  - `👁 View Image` — Preview image in a modal.
+  - `🔗 Copy URL` — Copy raw R2 image URL to clipboard.
+  - `📝 Copy MD Inline` — Copy ready-to-use markdown inline syntax (`![Name](URL)`).
+  - `🗑 Delete` — Remove image from both Cloudflare R2 and D1.
+
+### 19.4 Users / Contributors Tab
+- **Full D1 Schema Support:** Displays and manages all user profile attributes:
+  - `id`, `username`, `role` (`admin`, `co-admin`, `contributor`, `editor`, `user`)
+  - `full_name`, `email`, `avatar_url`, `bio`
+  - Multi-value arrays: `affiliation`, `specialty`, `experience`
+  - Security flags: `mfa_enabled`, `force_password_change`
+- **Bulk Email Broadcast:** Integrated with `/api/admin/email.js` using AWS SES to send direct or bulk messages to contributors.
+- **Safe Global In-Memory Maps:** Refactored inline stringified JSON parameters into safe dictionaries (`window._loadedApplications`, `window._loadedUsers`, `window._loadedNewsletters`) to eliminate single-quote escaping syntax errors.
+
+### 19.5 Unified View & Edit Modal UX
+- **Seamless View / Edit Toggle:** View and Edit features share a unified modal window, eliminating closing/reopening glitches.
+- **Header Layout:** The Close (`✕`) button is placed on the far left next to the title, and the Mode toggle (`✏️ Edit Mode` / `👁 View Mode`) is positioned on the far right edge to eliminate button overlap.
+
+---
+
+## 20. Weekly Newsletter & Digest Generation Workflow
+
+An automated, end-to-end Weekly Clinical Digest system that aggregates weekly research, drafts digests with AI, allows live editing, sends broadcasts via AWS SES, and publishes directly to the public blog.
+
+```mermaid
+flowchart TD
+    A[Weekly Published Articles] --> B[AI Generator: POST /api/admin/newsletter/generate]
+    B --> C[D1 Newsletters Table: status='draft']
+    C --> D[Interactive Modal: View / Edit Markdown]
+    D --> E[Save Changes: PUT /api/admin/newsletter/update]
+    E --> F{Broadcast / Publish Actions}
+    F -->|Batch Email| G[AWS SES: POST /api/admin/newsletter/send]
+    G --> H[Active Subscribers in D1]
+    F -->|Publish to Blog| I[POST /api/admin/newsletter/publish]
+    I --> J[Public /general under 'Weekly Digest']
+    F -->|Export| K[Download .md / PDF]
+```
+
+### 20.1 Public Subscription & Unsubscribe Flow
+- **Footer Subscribe Form:** Real-time subscription form in [`BaseLayout.astro`](file:///d:/antigravity/Medblog/src/layouts/BaseLayout.astro) connected to `POST /api/subscribe`.
+- **Crypto-Secure Unsubscribe Token:** Each subscriber receives a unique token (`crypto.randomUUID()`) upon sign-up.
+- **Welcome Confirmation Email:** Automated welcome email dispatched via AWS SES (`_email-template.js`).
+- **1-Click Unsubscribe Page:** [`/unsubscribe?token=...`](file:///d:/antigravity/Medblog/src/pages/unsubscribe.astro) updates `subscribers.unsubscribed_at = timestamp` without requiring authentication.
+
+### 20.2 Admin Newsletters Dashboard
+- **Subscriber Metrics:** Real-time display of **Active Subscribers**, **Total Signups**, and **Unsubscribed** counts.
+- **AI Digest Generator:** Aggregates approved `general` articles from the past 30 days, calculates `issue_number`, and drafts a structured clinical summary.
+- **Auto-Opening Editor Modal:** Once generation completes, the modal automatically opens in **Edit Mode**, allowing instant customization of title, email subject, and markdown body.
+- **SES Batch Dispatcher:** Sends branded HTML digests to all active subscribers with individualized unsubscribe links.
+- **1-Click Blog Publishing:** Publishes the digest directly into the `submissions` table (`type: "general"`, `topic: "Weekly Digest"`) so it lands on `/general`.
+- **Export Options:** Download raw markdown (`.md`) or printable PDF (`.pdf`) directly from the table or modal.
+
+### 20.3 Frontend Integration on `/general`
+- **Pinned Digest Banner:** A prominent, styled **"📬 Weekly Clinical Digest"** banner is pinned at the top of the left panel in [`general.astro`](file:///d:/antigravity/Medblog/src/pages/general.astro), allowing readers to instantly filter and browse all weekly digest issues.
+
+---
+
+> **Document maintained by:** Google Antigravity
 > **Repository:** https://github.com/drhimam/imedipedia
 > **Production:** https://imedipedia.pages.dev
+
