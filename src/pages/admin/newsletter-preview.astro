@@ -1,0 +1,165 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export const prerender = false;
+
+// Check admin auth
+if (Astro.request) {
+  const cookieHeader = Astro.request.headers.get("cookie") || "";
+  const match = cookieHeader.match(/session_id=([^;]+)/);
+  const sessionId = match ? match[1] : null;
+
+  if (!sessionId) return Astro.redirect("/admin/login");
+
+  const db = Astro.locals?.runtime?.env?.D1_DB || Astro.locals?.runtime?.env?.DB;
+  if (db) {
+    const now = Math.floor(Date.now() / 1000);
+    const session = await db.prepare("SELECT * FROM sessions WHERE id = ? AND expires_at > ?")
+      .bind(sessionId, now).first();
+    if (!session) return Astro.redirect("/admin/login");
+
+    const user = await db.prepare("SELECT * FROM users WHERE id = ?").bind(session.user_id).first();
+    if (!user || (user.role !== 'admin' && user.role !== 'co-admin')) {
+      return Astro.redirect("/admin/login");
+    }
+  }
+}
+
+const { searchParams } = Astro.url;
+const issueId = searchParams.get('id');
+
+let newsletter = null;
+let error = '';
+
+if (issueId) {
+  const db = Astro.locals?.runtime?.env?.D1_DB || Astro.locals?.runtime?.env?.DB;
+  if (db) {
+    newsletter = await db.prepare("SELECT * FROM newsletters WHERE id = ?").bind(issueId).first();
+  }
+}
+
+if (!newsletter) {
+  error = 'Newsletter issue not found.';
+}
+
+function mdToHtml(md) {
+  if (!md) return '';
+  return md
+    .replace(/^### (.*$)/gim, '<h3 style="color:var(--text);margin:24px 0 10px;font-size:1.25rem;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:6px;">$1</h3>')
+    .replace(/^#### (.*$)/gim, '<h4 style="color:var(--text);margin:18px 0 6px;font-size:1.1rem;font-weight:600;">$1</h4>')
+    .replace(/^## (.*$)/gim, '<h2 style="color:var(--accent);margin:26px 0 12px;font-size:1.6rem;font-weight:800;letter-spacing:-0.4px;">$1</h2>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--text);">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em style="color:var(--muted);">$1</em>')
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600;">$1</a>')
+    .replace(/^---$/gim, '<hr style="border:none;border-top:1px solid var(--border);margin:24px 0;">')
+    .replace(/\n\n/g, '</p><p style="margin:0 0 14px;line-height:1.7;color:var(--text);font-size:1.02rem;">')
+    .replace(/\n/g, '<br>');
+}
+---
+
+<BaseLayout title={newsletter ? `Web Preview: ${newsletter.title}` : 'Newsletter Web Preview'}>
+  <div style="max-width: 900px; margin: 2rem auto 4rem auto; padding: 0 1.5rem;">
+    
+    <!-- Top Action Bar -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; flex-wrap:wrap; gap:1rem; background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:1rem 1.5rem;">
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <a href="/admin" class="topbar-btn" style="text-decoration:none; padding:0.5rem 1rem;">&larr; Back to Admin</a>
+        <span style="font-weight:700; font-size:1.1rem; color:var(--text);">
+          {newsletter ? `Weekly Digest #${newsletter.issue_number}` : 'Web Preview'}
+        </span>
+        {newsletter && (
+          <span class={`badge badge-${newsletter.status === 'sent' ? 'approved' : 'pending'}`}>
+            {newsletter.status.toUpperCase()}
+          </span>
+        )}
+      </div>
+      
+      {newsletter && (
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="btn btn-sm btn-secondary" onclick="window.print()">📑 Print / Save PDF</button>
+          <button class="btn btn-sm" id="sendBtn" onclick={`sendNewsletterNow(${newsletter.id})`}>📧 Send via SES</button>
+          <button class="btn btn-sm" id="publishBtn" style="background:#10b981; border-color:#10b981;" onclick={`publishNewsletterNow(${newsletter.id})`}>🚀 Publish to /general</button>
+        </div>
+      )}
+    </div>
+
+    {error ? (
+      <div class="alert alert-error">{error}</div>
+    ) : (
+      <!-- Email / Web Simulation Container -->
+      <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:16px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.15);">
+        
+        <!-- Email Metadata Header -->
+        <div style="padding:1.5rem; background:rgba(0,0,0,0.03); border-bottom:1px solid var(--border); font-size:0.9rem;">
+          <div style="margin-bottom:0.4rem;"><strong>From:</strong> iMedipedia Weekly Digest &lt;newsletter@imedipedia.org&gt;</div>
+          <div style="margin-bottom:0.4rem;"><strong>Subject:</strong> <span style="color:var(--accent); font-weight:600;">{newsletter.subject}</span></div>
+          <div style="color:var(--muted); font-size:0.82rem;"><strong>Date:</strong> {new Date(newsletter.created_at * 1000).toUTCString()}</div>
+        </div>
+
+        <!-- Branded Email Layout Body -->
+        <div style="padding:2.5rem 2rem;">
+          <header style="background:linear-gradient(135deg, #6366f1, #4f46e5); color:#fff; padding:2rem; border-radius:12px; text-align:center; margin-bottom:2.5rem;">
+            <h1 style="margin:0; font-family:'Outfit', sans-serif; font-size:2rem; letter-spacing:-0.5px;">iMedipedia</h1>
+            <p style="margin:0.5rem 0 0 0; opacity:0.9; font-size:0.95rem;">Medical Research &amp; Clinical Education Platform</p>
+          </header>
+
+          <article class="newsletter-rendered-content" style="line-height:1.7;">
+            <p style="margin:0 0 14px; line-height:1.7; color:var(--text); font-size:1.02rem;">
+              <Fragment set:html={mdToHtml(newsletter.body_md)} />
+            </p>
+          </article>
+
+          <!-- Footer Simulation -->
+          <footer style="margin-top:3rem; padding-top:2rem; border-top:1px solid var(--border); text-align:center; color:var(--muted); font-size:0.85rem;">
+            <p style="margin:0 0 0.5rem 0;">&copy; {new Date().getFullYear()} <strong>iMedipedia</strong>. All rights reserved.</p>
+            <p style="margin:0; font-size:0.8rem;">
+              You received this digest because you subscribed on iMedipedia.<br>
+              <span style="color:var(--accent); text-decoration:underline; cursor:pointer;">Unsubscribe from this newsletter</span>
+            </p>
+          </footer>
+        </div>
+      </div>
+    )}
+  </div>
+
+  <script is:inline>
+    async function sendNewsletterNow(id) {
+      if (!confirm('Send this digest issue via AWS SES batch to all active subscribers?')) return;
+      const btn = document.getElementById('sendBtn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+      try {
+        const resp = await fetch('/api/admin/newsletter/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newsletterId: id })
+        });
+        const data = await resp.json();
+        alert(data.message || data.error);
+        window.location.reload();
+      } catch(e) {
+        alert('Error: ' + e.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📧 Send via SES'; }
+      }
+    }
+
+    async function publishNewsletterNow(id) {
+      if (!confirm('Publish this digest issue as a blog post on /general?')) return;
+      const btn = document.getElementById('publishBtn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Publishing...'; }
+      try {
+        const resp = await fetch('/api/admin/newsletter/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newsletterId: id })
+        });
+        const data = await resp.json();
+        alert(data.message || data.error);
+      } catch(e) {
+        alert('Error: ' + e.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🚀 Publish to /general'; }
+      }
+    }
+  </script>
+</BaseLayout>

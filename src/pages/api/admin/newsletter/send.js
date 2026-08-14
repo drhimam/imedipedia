@@ -22,14 +22,14 @@ function isAdmin(user) {
 function mdToHtml(md) {
   if (!md) return '';
   return md
-    .replace(/^### (.*$)/gim, '<h3 style="color:#1e293b;margin:18px 0 8px;font-size:18px;">$1</h3>')
-    .replace(/^#### (.*$)/gim, '<h4 style="color:#334155;margin:14px 0 6px;font-size:16px;">$1</h4>')
-    .replace(/^## (.*$)/gim, '<h2 style="color:#6366f1;margin:22px 0 10px;font-size:22px;">$1</h2>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color:#6366f1;text-decoration:underline;">$1</a>')
-    .replace(/^---$/gim, '<hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">')
-    .replace(/\n\n/g, '</p><p style="margin:0 0 12px;line-height:1.6;">')
+    .replace(/^### (.*$)/gim, '<h3 style="color:#1e293b;margin:22px 0 10px;font-size:18px;font-weight:700;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">$1</h3>')
+    .replace(/^#### (.*$)/gim, '<h4 style="color:#334155;margin:16px 0 6px;font-size:16px;font-weight:600;">$1</h4>')
+    .replace(/^## (.*$)/gim, '<h2 style="color:#4f46e5;margin:24px 0 12px;font-size:22px;font-weight:700;letter-spacing:-0.3px;">$1</h2>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#0f172a;">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em style="color:#475569;">$1</em>')
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color:#6366f1;text-decoration:none;font-weight:600;">$1</a>')
+    .replace(/^---$/gim, '<hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">')
+    .replace(/\n\n/g, '</p><p style="margin:0 0 12px;line-height:1.65;color:#334155;font-size:15px;">')
     .replace(/\n/g, '<br>');
 }
 
@@ -77,7 +77,7 @@ export async function POST({ request, locals }) {
     });
 
     const origin = new URL(request.url).origin;
-    const htmlBody = `<p style="margin:0 0 12px;line-height:1.6;">` + mdToHtml(newsletter.body_md) + `</p>`;
+    const htmlBody = `<p style="margin:0 0 12px;line-height:1.65;color:#334155;font-size:15px;">` + mdToHtml(newsletter.body_md) + `</p>`;
 
     let sentCount = 0;
     let failCount = 0;

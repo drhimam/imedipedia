@@ -2990,7 +2990,8 @@ if (Astro.request) {
               <div class="dropdown">
                 <button onclick="toggleDropdown('nl-drop-${iss.id}')" class="dropdown-btn">⋮</button>
                 <div id="nl-drop-${iss.id}" class="dropdown-content">
-                  <button onclick="viewNewsletter(${iss.id}, 'view')">👁 View / Edit</button>
+                  <button onclick="viewNewsletter(${iss.id}, 'view')">🌐 Web Preview / Edit</button>
+                  <button onclick="window.open('/admin/newsletter-preview?id=${iss.id}', '_blank')">↗️ Open in New Tab</button>
                   <button onclick="sendNewsletter(${iss.id})">📧 Send to Subscribers (SES)</button>
                   <button onclick="publishNewsletter(${iss.id})">🚀 Publish to /general</button>
                   <button onclick="downloadNewsletterMd(${iss.id})">📄 Download Markdown</button>
@@ -3058,17 +3059,17 @@ if (Astro.request) {
     if (!iss) return;
     const modal = document.getElementById('adminViewModalContent');
 
-    const simpleMdToHtml = (md) => {
+    const renderWebviewHtml = (md) => {
       if (!md) return '';
       return md
-        .replace(/^### (.*$)/gim, '<h3 style="color:var(--text);margin:1.25rem 0 0.5rem;font-size:1.15rem;">$1</h3>')
-        .replace(/^#### (.*$)/gim, '<h4 style="color:var(--muted);margin:1rem 0 0.35rem;font-size:1rem;">$1</h4>')
-        .replace(/^## (.*$)/gim, '<h2 style="color:var(--accent);margin:1.5rem 0 0.75rem;font-size:1.4rem;">$1</h2>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color:var(--accent);text-decoration:underline;">$1</a>')
-        .replace(/^---$/gim, '<hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;">')
-        .replace(/\n\n/g, '</p><p style="margin-bottom:0.85rem;line-height:1.6;">')
+        .replace(/^### (.*$)/gim, '<h3 style="color:var(--text);margin:20px 0 8px;font-size:1.2rem;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:5px;">$1</h3>')
+        .replace(/^#### (.*$)/gim, '<h4 style="color:var(--text);margin:14px 0 4px;font-size:1.05rem;font-weight:600;">$1</h4>')
+        .replace(/^## (.*$)/gim, '<h2 style="color:var(--accent);margin:24px 0 10px;font-size:1.5rem;font-weight:800;letter-spacing:-0.3px;">$1</h2>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--text);">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em style="color:var(--muted);">$1</em>')
+        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color:var(--accent);text-decoration:none;font-weight:600;">$1</a>')
+        .replace(/^---$/gim, '<hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">')
+        .replace(/\n\n/g, '</p><p style="margin:0 0 12px;line-height:1.65;color:var(--text);font-size:0.98rem;">')
         .replace(/\n/g, '<br>');
     };
 
@@ -3080,7 +3081,7 @@ if (Astro.request) {
             <h2 style="margin:0;">✏️ Edit Digest #${iss.issue_number}</h2>
           </div>
           <div>
-            <button onclick="viewNewsletter(${iss.id}, 'view')" class="btn btn-sm btn-secondary">👁 View Mode</button>
+            <button onclick="viewNewsletter(${iss.id}, 'view')" class="btn btn-sm btn-secondary">🌐 Web Preview Mode</button>
           </div>
         </div>
         <div id="nlEditStatus" class="alert" style="display:none;margin-bottom:1rem;"></div>
@@ -3094,8 +3095,11 @@ if (Astro.request) {
             <input type="text" class="form-input" id="nlEditSubject" value="${esc(iss.subject || '')}" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Newsletter Content (Markdown) *</label>
-            <textarea class="form-input form-textarea" id="nlEditBody" style="min-height:300px;font-family:monospace;font-size:0.9rem;">${esc(iss.body_md || '')}</textarea>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">
+              <label class="form-label">Newsletter Content &amp; Custom Message (Markdown &amp; HTML) *</label>
+              <span style="font-size:0.75rem;color:var(--muted);">Includes 4 categories, links, and editor's note</span>
+            </div>
+            <textarea class="form-input form-textarea" id="nlEditBody" style="min-height:350px;font-family:monospace;font-size:0.9rem;line-height:1.5;">${esc(iss.body_md || '')}</textarea>
           </div>
           <div class="edit-modal-actions" style="margin-top:1.25rem;">
             <button type="button" class="topbar-btn" onclick="viewNewsletter(${iss.id}, 'view')" style="padding:0.6rem 1.25rem;">Cancel</button>
@@ -3107,19 +3111,33 @@ if (Astro.request) {
         <div class="view-modal-header" style="display:flex;justify-content:space-between;align-items:center;">
           <div style="display:flex;align-items:center;gap:0.75rem;">
             <button class="view-modal-close" onclick="closeAdminViewModal()" title="Close">&times;</button>
-            <h2 style="margin:0;">Weekly Digest #${iss.issue_number}</h2>
+            <h2 style="margin:0;">🌐 Web Preview: Digest #${iss.issue_number}</h2>
           </div>
-          <div>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <button onclick="window.open('/admin/newsletter-preview?id=${iss.id}', '_blank')" class="btn btn-sm btn-secondary" title="Open full standalone page in new tab">↗️ Full Webview</button>
             <button onclick="viewNewsletter(${iss.id}, 'edit')" class="btn btn-sm btn-secondary">✏️ Edit Mode</button>
           </div>
         </div>
-        <div class="view-modal-meta" style="margin-top:0.75rem;">
-          <span><strong>Title:</strong> ${esc(iss.title)}</span>
-          <span><strong>Subject:</strong> ${esc(iss.subject)}</span>
-          <span><strong>Status:</strong> <span class="badge badge-${iss.status === 'sent' ? 'approved' : 'pending'}">${iss.status}</span></span>
+        <div class="view-modal-meta" style="margin-top:0.75rem;background:rgba(0,0,0,0.03);padding:0.75rem 1rem;border-radius:8px;border:1px solid var(--border);">
+          <div style="width:100%;margin-bottom:0.25rem;"><strong>From:</strong> iMedipedia Weekly Digest &lt;newsletter@imedipedia.org&gt;</div>
+          <div style="width:100%;margin-bottom:0.25rem;"><strong>Subject:</strong> <span style="color:var(--accent);font-weight:600;">${esc(iss.subject)}</span></div>
+          <div style="display:flex;gap:1rem;font-size:0.8rem;color:var(--muted);">
+            <span><strong>Status:</strong> <span class="badge badge-${iss.status === 'sent' ? 'approved' : 'pending'}">${iss.status.toUpperCase()}</span></span>
+            <span><strong>Date:</strong> ${new Date(iss.created_at * 1000).toLocaleDateString()}</span>
+          </div>
         </div>
-        <div class="view-modal-body" style="margin-top:1.25rem;max-height:450px;overflow-y:auto;background:rgba(255,255,255,0.02);padding:1.25rem;border-radius:8px;border:1px solid var(--border);">
-          <p style="margin-bottom:0.85rem;line-height:1.6;">${simpleMdToHtml(iss.body_md)}</p>
+        <div class="view-modal-body" style="margin-top:1.25rem;max-height:500px;overflow-y:auto;background:var(--bg);padding:1.5rem;border-radius:12px;border:1px solid var(--border);">
+          <!-- Branded Email Header Simulation -->
+          <div style="background:linear-gradient(135deg, #6366f1, #4f46e5);color:#ffffff;padding:1.75rem 1.25rem;border-radius:10px;text-align:center;margin-bottom:1.75rem;">
+            <h1 style="margin:0;font-family:'Outfit',sans-serif;font-size:1.8rem;letter-spacing:-0.5px;color:#fff;">iMedipedia</h1>
+            <p style="margin:0.35rem 0 0 0;font-size:0.85rem;color:rgba(255,255,255,0.9);">Medical Research &amp; Clinical Education Platform</p>
+          </div>
+          <div style="line-height:1.65;">
+            <p style="margin:0 0 12px;line-height:1.65;color:var(--text);font-size:0.98rem;">${renderWebviewHtml(iss.body_md)}</p>
+          </div>
+          <div style="margin-top:2rem;padding-top:1.25rem;border-top:1px solid var(--border);text-align:center;color:var(--muted);font-size:0.78rem;">
+            &copy; ${new Date().getFullYear()} iMedipedia. All rights reserved. &bull; <span style="color:var(--accent);text-decoration:underline;">Unsubscribe</span>
+          </div>
         </div>
         <div style="display:flex;gap:0.5rem;margin-top:1.25rem;flex-wrap:wrap;justify-content:flex-end;">
           <button onclick="downloadNewsletterMd(${iss.id})" class="btn btn-sm btn-secondary">📄 Download MD</button>

@@ -1459,15 +1459,25 @@ flowchart TD
 - **Welcome Confirmation Email:** Automated welcome email dispatched via AWS SES (`_email-template.js`).
 - **1-Click Unsubscribe Page:** [`/unsubscribe?token=...`](file:///d:/antigravity/Medblog/src/pages/unsubscribe.astro) updates `subscribers.unsubscribed_at = timestamp` without requiring authentication.
 
-### 20.2 Admin Newsletters Dashboard
+### 20.2 4-Category Digest Architecture & AI Generation
+The AI Generator (`POST /api/admin/newsletter/generate`) indexes and categorizes articles across all 4 platform types into a structured, high-yield layout:
+1. **📚 1. Research Digest & Clinical Reviews (`general`)** — Systematic reviews, pathophysiology, and breakthrough medical research with direct links to `/general?article=slug`.
+2. **📋 2. Clinical Practice Guidelines & Protocols (`update`)** — Evidence-based management algorithms and diagnostic standards with direct links to `/blog/slug`.
+3. **🔬 3. Interactive Clinical Case Reports (`case`)** — Real-world diagnostic dilemmas and clinical case presentations with direct links to `/blog/slug`.
+4. **🎓 4. Board Review & CME Learning Pearls (`education`)** — High-yield concepts and study notes for USMLE, MRCP, FRCR, and ARDMS.
+5. **🎯 High-Yield Board Question of the Week** — Clinical vignette, question, correct answer, and rationale.
+6. **💬 Note from the Editor (Custom Message Space)** — Dedicated customizable container supporting custom HTML/Markdown announcements directly to readers.
+
+### 20.3 Admin Newsletters Dashboard & Web Preview
 - **Subscriber Metrics:** Real-time display of **Active Subscribers**, **Total Signups**, and **Unsubscribed** counts.
-- **AI Digest Generator:** Aggregates approved `general` articles from the past 30 days, calculates `issue_number`, and drafts a structured clinical summary.
-- **Auto-Opening Editor Modal:** Once generation completes, the modal automatically opens in **Edit Mode**, allowing instant customization of title, email subject, and markdown body.
+- **AI Digest Generator:** Automatically drafts the 4-category clinical summary and opens the modal immediately upon generation.
+- **🌐 Web Preview Mode:** Simulates a responsive, pixel-perfect email client layout with indigo branded header, interactive article links, and custom editor notes.
+- **↗️ Standalone Full-Page Webview (`/admin/newsletter-preview?id=...`):** SSR preview page with top action bar (`📧 Send via SES`, `🚀 Publish`, `📑 Print/PDF`).
 - **SES Batch Dispatcher:** Sends branded HTML digests to all active subscribers with individualized unsubscribe links.
 - **1-Click Blog Publishing:** Publishes the digest directly into the `submissions` table (`type: "general"`, `topic: "Weekly Digest"`) so it lands on `/general`.
 - **Export Options:** Download raw markdown (`.md`) or printable PDF (`.pdf`) directly from the table or modal.
 
-### 20.3 Frontend Integration on `/general`
+### 20.4 Frontend Integration on `/general`
 - **Pinned Digest Banner:** A prominent, styled **"📬 Weekly Clinical Digest"** banner is pinned at the top of the left panel in [`general.astro`](file:///d:/antigravity/Medblog/src/pages/general.astro), allowing readers to instantly filter and browse all weekly digest issues.
 
 ---
@@ -1475,4 +1485,5 @@ flowchart TD
 > **Document maintained by:** Google Antigravity
 > **Repository:** https://github.com/drhimam/imedipedia
 > **Production:** https://imedipedia.pages.dev
+
 
