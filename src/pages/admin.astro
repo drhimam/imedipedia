@@ -2771,8 +2771,16 @@ if (Astro.request) {
     }
   };
 
+  // Global View/Edit Modal Closer
+  window.closeAdminViewModal = function() {
+    const overlay = document.getElementById('adminViewModalOverlay');
+    if (overlay) overlay.style.display = 'none';
+  };
+
   // --- Application & User View / Edit Logic ---
   window.viewApp = function(id, mode = 'view') {
+    // Close dropdowns
+    document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
     const a = window._loadedApplications[id];
     if (!a) return;
     const modal = document.getElementById('adminViewModalContent');
@@ -2899,9 +2907,25 @@ if (Astro.request) {
   };
 
   window.viewUser = function(id, mode = 'view') {
-    const u = window._loadedUsers[id];
-    if (!u) return;
+    // Close any open action dropdowns
+    document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
+
+    if (!window._loadedUsers) window._loadedUsers = {};
+    let u = window._loadedUsers[id];
+    if (!u && window._allActiveReviewers) {
+      u = window._allActiveReviewers.find(x => String(x.id) === String(id));
+      if (u) window._loadedUsers[id] = u;
+    }
+    if (!u && window.loadedReviewersRoster) {
+      u = window.loadedReviewersRoster.find(x => String(x.id) === String(id));
+      if (u) window._loadedUsers[id] = u;
+    }
+    if (!u) {
+      console.warn('User not found in memory:', id);
+      return;
+    }
     const modal = document.getElementById('adminViewModalContent');
+    if (!modal) return;
 
     const parseJSONList = (val) => {
       if (!val) return 'None';
@@ -2948,6 +2972,7 @@ if (Astro.request) {
                 <option value="co-admin" ${u.role==='co-admin'?'selected':''}>co-admin</option>
                 <option value="contributor" ${u.role==='contributor'?'selected':''}>contributor</option>
                 <option value="editor" ${u.role==='editor'?'selected':''}>editor</option>
+                <option value="reviewer" ${u.role==='reviewer'?'selected':''}>reviewer</option>
                 <option value="user" ${u.role==='user'?'selected':''}>user</option>
               </select>
             </div>
@@ -3091,7 +3116,11 @@ if (Astro.request) {
           mfa_enabled: mfa_enabled ? 1 : 0,
           force_password_change: force_password_change ? 1 : 0
         };
-        setTimeout(() => { viewUser(id, 'view'); loadUsers(); }, 800);
+        setTimeout(() => {
+          viewUser(id, 'view');
+          if (typeof loadUsers === 'function') loadUsers();
+          if (typeof loadActiveReviewers === 'function') loadActiveReviewers();
+        }, 800);
       } else {
         statusEl.className = 'alert alert-error';
         statusEl.textContent = data.error || 'Failed to update user.';
@@ -3866,6 +3895,9 @@ if (Astro.request) {
   function renderActiveReviewers() {
     const container = document.getElementById('activeReviewersTable');
     if (!container) return;
+
+    if (!window._loadedUsers) window._loadedUsers = {};
+    _allActiveReviewers.forEach(r => { window._loadedUsers[r.id] = r; });
 
     const filtered = _allActiveReviewers.filter(r => {
       if (!currentActiveReviewersSearch) return true;
