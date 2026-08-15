@@ -132,6 +132,18 @@ import exams from '../../data/exams.json';
       .subj-chip-remove { background: transparent; border: none; color: rgba(255,255,255,0.8); cursor: pointer; font-size: 0.9rem; line-height: 1; padding: 0; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
       .subj-chip-remove:hover { color: #fff; background: rgba(255,255,255,0.2); }
       .no-subjects-match { padding: 1rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
+      /* Settings Section & Multi-value Chips */
+      .settings-section { background: rgba(0, 0, 0, 0.08); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; }
+      :global([data-theme="light"]) .settings-section { background: rgba(0, 0, 0, 0.02); }
+      .settings-section-title { font-family: 'Outfit', sans-serif; font-size: 1.25rem; font-weight: 700; margin: 0 0 1.25rem 0; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+      .chip-container { display: flex; flex-wrap: wrap; gap: 0.5rem; min-height: 0; margin-bottom: 0.4rem; }
+      .chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.65rem; background: var(--accent); color: #fff; border-radius: 20px; font-size: 0.82rem; font-weight: 500; animation: chipIn 0.2s ease-out; }
+      .chip-remove { background: transparent; border: none; color: rgba(255, 255, 255, 0.85); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+      .chip-remove:hover { color: #fff; background: rgba(255, 255, 255, 0.25); }
+      .chip-input-row { display: flex; gap: 0.5rem; }
+      .chip-input { flex: 1; min-width: 0; }
+      .chip-add-btn { padding: 0.6rem 0.9rem; border-radius: 8px; border: 1px dashed var(--border); background: transparent; color: var(--accent); cursor: pointer; font-size: 0.85rem; font-weight: 600; white-space: nowrap; transition: all 0.15s; font-family: inherit; }
+      .chip-add-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
       @media (max-width: 768px) {
         .dashboard-container { grid-template-columns: 1fr; gap: 1.5rem; }
         .form-grid { grid-template-columns: 1fr; gap: 1rem; }
@@ -162,7 +174,7 @@ import exams from '../../data/exams.json';
         <button class="tab-btn" data-tab="submit" id="submitTabBtn">✍️ Submit Article</button>
         <button class="tab-btn" data-tab="submissions" id="submissionsTabBtn">🗂️ My Submissions</button>
         <button class="tab-btn" data-tab="reviews" id="reviewsTabBtn" style="display:none;">🩺 Assigned Reviews</button>
-        <a href="/contributors/settings" class="tab-btn" style="text-decoration:none;">⚙️ Settings</a>
+        <button class="tab-btn" data-tab="settings" id="settingsTabBtn">⚙️ Settings</button>
       </div>
       <button class="btn-logout" onclick="sessionStorage.clear();window.location.href='/contributors';" style="width:100%;">Logout</button>
     </aside>
@@ -303,6 +315,96 @@ import exams from '../../data/exams.json';
         </div>
       </div>
 
+      <!-- Settings Panel -->
+      <div id="settingsPanel" class="tab-panel">
+        <h2 class="panel-title">Account Settings</h2>
+        <p class="panel-desc">Manage your profile details, password, and two-factor authentication security.</p>
+        
+        <div id="settingsAlertBox" class="alert" style="display:none;margin-bottom:1.5rem;"></div>
+
+        <!-- Profile Section -->
+        <section class="settings-section">
+          <h3 class="settings-section-title">Contributor Profile</h3>
+          <form id="profileForm">
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label" for="settingsFullName">Full Name &amp; Degrees *</label>
+                <input class="form-input" type="text" id="settingsFullName" placeholder="e.g. Dr. Jane Smith, MD" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="settingsEmail">Email Address *</label>
+                <input class="form-input" type="email" id="settingsEmail" placeholder="your@email.com" required />
+              </div>
+              <div class="form-group full-width" id="affiliationGroup">
+                <label class="form-label">Affiliation / Institutions</label>
+                <div class="chip-container" id="affiliationChips"></div>
+                <div class="chip-input-row">
+                  <input class="form-input chip-input" type="text" id="affiliationInput" placeholder="Add hospital, university, or research organization (press Enter)" />
+                  <button type="button" class="chip-add-btn" onclick="addChip('affiliation')">＋ Add</button>
+                </div>
+              </div>
+              <div class="form-group full-width" id="specialtyGroup">
+                <label class="form-label">Clinical Specialty &amp; Subspecialties</label>
+                <div class="chip-container" id="specialtyChips"></div>
+                <div class="chip-input-row">
+                  <input class="form-input chip-input" type="text" id="specialtyInput" placeholder="Add specialty (e.g., Cardiology, Neuro-Oncology) (press Enter)" />
+                  <button type="button" class="chip-add-btn" onclick="addChip('specialty')">＋ Add</button>
+                </div>
+              </div>
+              <div class="form-group full-width" id="experienceGroup">
+                <label class="form-label">Clinical Experience / Faculty Positions</label>
+                <div class="chip-container" id="experienceChips"></div>
+                <div class="chip-input-row">
+                  <input class="form-input chip-input" type="text" id="experienceInput" placeholder="Add clinical role, board certification, or appointment (press Enter)" />
+                  <button type="button" class="chip-add-btn" onclick="addChip('experience')">＋ Add</button>
+                </div>
+              </div>
+              <div class="form-group full-width">
+                <label class="form-label" for="settingsBio">Public Bio / Editorial Introduction</label>
+                <textarea class="form-input" id="settingsBio" placeholder="Short bio describing your research interests and clinical background..." rows="3" style="font-family:inherit;width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+              </div>
+            </div>
+            <button type="submit" class="btn" id="saveProfileBtn" style="margin-top:0.75rem;">Save Profile Changes</button>
+          </form>
+        </section>
+
+        <!-- Password Change Section -->
+        <section class="settings-section" style="margin-top:2rem;">
+          <h3 class="settings-section-title">Change Password</h3>
+          <form id="passwordForm">
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label" for="currentPassword">Current Password *</label>
+                <input class="form-input" type="password" id="currentPassword" placeholder="Enter current password" required autocomplete="current-password" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="newPassword">New Password (min 8 characters) *</label>
+                <input class="form-input" type="password" id="newPassword" placeholder="Enter new secure password" required minlength="8" autocomplete="new-password" />
+              </div>
+            </div>
+            <button type="submit" class="btn btn-secondary" id="updatePasswordBtn" style="margin-top:0.75rem;">Update Password</button>
+          </form>
+        </section>
+
+        <!-- Two-Factor Authentication (MFA) Section -->
+        <section class="settings-section" style="margin-top:2rem;">
+          <h3 class="settings-section-title">Two-Factor Authentication (2FA / MFA)</h3>
+          <p id="mfaStatus" style="color:var(--muted);margin:0 0 1rem 0;font-size:0.95rem;">Checking MFA status...</p>
+          
+          <div id="mfaSetup" style="display:none;background:rgba(0,0,0,0.1);padding:1.5rem;border-radius:12px;border:1px solid var(--border);margin-bottom:1rem;">
+            <p style="color:var(--text);margin:0 0 0.75rem 0;font-size:0.9rem;line-height:1.5;">Use an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, etc.) to scan the setup secret key or enter it manually:</p>
+            <div id="mfaSecret" style="background:var(--card-bg);border:1px solid var(--border);padding:0.85rem 1rem;border-radius:8px;font-family:monospace;font-size:1.1rem;text-align:center;margin-bottom:1.25rem;word-break:break-all;color:var(--accent);font-weight:700;"></div>
+            <div class="form-group" style="max-width:300px;margin-bottom:1rem;">
+              <label class="form-label" for="totpCode">6-Digit Verification Code</label>
+              <input class="form-input" type="text" id="totpCode" placeholder="000000" maxlength="6" pattern="[0-9]*" inputmode="numeric" autocomplete="one-time-code" />
+            </div>
+            <button type="button" class="btn" onclick="verifyTOTP()">Verify &amp; Enable 2FA</button>
+          </div>
+
+          <button id="setupMfaBtn" type="button" class="btn btn-secondary" onclick="setupTOTP()" style="display:none;">🛡️ Set Up Two-Factor Authentication</button>
+        </section>
+      </div>
+
       <!-- View Submission Modal -->
       <div class="view-modal-overlay" id="viewModalOverlay" style="display:none;">
         <div class="view-modal" id="viewModalContent"></div>
@@ -415,7 +517,10 @@ import exams from '../../data/exams.json';
       // Check force password change
       if (user.force_password_change) {
         showAlert('You must change your password before continuing.', 'error');
-        setTimeout(function() { window.location.href = '/contributors/settings'; }, 1500);
+        setTimeout(function() {
+          var settingsBtn = document.getElementById('settingsTabBtn');
+          if (settingsBtn) settingsBtn.click();
+        }, 300);
       }
 
       // Check if user is a reviewer — redirect to dedicated Reviewer Dashboard
@@ -466,15 +571,6 @@ import exams from '../../data/exams.json';
         }
       }).catch(function(err){ console.warn('Profile sync warning:', err); });
 
-      // Check URL parameters for tab
-      var urlParams = new URLSearchParams(window.location.search);
-      var initialTab = urlParams.get('tab');
-      if (initialTab && initialTab === 'reviews' && (isReviewer || isAdmin)) {
-        setTimeout(function() {
-          if (reviewsTabBtn) reviewsTabBtn.click();
-        }, 100);
-      }
-
       // Auto-fill author name from user profile
       document.getElementById('artAuthor').value = user.full_name || user.username || '';
 
@@ -492,9 +588,21 @@ import exams from '../../data/exams.json';
             loadSubmissions();
           } else if (btn.getAttribute('data-tab') === 'reviews') {
             loadAssignedReviews();
+          } else if (btn.getAttribute('data-tab') === 'settings') {
+            loadProfileSettings();
           }
         });
       });
+
+      // Check URL parameters for initial tab
+      var urlParams = new URLSearchParams(window.location.search);
+      var initialTab = urlParams.get('tab');
+      if (initialTab) {
+        var targetBtn = document.querySelector('.tab-btn[data-tab="' + initialTab + '"]');
+        if (targetBtn) {
+          setTimeout(function() { targetBtn.click(); }, 50);
+        }
+      }
 
       // --- Subject Autocomplete ---
       var selectedSubjects = [];
@@ -1513,8 +1621,249 @@ import exams from '../../data/exams.json';
         }
       }
 
+      // --- Settings & Profile Logic ---
+      var chipData = { affiliation: [], specialty: [], experience: [] };
+
+      function renderChips(field) {
+        var container = document.getElementById(field + 'Chips');
+        if (!container) return;
+        container.innerHTML = chipData[field].map(function(val, i) {
+          return '<span class="chip">' + escapeHTML(val) + '<button type="button" class="chip-remove" onclick="removeChip(\'' + field + '\',' + i + ')" title="Remove">&times;</button></span>';
+        }).join('');
+      }
+
+      function addChip(field) {
+        var input = document.getElementById(field + 'Input');
+        if (!input) return;
+        var val = input.value.trim();
+        if (!val) return;
+        if (chipData[field].indexOf(val) !== -1) { input.value = ''; return; }
+        chipData[field].push(val);
+        input.value = '';
+        input.focus();
+        renderChips(field);
+      }
+
+      function removeChip(field, index) {
+        chipData[field].splice(index, 1);
+        renderChips(field);
+      }
+
+      // Allow Enter key to add chips
+      ['affiliationInput', 'specialtyInput', 'experienceInput'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addChip(id.replace('Input', ''));
+            }
+          });
+        }
+      });
+
+      // Load Profile & MFA in Settings tab
+      async function loadProfileSettings() {
+        var alertBox = document.getElementById('settingsAlertBox');
+        if (alertBox) alertBox.style.display = 'none';
+
+        try {
+          var resp = await fetch('/api/profile/get');
+          var data = await resp.json();
+          if (data.profile) {
+            var p = data.profile;
+            var fnEl = document.getElementById('settingsFullName');
+            var emEl = document.getElementById('settingsEmail');
+            var bioEl = document.getElementById('settingsBio');
+
+            if (fnEl) fnEl.value = p.full_name || '';
+            if (emEl) emEl.value = p.email || '';
+            if (bioEl) bioEl.value = p.bio || '';
+
+            // Load chips
+            chipData.affiliation = Array.isArray(p.affiliation) ? p.affiliation : (p.affiliation ? [p.affiliation] : []);
+            chipData.specialty = Array.isArray(p.specialty) ? p.specialty : (p.specialty ? [p.specialty] : []);
+            chipData.experience = Array.isArray(p.experience) ? p.experience : (p.experience ? [p.experience] : []);
+
+            renderChips('affiliation');
+            renderChips('specialty');
+            renderChips('experience');
+
+            // MFA status
+            var mfaStatusEl = document.getElementById('mfaStatus');
+            var setupMfaBtn = document.getElementById('setupMfaBtn');
+            var mfaSetup = document.getElementById('mfaSetup');
+
+            if (p.mfa_enabled) {
+              if (mfaStatusEl) mfaStatusEl.innerHTML = '<span style="color:var(--success);font-weight:700;">✅ Two-Factor Authentication is currently active on your account.</span>';
+              if (setupMfaBtn) setupMfaBtn.style.display = 'none';
+              if (mfaSetup) mfaSetup.style.display = 'none';
+            } else {
+              if (mfaStatusEl) mfaStatusEl.textContent = 'Two-Factor Authentication is not yet configured. Add an extra layer of security to your author account.';
+              if (setupMfaBtn) setupMfaBtn.style.display = 'inline-flex';
+              if (mfaSetup) mfaSetup.style.display = 'none';
+            }
+          }
+        } catch(err) {
+          console.warn('Could not load profile settings:', err);
+        }
+      }
+
+      // Profile Save Form
+      var profileForm = document.getElementById('profileForm');
+      if (profileForm) {
+        profileForm.addEventListener('submit', async function(e) {
+          e.preventDefault();
+          var alertBox = document.getElementById('settingsAlertBox');
+          var saveBtn = document.getElementById('saveProfileBtn');
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saving...';
+
+          try {
+            var resp = await fetch('/api/profile/update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                full_name: document.getElementById('settingsFullName').value.trim(),
+                email: document.getElementById('settingsEmail').value.trim(),
+                affiliation: chipData.affiliation,
+                specialty: chipData.specialty,
+                experience: chipData.experience,
+                bio: document.getElementById('settingsBio').value.trim(),
+              })
+            });
+            var data = await resp.json();
+            if (alertBox) {
+              alertBox.textContent = data.message || (data.success ? 'Profile updated successfully!' : data.error);
+              alertBox.className = data.success ? 'alert alert-success' : 'alert alert-error';
+              alertBox.style.display = 'flex';
+            }
+            if (data.success) {
+              try {
+                var currentU = JSON.parse(sessionStorage.getItem('user') || '{}');
+                currentU.full_name = document.getElementById('settingsFullName').value.trim();
+                sessionStorage.setItem('user', JSON.stringify(currentU));
+                document.getElementById('sideName').textContent = currentU.full_name;
+                document.getElementById('artAuthor').value = currentU.full_name;
+                document.getElementById('avatarInitial').textContent = currentU.full_name.charAt(0).toUpperCase();
+              } catch(err) {}
+            }
+          } catch(err) {
+            if (alertBox) {
+              alertBox.textContent = 'Network error: ' + err.message;
+              alertBox.className = 'alert alert-error';
+              alertBox.style.display = 'flex';
+            }
+          } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Profile Changes';
+          }
+        });
+      }
+
+      // Password Change Form
+      var passwordForm = document.getElementById('passwordForm');
+      if (passwordForm) {
+        passwordForm.addEventListener('submit', async function(e) {
+          e.preventDefault();
+          var currentPassword = document.getElementById('currentPassword').value;
+          var newPassword = document.getElementById('newPassword').value;
+          var alertBox = document.getElementById('settingsAlertBox');
+          var updateBtn = document.getElementById('updatePasswordBtn');
+          updateBtn.disabled = true;
+          updateBtn.textContent = 'Updating...';
+
+          try {
+            var resp = await fetch('/api/auth/change-password', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ currentPassword: currentPassword, newPassword: newPassword })
+            });
+            var data = await resp.json();
+            if (alertBox) {
+              alertBox.textContent = data.message || (data.success ? 'Password updated successfully!' : data.error);
+              alertBox.className = data.success ? 'alert alert-success' : 'alert alert-error';
+              alertBox.style.display = 'flex';
+            }
+            if (data.success) {
+              passwordForm.reset();
+              try {
+                var currentU = JSON.parse(sessionStorage.getItem('user') || '{}');
+                delete currentU.force_password_change;
+                sessionStorage.setItem('user', JSON.stringify(currentU));
+              } catch(err) {}
+            }
+          } catch(err) {
+            if (alertBox) {
+              alertBox.textContent = 'Network error: ' + err.message;
+              alertBox.className = 'alert alert-error';
+              alertBox.style.display = 'flex';
+            }
+          } finally {
+            updateBtn.disabled = false;
+            updateBtn.textContent = 'Update Password';
+          }
+        });
+      }
+
+      // MFA Setup & Verify
+      async function setupTOTP() {
+        try {
+          var resp = await fetch('/api/auth/setup-totp', { method: 'POST' });
+          var data = await resp.json();
+          if (data.success) {
+            document.getElementById('mfaSecret').textContent = data.secret;
+            document.getElementById('mfaSetup').style.display = 'block';
+            document.getElementById('setupMfaBtn').style.display = 'none';
+          }
+        } catch(err) {}
+      }
+
+      async function verifyTOTP() {
+        var code = document.getElementById('totpCode').value.trim();
+        var alertBox = document.getElementById('settingsAlertBox');
+        if (!code || code.length !== 6) {
+          if (alertBox) {
+            alertBox.textContent = 'Please enter the 6-digit code from your authenticator app.';
+            alertBox.className = 'alert alert-error';
+            alertBox.style.display = 'flex';
+          }
+          return;
+        }
+
+        try {
+          var resp = await fetch('/api/auth/verify-totp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code })
+          });
+          var data = await resp.json();
+          if (data.success) {
+            if (alertBox) {
+              alertBox.textContent = 'Two-Factor Authentication enabled successfully!';
+              alertBox.className = 'alert alert-success';
+              alertBox.style.display = 'flex';
+            }
+            document.getElementById('mfaSetup').style.display = 'none';
+            document.getElementById('mfaStatus').innerHTML = '<span style="color:var(--success);font-weight:700;">✅ Two-Factor Authentication is currently active on your account.</span>';
+          } else {
+            if (alertBox) {
+              alertBox.textContent = data.error || 'Invalid verification code.';
+              alertBox.className = 'alert alert-error';
+              alertBox.style.display = 'flex';
+            }
+          }
+        } catch(err) {
+          if (alertBox) {
+            alertBox.textContent = 'Network error: ' + err.message;
+            alertBox.className = 'alert alert-error';
+            alertBox.style.display = 'flex';
+          }
+        }
+      }
+
       // --- Init ---
-      if (isReviewer) {
+      if (user && user.role === 'reviewer') {
         loadAssignedReviews();
       } else {
         loadSubmissions();
