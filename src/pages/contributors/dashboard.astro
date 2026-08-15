@@ -155,9 +155,9 @@ import exams from '../../data/exams.json';
       .size-badge-warn { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #ef4444; padding: 0.3rem 0.7rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; }
       .btn-auto-compress { font-size: 0.78rem; padding: 0.35rem 0.65rem; border-radius: 6px; cursor: pointer; border: 1px solid var(--accent); background: rgba(13, 148, 136, 0.15); color: var(--accent); font-weight: 600; transition: all 0.15s; font-family: inherit; }
       .btn-auto-compress:hover { background: var(--accent); color: #fff; }
-      /* Floating Toast Notification System */
-      .floating-toast { pointer-events: auto; display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.25rem; border-radius: 12px; background: rgba(17, 24, 39, 0.96); color: #f3f4f6; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 1px rgba(255, 255, 255, 0.2); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); border-left: 4px solid var(--accent); transition: all 0.3s ease; }
-      :global([data-theme="light"]) .floating-toast { background: rgba(255, 255, 255, 0.98); color: #111827; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.1); }
+      /* Floating Toast Notification System (100% Solid & High-Contrast) */
+      .floating-toast { pointer-events: auto; display: flex; align-items: center; gap: 0.85rem; padding: 1rem 1.35rem; border-radius: 12px; background: #1e293b; color: #ffffff; border: 1px solid #334155; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 10px 10px -5px rgba(0, 0, 0, 0.5); animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); border-left: 5px solid var(--accent); transition: all 0.3s ease; font-weight: 500; }
+      :global([data-theme="light"]) .floating-toast { background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1); }
       .floating-toast.toast-success { border-left-color: #10b981; }
       .floating-toast.toast-error { border-left-color: #ef4444; }
       .floating-toast.toast-info { border-left-color: var(--accent); }
@@ -763,8 +763,8 @@ import exams from '../../data/exams.json';
         </div>
       </div>
 
-      <!-- Floating Toast Notifications Container -->
-      <div id="toastContainer" style="position:fixed;top:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:0.75rem;pointer-events:none;max-width:400px;width:calc(100% - 3rem);"></div>
+      <!-- Floating Toast Notifications Container (Positioned comfortably below sticky navbar) -->
+      <div id="toastContainer" style="position:fixed;top:5.5rem;right:1.5rem;z-index:99999;display:flex;flex-direction:column;gap:0.75rem;pointer-events:none;max-width:420px;width:calc(100% - 3rem);"></div>
     </main>
   </div>
 
@@ -1501,9 +1501,10 @@ import exams from '../../data/exams.json';
 
         // Validate subjects
         if (selectedSubjects.length === 0) {
-          showAlert('Please select at least one subject.', 'error');
+          showModalAlert('Subject Category Required', 'Please select at least one relevant subject category for your article before submitting.', 'error');
+          showToast('Please select at least one subject.', 'error');
           submitBtn.disabled = false;
-          submitBtn.textContent = 'Submit Article for Review';
+          submitBtn.textContent = isEdit ? 'Update Article' : 'Submit Article for Review';
           return;
         }
 
@@ -1648,12 +1649,14 @@ import exams from '../../data/exams.json';
         var audience = document.getElementById('artAudience') ? document.getElementById('artAudience').value : 'all';
 
         if (!title) {
-          showAlert('Please enter an Article Title to preview.', 'error');
+          showModalAlert('Article Title Required', 'Please enter an Article Title in the form before generating the live webpage preview.', 'error');
+          showToast('Please enter an Article Title to preview.', 'error');
           document.getElementById('artTitle').focus();
           return;
         }
         if (!content) {
-          showAlert('Please write some Article Content to preview.', 'error');
+          showModalAlert('Article Content Required', 'Please write some publication content (Markdown) in the form before generating the live preview.', 'error');
+          showToast('Please write some Article Content to preview.', 'error');
           document.getElementById('artContent').focus();
           return;
         }
