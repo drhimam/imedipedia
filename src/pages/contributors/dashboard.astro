@@ -144,6 +144,17 @@ import exams from '../../data/exams.json';
       .chip-input { flex: 1; min-width: 0; }
       .chip-add-btn { padding: 0.6rem 0.9rem; border-radius: 8px; border: 1px dashed var(--border); background: transparent; color: var(--accent); cursor: pointer; font-size: 0.85rem; font-weight: 600; white-space: nowrap; transition: all 0.15s; font-family: inherit; }
       .chip-add-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+      /* Image Optimization Advice & Badges */
+      .image-advice-box { background: rgba(13, 148, 136, 0.08); border: 1px solid rgba(13, 148, 136, 0.25); border-radius: 12px; padding: 0.9rem 1.15rem; margin-top: 0.75rem; font-size: 0.83rem; line-height: 1.55; color: var(--text); }
+      .advice-header { display: flex; align-items: center; gap: 0.4rem; font-weight: 700; color: var(--accent); margin-bottom: 0.35rem; font-size: 0.88rem; }
+      .advice-list { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.3rem; color: var(--muted); }
+      .advice-list strong { color: var(--text); }
+      .advice-list a { color: var(--accent); text-decoration: underline; font-weight: 600; transition: opacity 0.2s; }
+      .advice-list a:hover { opacity: 0.8; }
+      .size-badge-ok { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #10b981; padding: 0.3rem 0.7rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; }
+      .size-badge-warn { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #ef4444; padding: 0.3rem 0.7rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; }
+      .btn-auto-compress { font-size: 0.78rem; padding: 0.35rem 0.65rem; border-radius: 6px; cursor: pointer; border: 1px solid var(--accent); background: rgba(13, 148, 136, 0.15); color: var(--accent); font-weight: 600; transition: all 0.15s; font-family: inherit; }
+      .btn-auto-compress:hover { background: var(--accent); color: #fff; }
       @media (max-width: 768px) {
         .dashboard-container { grid-template-columns: 1fr; gap: 1.5rem; }
         .form-grid { grid-template-columns: 1fr; gap: 1rem; }
@@ -248,12 +259,12 @@ import exams from '../../data/exams.json';
 
           <!-- Cover Image Upload & Direct URL -->
           <div class="form-group full-width">
-            <label class="form-label">Article Cover Image <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(Upload file up to 1MB or paste image URL)</span></label>
+            <label class="form-label">Article Cover Image <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(Max 100KB — WebP/AVIF recommended — Built-in cropper available)</span></label>
             <div class="image-upload-row">
               <div id="coverDropZone" class="upload-zone compact" style="flex: 1; min-width: 200px;">
                 <span class="upload-icon">🖼️</span>
                 <div class="upload-label">Drop cover image or <span style="color: var(--accent); text-decoration: underline;">browse</span></div>
-                <div class="upload-sublabel">JPEG, PNG, WEBP, AVIF (Max 1MB)</div>
+                <div class="upload-sublabel">JPEG, PNG, WEBP, AVIF (Max 100KB)</div>
                 <input type="file" id="coverFileInput" accept="image/jpeg,image/png,image/webp,image/avif" style="display: none;" />
                 <div class="image-preview-container" id="coverPreviewContainer"><img src="" class="image-preview" id="coverImagePreview" alt="Cover preview" /><button type="button" class="clear-img-btn" id="coverClearBtn">&times;</button></div>
               </div>
@@ -263,12 +274,27 @@ import exams from '../../data/exams.json';
                 <div class="form-group"><input type="text" id="coverImageDesc" class="form-input" placeholder="Image description / caption" style="padding:0.6rem 0.75rem;font-size:0.85rem;" /></div>
               </div>
             </div>
+            <!-- Image Optimization Advice -->
+            <div class="image-advice-box">
+              <div class="advice-header">
+                <span>💡</span> <strong>Lightweight Image Guidelines (Max 100 KB limit):</strong>
+              </div>
+              <ul class="advice-list">
+                <li><strong>Use WebP or AVIF format:</strong> Modern WebP/AVIF formats provide 70–90% smaller file sizes than standard PNG/JPEG with zero loss in medical diagram fidelity.</li>
+                <li><strong>Built-in In-Browser Cropper:</strong> Selecting any image opens our interactive cropper to let you crop and auto-compress to WebP (&lt;100KB) instantly in your browser.</li>
+                <li><strong>Recommended Open-Source Converters:</strong>
+                  <a href="https://squoosh.app" target="_blank" rel="noopener noreferrer">🌐 Squoosh (by Google Chrome Labs)</a> &bull;
+                  <a href="https://tinypng.com" target="_blank" rel="noopener noreferrer">🦔 TinyPNG</a> &bull;
+                  <a href="https://cloudconvert.com" target="_blank" rel="noopener noreferrer">🔄 CloudConvert</a>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <!-- In-text Images (up to 5) -->
           <div class="form-group full-width" id="intextImagesSection">
-            <label class="form-label">In-text Images <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(Up to 5, Max 1MB each)</span></label>
-            <p class="form-hint" style="margin-bottom:0.75rem;">Upload images to use within your article. Copy the generated URL and paste it into your markdown content.</p>
+            <label class="form-label">In-text Images <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(Up to 5, Max 100KB each — WebP/AVIF recommended)</span></label>
+            <p class="form-hint" style="margin-bottom:0.75rem;">Upload medical figures or diagrams to use within your article. Copy the generated URL and paste it into your markdown content.</p>
             <div id="intextImageSlots"></div>
             <button type="button" class="image-slot-add" id="addImageSlotBtn">+ Add Image Slot</button>
           </div>
@@ -332,7 +358,7 @@ import exams from '../../data/exams.json';
             <div class="form-grid">
               <!-- Profile Picture / Avatar -->
               <div class="form-group full-width" style="margin-bottom:1.5rem;">
-                <label class="form-label">Profile Picture / Avatar</label>
+                <label class="form-label">Profile Picture / Avatar <span style="font-weight:400;text-transform:none;font-size:0.8rem;">(Max 100KB — Auto-cropped to WebP)</span></label>
                 <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap;background:rgba(0,0,0,0.06);border:1px solid var(--border);border-radius:12px;padding:1.25rem;">
                   <!-- Avatar Preview -->
                   <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;min-width:100px;">
@@ -347,10 +373,10 @@ import exams from '../../data/exams.json';
                   <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:0.75rem;">
                     <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
                       <label class="btn btn-secondary" style="padding:0.55rem 1rem;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:0.4rem;margin:0;">
-                        <span>📷 Upload Image</span>
+                        <span>📷 Upload &amp; Crop Photo</span>
                         <input type="file" id="avatarFileInput" accept="image/jpeg,image/png,image/webp,image/avif" style="display:none;" />
                       </label>
-                      <span style="font-size:0.8rem;color:var(--muted);">JPEG, PNG, WEBP, AVIF (Max 1MB)</span>
+                      <span style="font-size:0.8rem;color:var(--muted);">JPEG, PNG, WEBP, AVIF (Max 100KB)</span>
                     </div>
 
                     <div>
@@ -365,6 +391,21 @@ import exams from '../../data/exams.json';
                       <span>⏳ Uploading profile photo...</span>
                     </div>
                   </div>
+                </div>
+
+                <!-- Avatar Optimization Advice -->
+                <div class="image-advice-box">
+                  <div class="advice-header">
+                    <span>💡</span> <strong>Lightweight Avatar Tips (100 KB limit):</strong>
+                  </div>
+                  <ul class="advice-list">
+                    <li><strong>Built-in 1:1 Circular Cropper:</strong> When you select a photo, our built-in cropper lets you center your face and automatically compresses it to high-clarity WebP under 50 KB.</li>
+                    <li><strong>WebP Format:</strong> Delivers crisp sharpness at a fraction of standard JPEG file sizes.</li>
+                    <li><strong>Free Open-Source Converters:</strong>
+                      <a href="https://squoosh.app" target="_blank" rel="noopener noreferrer">🌐 Squoosh</a> &bull;
+                      <a href="https://tinypng.com" target="_blank" rel="noopener noreferrer">🦔 TinyPNG</a>
+                    </li>
+                  </ul>
                 </div>
               </div>
 
@@ -535,6 +576,68 @@ import exams from '../../data/exams.json';
                 <button type="button" class="btn" id="evalSubmitBtn" onclick="submitPeerReview()">Submit Review</button>
               </div>
             </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Client-Side Interactive Image Cropper & Compressor Modal -->
+      <div class="view-modal-overlay" id="cropperModalOverlay" style="display:none;z-index:1001;">
+        <div class="view-modal" style="max-width:520px;text-align:left;padding:1.5rem;box-sizing:border-box;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:0.75rem;">
+            <h3 style="font-family:'Outfit',sans-serif;font-size:1.25rem;font-weight:700;margin:0;display:flex;align-items:center;gap:0.5rem;">
+              <span>✂️</span> Crop &amp; Optimize Image
+            </h3>
+            <button type="button" class="view-modal-close" style="position:static;font-size:1.5rem;" onclick="closeCropperModal()">&times;</button>
+          </div>
+
+          <!-- Canvas Crop Area -->
+          <div style="background:#050811;border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;margin-bottom:1rem;display:flex;align-items:center;justify-content:center;height:270px;user-select:none;touch-action:none;" id="cropperCanvasContainer">
+            <canvas id="cropPreviewCanvas" width="460" height="270" style="max-width:100%;max-height:100%;cursor:grab;display:block;"></canvas>
+            <div style="position:absolute;bottom:8px;left:10px;font-size:0.72rem;color:rgba(255,255,255,0.75);background:rgba(0,0,0,0.65);padding:0.2rem 0.5rem;border-radius:4px;pointer-events:none;">
+              🖐️ Drag to reposition &bull; Slider to zoom
+            </div>
+          </div>
+
+          <!-- Zoom Slider -->
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.85rem;">
+            <span style="font-size:0.82rem;font-weight:600;color:var(--muted);min-width:45px;">Zoom:</span>
+            <input type="range" id="cropZoomSlider" min="0.2" max="3" step="0.01" value="1" style="flex:1;cursor:pointer;accent-color:var(--accent);" />
+            <button type="button" id="cropResetViewBtn" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:6px;cursor:pointer;">Reset</button>
+          </div>
+
+          <!-- Format & Quality Grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.85rem;background:rgba(0,0,0,0.12);padding:0.75rem;border-radius:8px;border:1px solid var(--border);">
+            <div>
+              <label class="form-label" style="font-size:0.75rem;margin-bottom:0.25rem;">Format</label>
+              <select id="cropFormatSelect" class="form-select" style="padding:0.4rem 0.6rem;font-size:0.85rem;">
+                <option value="image/webp" selected>WebP (Lightest)</option>
+                <option value="image/jpeg">JPEG</option>
+                <option value="image/png">PNG</option>
+              </select>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">
+                <label class="form-label" style="font-size:0.75rem;margin:0;">Quality</label>
+                <span id="cropQualityVal" style="font-size:0.75rem;color:var(--accent);font-weight:700;">80%</span>
+              </div>
+              <input type="range" id="cropQualitySlider" min="0.3" max="0.95" step="0.05" value="0.8" style="width:100%;cursor:pointer;accent-color:var(--accent);" />
+            </div>
+          </div>
+
+          <!-- Live Output Size Badge & Auto-Fit button -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.5rem;">
+            <div id="cropSizeBadge" class="size-badge-ok">
+              <span>📦</span> Output Size: <strong id="cropSizeText" style="margin-left:0.2rem;">Calculating...</strong>
+            </div>
+            <button type="button" id="cropAutoCompressBtn" class="btn-auto-compress">
+              ⚡ Auto-Fit under 100KB
+            </button>
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="closeCropperModal()">Cancel</button>
+            <button type="button" class="btn" id="cropApplyBtn">Crop &amp; Apply Image</button>
           </div>
         </div>
       </div>
@@ -1065,18 +1168,15 @@ import exams from '../../data/exams.json';
 
       function handleIntextFile(slotIndex, file) {
         if (!file.type.startsWith('image/')) { showAlert('Only image files are allowed!', 'error'); return; }
-        if (file.size > 1 * 1024 * 1024) { showAlert('In-text image must be under 1MB.', 'error'); return; }
-        var reader = new FileReader();
-        reader.onload = function(e) {
-          document.getElementById('intextPreviewImg' + slotIndex).src = e.target.result;
+        openImageCropper(file, { type: 'intext', maxDim: 1000 }, function(dataUrl, sizeBytes) {
+          document.getElementById('intextPreviewImg' + slotIndex).src = dataUrl;
           document.getElementById('intextPreview' + slotIndex).style.display = 'flex';
-          // Store for later upload
           var name = document.getElementById('intextName' + slotIndex).value.trim() || 'image-' + (slotIndex + 1);
           var desc = document.getElementById('intextDesc' + slotIndex).value.trim() || '';
           intextSlots = intextSlots.filter(function(s) { return s.id !== slotIndex; });
-          intextSlots.push({ id: slotIndex, file: file, name: name, description: desc, dataUrl: e.target.result });
-        };
-        reader.readAsDataURL(file);
+          intextSlots.push({ id: slotIndex, file: file, name: name, description: desc, dataUrl: dataUrl });
+          showAlert('Image cropped & optimized (' + (sizeBytes / 1024).toFixed(1) + ' KB)!', 'success');
+        });
       }
 
       // Add initial slot
@@ -1140,20 +1240,23 @@ import exams from '../../data/exams.json';
 
       function handleCoverFile(file) {
         if (!file.type.startsWith('image/')) { showAlert('Only image files are allowed!', 'error'); return; }
-        if (file.size > 1 * 1024 * 1024) { showAlert('Cover image must be under 1MB.', 'error'); return; }
-        var reader = new FileReader();
-        reader.onload = function(e) {
-          coverFileData = { file: file, dataUrl: e.target.result };
-          coverPreview.src = e.target.result;
+        openImageCropper(file, { type: 'cover', maxDim: 1000 }, function(dataUrl, sizeBytes) {
+          coverFileData = { file: file, dataUrl: dataUrl };
+          coverPreview.src = dataUrl;
           coverPreviewContainer.style.display = 'flex';
           if (coverImageUrlInput) coverImageUrlInput.value = '';
-        };
-        reader.readAsDataURL(file);
+          showAlert('Cover image cropped & optimized (' + (sizeBytes / 1024).toFixed(1) + ' KB)!', 'success');
+        });
       }
 
       // --- Upload helper: sends a base64 file to R2 ---
       async function uploadImageToR2(dataUrl, name, description, folder) {
         try {
+          var approxSize = Math.round((dataUrl.length - (dataUrl.indexOf(',') + 1)) * 3 / 4);
+          if (approxSize > 100 * 1024) {
+            return { success: false, error: 'Image size is ' + (approxSize / 1024).toFixed(1) + ' KB, exceeding the 100 KB limit. Please compress to WebP format.' };
+          }
+
           var res = await fetch('/api/images/upload', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1688,6 +1791,345 @@ import exams from '../../data/exams.json';
         }
       }
 
+      // =========================================================================
+      // In-Browser Interactive HTML5 Canvas Image Cropper & WebP Compressor
+      // =========================================================================
+      var cropperState = {
+        img: null,
+        type: 'avatar', // 'avatar' | 'cover' | 'intext'
+        aspectRatio: 1, // 1 for avatar (1:1), 16/9 for cover, null for intext
+        maxDim: 400,
+        format: 'image/webp',
+        quality: 0.80,
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+        isDragging: false,
+        dragStartX: 0,
+        dragStartY: 0,
+        dragStartPanX: 0,
+        dragStartPanY: 0,
+        callback: null,
+        outputDataUrl: '',
+        outputSizeBytes: 0
+      };
+
+      var cropCanvas = document.getElementById('cropPreviewCanvas');
+      var cropCtx = cropCanvas ? cropCanvas.getContext('2d') : null;
+      var cropZoomSlider = document.getElementById('cropZoomSlider');
+      var cropQualitySlider = document.getElementById('cropQualitySlider');
+      var cropQualityVal = document.getElementById('cropQualityVal');
+      var cropFormatSelect = document.getElementById('cropFormatSelect');
+      var cropSizeBadge = document.getElementById('cropSizeBadge');
+      var cropSizeText = document.getElementById('cropSizeText');
+      var cropApplyBtn = document.getElementById('cropApplyBtn');
+      var cropAutoCompressBtn = document.getElementById('cropAutoCompressBtn');
+      var cropResetViewBtn = document.getElementById('cropResetViewBtn');
+      var cropperModalOverlay = document.getElementById('cropperModalOverlay');
+
+      function closeCropperModal() {
+        if (cropperModalOverlay) cropperModalOverlay.style.display = 'none';
+        cropperState.img = null;
+        cropperState.callback = null;
+      }
+
+      function openImageCropper(file, options, onApply) {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+          showAlert('Please select a valid image file (JPEG, PNG, WebP, AVIF).', 'error');
+          return;
+        }
+
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var img = new Image();
+          img.onload = function() {
+            cropperState.img = img;
+            cropperState.type = options.type || 'avatar';
+            cropperState.aspectRatio = options.type === 'avatar' ? 1 : (options.type === 'cover' ? 16 / 9 : 4 / 3);
+            cropperState.maxDim = options.maxDim || (options.type === 'avatar' ? 400 : 1000);
+            cropperState.callback = onApply;
+            cropperState.format = 'image/webp';
+            cropperState.quality = 0.80;
+            cropperState.panX = 0;
+            cropperState.panY = 0;
+            cropperState.zoom = 1;
+
+            if (cropFormatSelect) cropFormatSelect.value = 'image/webp';
+            if (cropQualitySlider) cropQualitySlider.value = 0.80;
+            if (cropQualityVal) cropQualityVal.textContent = '80%';
+            if (cropZoomSlider) {
+              cropZoomSlider.value = 1;
+              cropZoomSlider.min = 0.2;
+              cropZoomSlider.max = 3;
+            }
+
+            if (cropperModalOverlay) cropperModalOverlay.style.display = 'flex';
+            renderCropper();
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function getCropWindowRect(cw, ch, aspect) {
+        var margin = 20;
+        var maxW = cw - margin * 2;
+        var maxH = ch - margin * 2;
+        var w, h;
+        if (maxW / maxH > aspect) {
+          h = maxH;
+          w = h * aspect;
+        } else {
+          w = maxW;
+          h = w / aspect;
+        }
+        var x = (cw - w) / 2;
+        var y = (ch - h) / 2;
+        return { x: x, y: y, w: w, h: h };
+      }
+
+      function renderCropper() {
+        if (!cropCanvas || !cropCtx || !cropperState.img) return;
+        var cw = cropCanvas.width;
+        var ch = cropCanvas.height;
+        var img = cropperState.img;
+
+        cropCtx.clearRect(0, 0, cw, ch);
+
+        var cropRect = getCropWindowRect(cw, ch, cropperState.aspectRatio);
+
+        // Draw image transformed
+        cropCtx.save();
+        var baseScale = Math.max(cropRect.w / img.width, cropRect.h / img.height);
+        var currentScale = baseScale * cropperState.zoom;
+        var drawW = img.width * currentScale;
+        var drawH = img.height * currentScale;
+        var drawX = cropRect.x + (cropRect.w - drawW) / 2 + cropperState.panX;
+        var drawY = cropRect.y + (cropRect.h - drawH) / 2 + cropperState.panY;
+
+        cropCtx.drawImage(img, drawX, drawY, drawW, drawH);
+        cropCtx.restore();
+
+        // Draw darkened mask outside crop window
+        cropCtx.save();
+        cropCtx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        cropCtx.beginPath();
+        cropCtx.rect(0, 0, cw, ch);
+
+        if (cropperState.type === 'avatar') {
+          var cx = cropRect.x + cropRect.w / 2;
+          var cy = cropRect.y + cropRect.h / 2;
+          var radius = Math.min(cropRect.w, cropRect.h) / 2;
+          cropCtx.arc(cx, cy, radius, 0, Math.PI * 2, true);
+        } else {
+          cropCtx.rect(cropRect.x + cropRect.w, cropRect.y, -cropRect.w, cropRect.h);
+        }
+        cropCtx.fill('evenodd');
+        cropCtx.restore();
+
+        // Draw crop border guide
+        cropCtx.save();
+        cropCtx.strokeStyle = '#0d9488';
+        cropCtx.lineWidth = 2;
+        if (cropperState.type === 'avatar') {
+          var cx = cropRect.x + cropRect.w / 2;
+          var cy = cropRect.y + cropRect.h / 2;
+          var radius = Math.min(cropRect.w, cropRect.h) / 2;
+          cropCtx.beginPath();
+          cropCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+          cropCtx.stroke();
+        } else {
+          cropCtx.strokeRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+        }
+        cropCtx.restore();
+
+        updateCalculatedOutput();
+      }
+
+      function generateCroppedData(qualityOverride, maxDimOverride) {
+        if (!cropperState.img) return null;
+        var img = cropperState.img;
+        var cw = cropCanvas.width;
+        var ch = cropCanvas.height;
+        var cropRect = getCropWindowRect(cw, ch, cropperState.aspectRatio);
+
+        var baseScale = Math.max(cropRect.w / img.width, cropRect.h / img.height);
+        var currentScale = baseScale * cropperState.zoom;
+        var drawW = img.width * currentScale;
+        var drawH = img.height * currentScale;
+        var drawX = cropRect.x + (cropRect.w - drawW) / 2 + cropperState.panX;
+        var drawY = cropRect.y + (cropRect.h - drawH) / 2 + cropperState.panY;
+
+        var sx = (cropRect.x - drawX) / currentScale;
+        var sy = (cropRect.y - drawY) / currentScale;
+        var sw = cropRect.w / currentScale;
+        var sh = cropRect.h / currentScale;
+
+        var maxDim = maxDimOverride || cropperState.maxDim || 400;
+        var targetW, targetH;
+        if (cropperState.aspectRatio >= 1) {
+          targetW = maxDim;
+          targetH = Math.round(maxDim / cropperState.aspectRatio);
+        } else {
+          targetH = maxDim;
+          targetW = Math.round(maxDim * cropperState.aspectRatio);
+        }
+
+        var offCanvas = document.createElement('canvas');
+        offCanvas.width = targetW;
+        offCanvas.height = targetH;
+        var offCtx = offCanvas.getContext('2d');
+        offCtx.imageSmoothingEnabled = true;
+        offCtx.imageSmoothingQuality = 'high';
+
+        offCtx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+
+        var format = cropperState.format || 'image/webp';
+        var quality = typeof qualityOverride === 'number' ? qualityOverride : cropperState.quality;
+        var dataUrl = offCanvas.toDataURL(format, quality);
+        var sizeBytes = Math.round((dataUrl.length - (dataUrl.indexOf(',') + 1)) * 3 / 4);
+
+        return { dataUrl: dataUrl, sizeBytes: sizeBytes, targetW: targetW, targetH: targetH };
+      }
+
+      function updateCalculatedOutput() {
+        var res = generateCroppedData();
+        if (!res) return;
+        cropperState.outputDataUrl = res.dataUrl;
+        cropperState.outputSizeBytes = res.sizeBytes;
+
+        var sizeKb = (res.sizeBytes / 1024).toFixed(1);
+        if (cropSizeText) cropSizeText.textContent = sizeKb + ' KB / 100 KB max';
+
+        var isOk = res.sizeBytes <= 100 * 1024;
+        if (cropSizeBadge) {
+          cropSizeBadge.className = isOk ? 'size-badge-ok' : 'size-badge-warn';
+          cropSizeBadge.innerHTML = isOk
+            ? '<span>✅</span> Output Size: <strong style="margin-left:0.2rem;">' + sizeKb + ' KB (Ready to upload)</strong>'
+            : '<span>⚠️</span> Output Size: <strong style="margin-left:0.2rem;">' + sizeKb + ' KB (Exceeds 100 KB)</strong>';
+        }
+        if (cropApplyBtn) {
+          cropApplyBtn.disabled = !isOk;
+          cropApplyBtn.textContent = isOk ? 'Crop & Apply (' + sizeKb + ' KB)' : '⚠️ File > 100KB (Reduce quality)';
+        }
+      }
+
+      function autoCompressUnder100KB() {
+        if (!cropperState.img) return;
+        var qualities = [0.85, 0.80, 0.75, 0.70, 0.65, 0.60, 0.55, 0.50, 0.45, 0.40];
+        var maxDims = [cropperState.maxDim, Math.round(cropperState.maxDim * 0.85), Math.round(cropperState.maxDim * 0.70)];
+
+        for (var d = 0; d < maxDims.length; d++) {
+          for (var q = 0; q < qualities.length; q++) {
+            var res = generateCroppedData(qualities[q], maxDims[d]);
+            if (res && res.sizeBytes <= 100 * 1024) {
+              cropperState.quality = qualities[q];
+              if (cropQualitySlider) cropQualitySlider.value = qualities[q];
+              if (cropQualityVal) cropQualityVal.textContent = Math.round(qualities[q] * 100) + '%';
+              renderCropper();
+              showAlert('Auto-optimized to ' + (res.sizeBytes / 1024).toFixed(1) + ' KB (Quality: ' + Math.round(qualities[q] * 100) + '%)', 'success');
+              return;
+            }
+          }
+        }
+        showAlert('Could not compress image below 100KB automatically. Please try zoom adjustments or a smaller original image.', 'error');
+      }
+
+      // Cropper mouse / touch drag listeners
+      if (cropCanvas) {
+        function onDragStart(clientX, clientY) {
+          cropperState.isDragging = true;
+          cropperState.dragStartX = clientX;
+          cropperState.dragStartY = clientY;
+          cropperState.dragStartPanX = cropperState.panX;
+          cropperState.dragStartPanY = cropperState.panY;
+          cropCanvas.style.cursor = 'grabbing';
+        }
+        function onDragMove(clientX, clientY) {
+          if (!cropperState.isDragging) return;
+          var dx = clientX - cropperState.dragStartX;
+          var dy = clientY - cropperState.dragStartY;
+          cropperState.panX = cropperState.dragStartPanX + dx;
+          cropperState.panY = cropperState.dragStartPanY + dy;
+          renderCropper();
+        }
+        function onDragEnd() {
+          cropperState.isDragging = false;
+          cropCanvas.style.cursor = 'grab';
+        }
+
+        cropCanvas.addEventListener('mousedown', function(e) { onDragStart(e.clientX, e.clientY); });
+        window.addEventListener('mousemove', function(e) { onDragMove(e.clientX, e.clientY); });
+        window.addEventListener('mouseup', onDragEnd);
+
+        cropCanvas.addEventListener('touchstart', function(e) {
+          if (e.touches.length === 1) onDragStart(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        window.addEventListener('touchmove', function(e) {
+          if (e.touches.length === 1) onDragMove(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        window.addEventListener('touchend', onDragEnd);
+      }
+
+      // Zoom slider
+      if (cropZoomSlider) {
+        cropZoomSlider.addEventListener('input', function() {
+          cropperState.zoom = parseFloat(this.value);
+          renderCropper();
+        });
+      }
+
+      // Format select
+      if (cropFormatSelect) {
+        cropFormatSelect.addEventListener('change', function() {
+          cropperState.format = this.value;
+          renderCropper();
+        });
+      }
+
+      // Quality slider
+      if (cropQualitySlider) {
+        cropQualitySlider.addEventListener('input', function() {
+          cropperState.quality = parseFloat(this.value);
+          if (cropQualityVal) cropQualityVal.textContent = Math.round(cropperState.quality * 100) + '%';
+          renderCropper();
+        });
+      }
+
+      // Reset view button
+      if (cropResetViewBtn) {
+        cropResetViewBtn.addEventListener('click', function() {
+          cropperState.zoom = 1;
+          cropperState.panX = 0;
+          cropperState.panY = 0;
+          if (cropZoomSlider) cropZoomSlider.value = 1;
+          renderCropper();
+        });
+      }
+
+      // Auto-compress button
+      if (cropAutoCompressBtn) {
+        cropAutoCompressBtn.addEventListener('click', autoCompressUnder100KB);
+      }
+
+      // Apply crop button
+      if (cropApplyBtn) {
+        cropApplyBtn.addEventListener('click', function() {
+          if (cropperState.outputSizeBytes > 100 * 1024) {
+            showAlert('Output image must be under 100 KB. Click "Auto-Fit under 100KB".', 'error');
+            return;
+          }
+          var callback = cropperState.callback;
+          var dataUrl = cropperState.outputDataUrl;
+          var sizeBytes = cropperState.outputSizeBytes;
+          closeCropperModal();
+          if (typeof callback === 'function') {
+            callback(dataUrl, sizeBytes);
+          }
+        });
+      }
+
       // --- Settings & Profile Logic ---
       var chipData = { affiliation: [], specialty: [], experience: [] };
       var currentAvatarUrl = '';
@@ -1734,29 +2176,22 @@ import exams from '../../data/exams.json';
             if (typeof showAlert === 'function') showAlert('Only image files are allowed!', 'error');
             return;
           }
-          if (file.size > 1 * 1024 * 1024) {
-            if (typeof showAlert === 'function') showAlert('Profile picture must be under 1MB.', 'error');
-            return;
-          }
 
-          var progressEl = document.getElementById('avatarUploadProgress');
-          if (progressEl) progressEl.style.display = 'flex';
+          openImageCropper(file, { type: 'avatar', maxDim: 400 }, async function(dataUrl, sizeBytes) {
+            var progressEl = document.getElementById('avatarUploadProgress');
+            if (progressEl) progressEl.style.display = 'flex';
 
-          var reader = new FileReader();
-          reader.onload = async function(ev) {
-            var dataUrl = ev.target.result;
             var username = (user && user.username) || 'contributor';
             var res = await uploadImageToR2(dataUrl, 'avatar-' + username, 'Profile photo for ' + username, 'avatars');
             if (progressEl) progressEl.style.display = 'none';
             if (res.success && res.url) {
               currentAvatarUrl = res.url;
               updateSettingsAvatarPreview(currentAvatarUrl, document.getElementById('settingsFullName').value);
-              if (typeof showAlert === 'function') showAlert('Photo uploaded! Click "Save Profile Changes" to save.', 'success');
+              if (typeof showAlert === 'function') showAlert('Photo cropped & uploaded (' + (sizeBytes / 1024).toFixed(1) + ' KB)! Click "Save Profile Changes" to save.', 'success');
             } else {
               if (typeof showAlert === 'function') showAlert(res.error || 'Avatar upload failed.', 'error');
             }
-          };
-          reader.readAsDataURL(file);
+          });
         });
       }
 

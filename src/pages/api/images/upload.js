@@ -31,7 +31,7 @@ function generateShortId() {
 
 // Allowed image types and max size
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
-const MAX_SIZE = 1 * 1024 * 1024; // 1MB
+const MAX_SIZE = 100 * 1024; // 100KB
 const EXT_MAP = {
   'image/jpeg': '.jpg',
   'image/png': '.png',
@@ -161,7 +161,7 @@ export async function POST({ request, locals }) {
   // Check size
   if (fileBuffer.byteLength > MAX_SIZE) {
     return new Response(JSON.stringify({
-      error: `File too large: ${(fileBuffer.byteLength / 1024).toFixed(1)}KB. Maximum is 1MB.`
+      error: `File too large: ${(fileBuffer.byteLength / 1024).toFixed(1)}KB. Maximum allowed is 100KB. Please compress or convert to WebP/AVIF format.`
     }), { status: 400, headers: { "Content-Type": "application/json" } });
   }
 
