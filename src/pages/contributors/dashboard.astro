@@ -165,7 +165,10 @@ import exams from '../../data/exams.json';
   <div class="dashboard-container">
     <aside class="sidebar">
       <div class="user-profile-summary">
-        <div class="avatar" style="background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 1rem auto;" id="avatarInitial"></div>
+        <div class="avatar" style="background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 1rem auto;overflow:hidden;" id="avatarContainer">
+          <span id="avatarInitial">C</span>
+          <img id="sideAvatarImg" src="" alt="Avatar" style="width:100%;height:100%;object-fit:cover;display:none;" />
+        </div>
         <h3 id="sideName" class="profile-name">Contributor</h3>
         <span class="profile-role" id="sideRole">Contributor</span>
       </div>
@@ -327,6 +330,44 @@ import exams from '../../data/exams.json';
           <h3 class="settings-section-title">Contributor Profile</h3>
           <form id="profileForm">
             <div class="form-grid">
+              <!-- Profile Picture / Avatar -->
+              <div class="form-group full-width" style="margin-bottom:1.5rem;">
+                <label class="form-label">Profile Picture / Avatar</label>
+                <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap;background:rgba(0,0,0,0.06);border:1px solid var(--border);border-radius:12px;padding:1.25rem;">
+                  <!-- Avatar Preview -->
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;min-width:100px;">
+                    <div id="settingsAvatarPreviewWrapper" style="width:85px;height:85px;border-radius:50%;overflow:hidden;border:3px solid var(--accent);background:var(--card-bg);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px var(--accent-glow);position:relative;">
+                      <img id="settingsAvatarImg" src="" alt="Profile avatar" style="width:100%;height:100%;object-fit:cover;display:none;" />
+                      <div id="settingsAvatarInitial" style="font-family:'Outfit',sans-serif;font-size:2.2rem;font-weight:800;color:var(--accent);display:flex;align-items:center;justify-content:center;width:100%;height:100%;">C</div>
+                    </div>
+                    <button type="button" id="removeAvatarBtn" style="background:transparent;border:none;color:#ef4444;font-size:0.75rem;cursor:pointer;padding:0.2rem 0.5rem;display:none;">Remove photo</button>
+                  </div>
+
+                  <!-- Controls -->
+                  <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:0.75rem;">
+                    <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+                      <label class="btn btn-secondary" style="padding:0.55rem 1rem;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:0.4rem;margin:0;">
+                        <span>📷 Upload Image</span>
+                        <input type="file" id="avatarFileInput" accept="image/jpeg,image/png,image/webp,image/avif" style="display:none;" />
+                      </label>
+                      <span style="font-size:0.8rem;color:var(--muted);">JPEG, PNG, WEBP, AVIF (Max 1MB)</span>
+                    </div>
+
+                    <div>
+                      <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;color:var(--muted);margin-bottom:0.25rem;letter-spacing:0.5px;">Or enter direct image URL:</div>
+                      <div style="display:flex;gap:0.5rem;">
+                        <input type="url" id="settingsAvatarUrl" class="form-input" placeholder="https://... or /images/..." style="padding:0.6rem 0.85rem;font-size:0.88rem;" />
+                        <button type="button" id="applyAvatarUrlBtn" class="btn btn-secondary" style="padding:0.6rem 1rem;font-size:0.85rem;white-space:nowrap;">Apply URL</button>
+                      </div>
+                    </div>
+
+                    <div id="avatarUploadProgress" style="display:none;font-size:0.82rem;color:var(--accent);align-items:center;gap:0.4rem;">
+                      <span>⏳ Uploading profile photo...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="form-group">
                 <label class="form-label" for="settingsFullName">Full Name &amp; Degrees *</label>
                 <input class="form-input" type="text" id="settingsFullName" placeholder="e.g. Dr. Jane Smith, MD" required />
@@ -528,6 +569,33 @@ import exams from '../../data/exams.json';
         window.location.href = '/reviewers/dashboard';
       }
 
+      function updateSidebarAvatar(avatarUrl, name) {
+        var initial = (name || 'Contributor').charAt(0).toUpperCase();
+        var initialEl = document.getElementById('avatarInitial');
+        var sideAvatarImg = document.getElementById('sideAvatarImg');
+        var avatarContainer = document.getElementById('avatarContainer');
+
+        if (avatarUrl && avatarUrl.trim()) {
+          if (sideAvatarImg) {
+            sideAvatarImg.src = avatarUrl.trim();
+            sideAvatarImg.style.display = 'block';
+            sideAvatarImg.onerror = function() {
+              sideAvatarImg.style.display = 'none';
+              if (initialEl) initialEl.style.display = 'flex';
+            };
+          }
+          if (initialEl) initialEl.style.display = 'none';
+          if (avatarContainer) avatarContainer.style.background = 'transparent';
+        } else {
+          if (sideAvatarImg) sideAvatarImg.style.display = 'none';
+          if (initialEl) {
+            initialEl.textContent = initial;
+            initialEl.style.display = 'flex';
+          }
+          if (avatarContainer) avatarContainer.style.background = 'var(--accent)';
+        }
+      }
+
       function applyUserRoleUI(currentUser) {
         if (currentUser.role === 'reviewer') {
           window.location.href = '/reviewers/dashboard';
@@ -538,8 +606,7 @@ import exams from '../../data/exams.json';
         // Update sidebar profile
         document.getElementById('sideName').textContent = currentUser.full_name || currentUser.username;
         document.getElementById('sideRole').textContent = currentUser.role || 'Contributor';
-        var initial = (currentUser.full_name || currentUser.username).charAt(0).toUpperCase();
-        document.getElementById('avatarInitial').textContent = initial;
+        updateSidebarAvatar(currentUser.avatar_url, currentUser.full_name || currentUser.username);
 
         var reviewsTabBtn = document.getElementById('reviewsTabBtn');
         var submitTabBtn = document.getElementById('submitTabBtn');
@@ -1623,6 +1690,96 @@ import exams from '../../data/exams.json';
 
       // --- Settings & Profile Logic ---
       var chipData = { affiliation: [], specialty: [], experience: [] };
+      var currentAvatarUrl = '';
+
+      function updateSettingsAvatarPreview(url, name) {
+        var imgEl = document.getElementById('settingsAvatarImg');
+        var initialEl = document.getElementById('settingsAvatarInitial');
+        var removeBtn = document.getElementById('removeAvatarBtn');
+        var urlInput = document.getElementById('settingsAvatarUrl');
+
+        var initial = (name || (document.getElementById('settingsFullName') && document.getElementById('settingsFullName').value) || 'C').charAt(0).toUpperCase();
+        if (initialEl) initialEl.textContent = initial;
+
+        if (url && url.trim()) {
+          if (imgEl) {
+            imgEl.src = url.trim();
+            imgEl.style.display = 'block';
+            imgEl.onerror = function() {
+              imgEl.style.display = 'none';
+              if (initialEl) initialEl.style.display = 'flex';
+            };
+          }
+          if (initialEl) initialEl.style.display = 'none';
+          if (removeBtn) removeBtn.style.display = 'inline-block';
+          if (urlInput && urlInput.value !== url.trim()) urlInput.value = url.trim();
+        } else {
+          if (imgEl) {
+            imgEl.src = '';
+            imgEl.style.display = 'none';
+          }
+          if (initialEl) initialEl.style.display = 'flex';
+          if (removeBtn) removeBtn.style.display = 'none';
+          if (urlInput) urlInput.value = '';
+        }
+      }
+
+      // Avatar File Upload Handler
+      var avatarFileInput = document.getElementById('avatarFileInput');
+      if (avatarFileInput) {
+        avatarFileInput.addEventListener('change', function(e) {
+          var file = e.target.files && e.target.files[0];
+          if (!file) return;
+          if (!file.type.startsWith('image/')) {
+            if (typeof showAlert === 'function') showAlert('Only image files are allowed!', 'error');
+            return;
+          }
+          if (file.size > 1 * 1024 * 1024) {
+            if (typeof showAlert === 'function') showAlert('Profile picture must be under 1MB.', 'error');
+            return;
+          }
+
+          var progressEl = document.getElementById('avatarUploadProgress');
+          if (progressEl) progressEl.style.display = 'flex';
+
+          var reader = new FileReader();
+          reader.onload = async function(ev) {
+            var dataUrl = ev.target.result;
+            var username = (user && user.username) || 'contributor';
+            var res = await uploadImageToR2(dataUrl, 'avatar-' + username, 'Profile photo for ' + username, 'avatars');
+            if (progressEl) progressEl.style.display = 'none';
+            if (res.success && res.url) {
+              currentAvatarUrl = res.url;
+              updateSettingsAvatarPreview(currentAvatarUrl, document.getElementById('settingsFullName').value);
+              if (typeof showAlert === 'function') showAlert('Photo uploaded! Click "Save Profile Changes" to save.', 'success');
+            } else {
+              if (typeof showAlert === 'function') showAlert(res.error || 'Avatar upload failed.', 'error');
+            }
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      // Apply direct URL button handler
+      var applyAvatarUrlBtn = document.getElementById('applyAvatarUrlBtn');
+      if (applyAvatarUrlBtn) {
+        applyAvatarUrlBtn.addEventListener('click', function() {
+          var urlVal = document.getElementById('settingsAvatarUrl').value.trim();
+          currentAvatarUrl = urlVal;
+          updateSettingsAvatarPreview(urlVal, document.getElementById('settingsFullName').value);
+        });
+      }
+
+      // Remove avatar button handler
+      var removeAvatarBtn = document.getElementById('removeAvatarBtn');
+      if (removeAvatarBtn) {
+        removeAvatarBtn.addEventListener('click', function() {
+          currentAvatarUrl = '';
+          updateSettingsAvatarPreview('', document.getElementById('settingsFullName').value);
+          var urlInput = document.getElementById('settingsAvatarUrl');
+          if (urlInput) urlInput.value = '';
+        });
+      }
 
       function renderChips(field) {
         var container = document.getElementById(field + 'Chips');
@@ -1680,6 +1837,11 @@ import exams from '../../data/exams.json';
             if (emEl) emEl.value = p.email || '';
             if (bioEl) bioEl.value = p.bio || '';
 
+            // Avatar
+            currentAvatarUrl = p.avatar_url || '';
+            updateSettingsAvatarPreview(currentAvatarUrl, p.full_name || p.username);
+            updateSidebarAvatar(currentAvatarUrl, p.full_name || p.username);
+
             // Load chips
             chipData.affiliation = Array.isArray(p.affiliation) ? p.affiliation : (p.affiliation ? [p.affiliation] : []);
             chipData.specialty = Array.isArray(p.specialty) ? p.specialty : (p.specialty ? [p.specialty] : []);
@@ -1719,6 +1881,8 @@ import exams from '../../data/exams.json';
           saveBtn.disabled = true;
           saveBtn.textContent = 'Saving...';
 
+          var avatarVal = (currentAvatarUrl || (document.getElementById('settingsAvatarUrl') && document.getElementById('settingsAvatarUrl').value) || '').trim();
+
           try {
             var resp = await fetch('/api/profile/update', {
               method: 'POST',
@@ -1730,6 +1894,7 @@ import exams from '../../data/exams.json';
                 specialty: chipData.specialty,
                 experience: chipData.experience,
                 bio: document.getElementById('settingsBio').value.trim(),
+                avatar_url: avatarVal
               })
             });
             var data = await resp.json();
@@ -1742,10 +1907,11 @@ import exams from '../../data/exams.json';
               try {
                 var currentU = JSON.parse(sessionStorage.getItem('user') || '{}');
                 currentU.full_name = document.getElementById('settingsFullName').value.trim();
+                currentU.avatar_url = avatarVal;
                 sessionStorage.setItem('user', JSON.stringify(currentU));
                 document.getElementById('sideName').textContent = currentU.full_name;
                 document.getElementById('artAuthor').value = currentU.full_name;
-                document.getElementById('avatarInitial').textContent = currentU.full_name.charAt(0).toUpperCase();
+                updateSidebarAvatar(avatarVal, currentU.full_name);
               } catch(err) {}
             }
           } catch(err) {
