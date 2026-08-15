@@ -215,8 +215,6 @@ import exams from '../../data/exams.json';
     </aside>
 
     <main class="main-content">
-      <div id="alertBox" style="display: none;"></div>
-
       <!-- Popup Modal -->
       <div class="modal-overlay" id="modalOverlay" style="display:none;">
         <div class="modal-dialog" id="modalDialog">
@@ -386,8 +384,6 @@ import exams from '../../data/exams.json';
       <div id="settingsPanel" class="tab-panel">
         <h2 class="panel-title">Account Settings</h2>
         <p class="panel-desc">Manage your profile details, password, and two-factor authentication security.</p>
-        
-        <div id="settingsAlertBox" class="alert" style="display:none;margin-bottom:1.5rem;"></div>
 
         <!-- Profile Section -->
         <section class="settings-section">
@@ -1143,14 +1139,8 @@ import exams from '../../data/exams.json';
         if (overlay) overlay.style.display = 'none';
       }
 
-      var alertBox = document.getElementById('alertBox');
       function showAlert(message, type) {
         type = type || 'success';
-        if (alertBox) {
-          alertBox.innerHTML = '<div class="alert alert-' + type + '">' + (type === 'success' ? '&#10003; ' : '') + message + '</div>';
-          alertBox.style.display = 'block';
-          setTimeout(function() { alertBox.style.display = 'none'; }, 5000);
-        }
         showToast(message, type);
       }
 
@@ -2608,9 +2598,6 @@ import exams from '../../data/exams.json';
 
       // Load Profile & MFA in Settings tab
       async function loadProfileSettings() {
-        var alertBox = document.getElementById('settingsAlertBox');
-        if (alertBox) alertBox.style.display = 'none';
-
         try {
           var resp = await fetch('/api/profile/get');
           var data = await resp.json();
@@ -2663,7 +2650,6 @@ import exams from '../../data/exams.json';
       if (profileForm) {
         profileForm.addEventListener('submit', async function(e) {
           e.preventDefault();
-          var alertBox = document.getElementById('settingsAlertBox');
           var saveBtn = document.getElementById('saveProfileBtn');
           saveBtn.disabled = true;
           saveBtn.textContent = 'Saving...';
@@ -2685,11 +2671,6 @@ import exams from '../../data/exams.json';
               })
             });
             var data = await resp.json();
-            if (alertBox) {
-              alertBox.textContent = data.message || (data.success ? 'Profile updated successfully!' : data.error);
-              alertBox.className = data.success ? 'alert alert-success' : 'alert alert-error';
-              alertBox.style.display = 'flex';
-            }
             if (data.success) {
               showModalAlert('Profile Updated', 'Your profile details and credentials have been updated successfully!', 'success');
               showToast('Profile updated successfully!', 'success');
@@ -2707,11 +2688,6 @@ import exams from '../../data/exams.json';
               showToast(data.error || 'Could not update profile.', 'error');
             }
           } catch(err) {
-            if (alertBox) {
-              alertBox.textContent = 'Network error: ' + err.message;
-              alertBox.className = 'alert alert-error';
-              alertBox.style.display = 'flex';
-            }
             showModalAlert('Network Error', 'A network error occurred while updating profile: ' + err.message, 'error');
             showToast('Network error: ' + err.message, 'error');
           } finally {
@@ -2726,7 +2702,6 @@ import exams from '../../data/exams.json';
       if (passwordForm) {
         passwordForm.addEventListener('submit', async function(e) {
           e.preventDefault();
-          var alertBox = document.getElementById('settingsAlertBox');
           var updateBtn = document.getElementById('updatePasswordBtn');
           updateBtn.disabled = true;
           updateBtn.textContent = 'Updating...';
@@ -2741,11 +2716,6 @@ import exams from '../../data/exams.json';
               })
             });
             var data = await resp.json();
-            if (alertBox) {
-              alertBox.textContent = data.message || (data.success ? 'Password updated successfully!' : data.error);
-              alertBox.className = data.success ? 'alert alert-success' : 'alert alert-error';
-              alertBox.style.display = 'flex';
-            }
             if (data.success) {
               passwordForm.reset();
               showModalAlert('Password Changed', 'Your password has been changed successfully!', 'success');
@@ -2760,11 +2730,6 @@ import exams from '../../data/exams.json';
               showToast(data.error || 'Failed to update password.', 'error');
             }
           } catch(err) {
-            if (alertBox) {
-              alertBox.textContent = 'Network error: ' + err.message;
-              alertBox.className = 'alert alert-error';
-              alertBox.style.display = 'flex';
-            }
             showModalAlert('Network Error', err.message, 'error');
             showToast('Network error: ' + err.message, 'error');
           } finally {
@@ -2789,7 +2754,6 @@ import exams from '../../data/exams.json';
 
       async function verifyTOTP() {
         var code = document.getElementById('totpCode').value.trim();
-        var alertBox = document.getElementById('settingsAlertBox');
         if (!code || code.length !== 6) {
           showModalAlert('Invalid Code', 'Please enter the 6-digit verification code from your authenticator app.', 'error');
           showToast('Please enter the 6-digit verification code.', 'error');
