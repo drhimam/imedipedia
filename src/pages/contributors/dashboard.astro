@@ -164,6 +164,18 @@ import exams from '../../data/exams.json';
       .toast-fade-out { opacity: 0; transform: translateY(-12px); }
       @keyframes toastSlideIn { from { opacity: 0; transform: translateY(-16px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
       @keyframes modalScale { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+      /* In-text Image Markdown Snippets & Live Preview */
+      .intext-snippet-box { margin-top: 0.75rem; padding: 0.75rem 1rem; background: rgba(13, 148, 136, 0.08); border: 1px solid rgba(13, 148, 136, 0.25); border-radius: 8px; font-size: 0.82rem; }
+      .btn-copy-tag { padding: 0.3rem 0.65rem; font-size: 0.78rem; font-weight: 600; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 0.3rem; font-family: inherit; }
+      .btn-copy-tag:hover { filter: brightness(1.1); transform: translateY(-1px); }
+      .btn-insert-cursor { padding: 0.3rem 0.65rem; font-size: 0.78rem; font-weight: 600; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--accent); cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 0.3rem; font-family: inherit; }
+      .btn-insert-cursor:hover { background: rgba(13, 148, 136, 0.15); }
+      .intext-code-preview { background: rgba(0, 0, 0, 0.18); border: 1px solid var(--border); padding: 0.45rem 0.65rem; border-radius: 6px; font-family: monospace; font-size: 0.82rem; color: var(--accent); word-break: break-all; user-select: all; margin: 0.35rem 0; display: flex; align-items: center; justify-content: space-between; }
+      :global([data-theme="light"]) .intext-code-preview { background: rgba(0, 0, 0, 0.04); }
+      .preview-modal-wrapper { max-width: 960px; width: 95vw; max-height: 92vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 18px; }
+      .preview-modal-header { padding: 1.15rem 1.75rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); flex-wrap: wrap; gap: 0.75rem; position: sticky; top: 0; z-index: 10; }
+      .preview-modal-body { padding: 2.25rem; overflow-y: auto; flex: 1; background: var(--bg); }
+      @media (max-width: 640px) { .preview-modal-body { padding: 1.25rem; } }
       @media (max-width: 768px) {
         .dashboard-container { grid-template-columns: 1fr; gap: 1.5rem; }
         .form-grid { grid-template-columns: 1fr; gap: 1rem; }
@@ -312,16 +324,33 @@ import exams from '../../data/exams.json';
 
           <!-- Markdown Image Guide -->
           <div class="form-group full-width">
-            <div class="image-guide">
-              <strong>📷 Image Guide:</strong> After uploading images, copy the URL shown in the slot and insert into your markdown:<br>
-              <code>![alt text description](IMAGE_URL)</code><br><br>
-              <strong>Example:</strong> <code>![Figure 1: T-cell response graph](https://pub-xxx.r2.dev/inline/2026/08/abc123-graph.png)</code><br><br>
-              <strong>Cover image:</strong> Automatically set as the article's featured image.<br>
-              <strong>In-text images:</strong> Copy URLs from image slots above and paste where needed in your article content.
+            <div class="image-guide" style="line-height:1.6;">
+              <strong style="color:var(--accent);font-size:0.95rem;">📷 How to Embed Images in Your Article:</strong><br>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:0.75rem;margin-top:0.6rem;font-size:0.83rem;">
+                <div style="background:rgba(0,0,0,0.1);padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--border);">
+                  <strong>1. Upload / Crop:</strong> Add your image in the slot above (cropped to &lt;100KB WebP).
+                </div>
+                <div style="background:rgba(0,0,0,0.1);padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--border);">
+                  <strong>2. Copy Tag:</strong> Click <code>📋 Copy Markdown Tag</code> or <code>↵ Insert at Cursor</code>.
+                </div>
+                <div style="background:rgba(0,0,0,0.1);padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--border);">
+                  <strong>3. Place in Content:</strong> Paste directly where the image should appear in your markdown.
+                </div>
+                <div style="background:rgba(0,0,0,0.1);padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--border);">
+                  <strong>4. Live Preview:</strong> Click <code>👁️ Preview Article</code> to verify exact layout.
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="form-group full-width" style="margin-top: 1rem;"><button type="submit" class="btn" id="submitBtn">Submit Article for Review</button></div>
+          <div class="form-group full-width" style="margin-top: 1.5rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary" id="previewArticleBtn" style="padding: 0.75rem 1.4rem; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+              <span>👁️</span> Preview Article
+            </button>
+            <button type="submit" class="btn" id="submitBtn" style="padding: 0.75rem 1.6rem; font-size: 0.95rem;">
+              Submit Article for Review
+            </button>
+          </div>
         </form>
       </div>
 
@@ -647,6 +676,79 @@ import exams from '../../data/exams.json';
           <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
             <button type="button" class="btn btn-secondary" onclick="closeCropperModal()">Cancel</button>
             <button type="button" class="btn" id="cropApplyBtn">Crop &amp; Apply Image</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Webpage Article Preview Modal -->
+      <div class="view-modal-overlay" id="articlePreviewModalOverlay" style="display:none;z-index:2000;">
+        <div class="view-modal preview-modal-wrapper">
+          <div class="preview-modal-header">
+            <div>
+              <h3 style="font-family:'Outfit',sans-serif;font-size:1.3rem;font-weight:700;margin:0 0 0.2rem 0;display:flex;align-items:center;gap:0.5rem;color:var(--text);">
+                <span>👁️</span> Live Webpage Article Preview
+              </h3>
+              <div style="font-size:0.8rem;color:var(--muted);">Exact preview of how your article will render on iMedipedia upon review and publication.</div>
+            </div>
+            <div style="display:flex;gap:0.6rem;align-items:center;">
+              <button type="button" class="btn btn-secondary" style="padding:0.45rem 0.9rem;font-size:0.85rem;" onclick="closeArticlePreviewModal()">✏️ Back to Editor</button>
+              <button type="button" class="btn" style="padding:0.45rem 1rem;font-size:0.85rem;" onclick="submitArticleFromPreview()">🚀 Submit for Review</button>
+              <button type="button" class="view-modal-close" style="position:static;font-size:1.5rem;margin-left:0.25rem;" onclick="closeArticlePreviewModal()">&times;</button>
+            </div>
+          </div>
+
+          <div class="preview-modal-body">
+            <div class="article-preview-container" style="max-width:800px;margin:0 auto;">
+              <!-- Breadcrumb -->
+              <div style="font-size:0.85rem;color:var(--muted);margin-bottom:1.25rem;display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+                <span>🏠 iMedipedia</span>
+                <span>&rsaquo;</span>
+                <span>Articles</span>
+                <span>&rsaquo;</span>
+                <span id="prevBreadcrumbSubjects" style="color:var(--accent);font-weight:600;">Clinical Medicine</span>
+              </div>
+
+              <!-- Meta Pills: Audience, Read Time, Preview Badge -->
+              <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1.1rem;">
+                <span id="prevAudienceBadge" class="subj-chip" style="background:rgba(99,102,241,0.2);color:#818cf8;border:1px solid rgba(99,102,241,0.3);font-size:0.8rem;">🩺 All Medical Professionals</span>
+                <span id="prevReadTimeBadge" style="font-size:0.82rem;color:var(--muted);display:inline-flex;align-items:center;gap:0.3rem;">⏱️ <span id="prevReadTimeVal">5 min read</span></span>
+                <span style="font-size:0.78rem;background:rgba(245,158,11,0.15);color:#f59e0b;padding:0.2rem 0.6rem;border-radius:20px;font-weight:600;border:1px solid rgba(245,158,11,0.3);">🟡 Preview Mode</span>
+              </div>
+
+              <!-- Title -->
+              <h1 id="prevTitle" style="font-family:'Outfit',sans-serif;font-size:2.25rem;font-weight:800;line-height:1.25;margin:0 0 1.25rem 0;color:var(--text);"></h1>
+
+              <!-- Author Byline -->
+              <div style="display:flex;align-items:center;gap:0.9rem;padding:0.9rem 1.2rem;background:var(--card-bg);border:1px solid var(--border);border-radius:12px;margin-bottom:1.75rem;">
+                <div id="prevAuthorAvatar" style="width:48px;height:48px;border-radius:50%;overflow:hidden;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem;color:#fff;flex-shrink:0;"></div>
+                <div style="flex:1;">
+                  <div style="font-weight:700;font-size:1rem;color:var(--text);" id="prevAuthorName"></div>
+                  <div style="font-size:0.8rem;color:var(--muted);" id="prevAuthorAffiliation">Contributing Author &bull; iMedipedia Editorial Review Board</div>
+                </div>
+              </div>
+
+              <!-- Executive Summary Callout -->
+              <div id="prevDescriptionBox" style="font-style:italic;color:var(--text);margin-bottom:1.75rem;padding:1.1rem 1.4rem;background:rgba(13,148,136,0.06);border-left:4px solid var(--accent);border-radius:6px;font-size:1rem;line-height:1.65;"></div>
+
+              <!-- Cover Image Banner -->
+              <div id="prevCoverContainer" style="margin-bottom:2rem;display:none;">
+                <div style="border-radius:14px;overflow:hidden;border:1px solid var(--border);max-height:420px;background:#000;">
+                  <img id="prevCoverImg" src="" alt="Article cover" style="width:100%;height:auto;max-height:420px;object-fit:cover;display:block;" />
+                </div>
+                <div id="prevCoverCaption" style="font-size:0.8rem;color:var(--muted);text-align:center;margin-top:0.5rem;font-style:italic;"></div>
+              </div>
+
+              <!-- Exam Badges -->
+              <div id="prevExamsRow" style="margin-bottom:1.5rem;display:none;">
+                <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem;letter-spacing:0.5px;">Board Review &amp; CME Coverage:</div>
+                <div id="prevExamChips" style="display:flex;gap:0.4rem;flex-wrap:wrap;"></div>
+              </div>
+
+              <hr style="border:none;border-top:1px solid var(--border);margin:2rem 0;" />
+
+              <!-- Rendered Markdown Body -->
+              <div id="prevArticleBody" class="article-body" style="font-size:1.02rem;line-height:1.85;color:var(--text);"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -1130,9 +1232,59 @@ import exams from '../../data/exams.json';
         return div.innerHTML;
       }
 
-      // --- In-text Image Slots ---
+      // --- In-text Image Slots & Markdown Generator ---
       var MAX_INTEXT_IMAGES = 5;
-      var intextSlots = []; // { id, file, name, description, dataUrl }
+      var intextSlots = []; // { id, file, name, description, dataUrl, uploadedUrl }
+
+      function updateIntextMarkdownSnippet(slotIndex) {
+        var slot = intextSlots.find(function(s) { return s.id === slotIndex; });
+        var nameInput = document.getElementById('intextName' + slotIndex);
+        var descInput = document.getElementById('intextDesc' + slotIndex);
+        var altText = (nameInput && nameInput.value.trim()) || (descInput && descInput.value.trim()) || ('Figure ' + (slotIndex + 1));
+        
+        var url = (slot && slot.uploadedUrl) || (slot && slot.dataUrl) || '';
+        var snippetContainer = document.getElementById('intextSnippetBox' + slotIndex);
+        var codeEl = document.getElementById('intextMarkdownCode' + slotIndex);
+
+        if (url && snippetContainer && codeEl) {
+          var mdSnippet = '![' + altText + '](' + url + ')';
+          codeEl.textContent = mdSnippet;
+          snippetContainer.style.display = 'block';
+        }
+      }
+
+      function copyIntextMarkdownTag(slotIndex) {
+        var codeEl = document.getElementById('intextMarkdownCode' + slotIndex);
+        if (!codeEl) return;
+        var text = codeEl.textContent.trim();
+        if (!text) return;
+
+        navigator.clipboard.writeText(text).then(function() {
+          showToast('📋 Markdown tag copied! Paste with Ctrl+V into your article content.', 'success');
+        }).catch(function() {
+          showAlert('Copied: ' + text, 'success');
+        });
+      }
+
+      function insertIntextTagAtCursor(slotIndex) {
+        var codeEl = document.getElementById('intextMarkdownCode' + slotIndex);
+        if (!codeEl) return;
+        var text = codeEl.textContent.trim();
+        if (!text) return;
+
+        var textarea = document.getElementById('artContent');
+        if (!textarea) return;
+
+        var startPos = textarea.selectionStart || 0;
+        var endPos = textarea.selectionEnd || 0;
+        var currentVal = textarea.value;
+
+        var insertText = '\n\n' + text + '\n\n';
+        textarea.value = currentVal.substring(0, startPos) + insertText + currentVal.substring(endPos);
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = startPos + insertText.length;
+        showToast('✅ Figure tag inserted into your article content!', 'success');
+      }
 
       function createImageSlot(slotIndex) {
         var slot = document.createElement('div');
@@ -1140,52 +1292,49 @@ import exams from '../../data/exams.json';
         slot.id = 'intextSlot' + slotIndex;
         slot.innerHTML =
           '<div class="image-slot-header">'+
-            '<span class="image-slot-title">Image ' + (slotIndex + 1) + '</span>'+
+            '<span class="image-slot-title">Figure / In-text Image ' + (slotIndex + 1) + '</span>'+
             '<button type="button" class="image-slot-remove" onclick="removeImageSlot(' + slotIndex + ')">Remove</button>'+
           '</div>'+
           '<div class="image-upload-row">'+
             '<div class="upload-zone compact" id="intextDropZone' + slotIndex + '" style="flex:1;min-width:150px;">'+
               '<span style="font-size:0.85rem;">Drop image or <span style="color:var(--accent);text-decoration:underline;">browse</span></span>'+
-              '<div style="font-size:0.7rem;color:var(--muted);">Max 1MB</div>'+
+              '<div style="font-size:0.7rem;color:var(--muted);">Max 100KB (WebP)</div>'+
               '<input type="file" id="intextFileInput' + slotIndex + '" accept="image/jpeg,image/png,image/webp,image/avif" style="display:none;" />'+
               '<div class="image-preview-container" id="intextPreview' + slotIndex + '"><img src="" class="image-preview" id="intextPreviewImg' + slotIndex + '" alt="Preview" /><button type="button" class="clear-img-btn" id="intextClear' + slotIndex + '">&times;</button></div>'+
             '</div>'+
             '<div class="image-upload-fields">'+
-              '<div class="form-group" style="margin-bottom:0.5rem;"><input type="text" id="intextName' + slotIndex + '" class="form-input" placeholder="Image name (alt text)" style="padding:0.5rem 0.75rem;font-size:0.85rem;" /></div>'+
-              '<div class="form-group"><input type="text" id="intextDesc' + slotIndex + '" class="form-input" placeholder="Description / caption" style="padding:0.5rem 0.75rem;font-size:0.85rem;" /></div>'+
+              '<div class="form-group" style="margin-bottom:0.5rem;"><input type="text" id="intextName' + slotIndex + '" class="form-input" placeholder="Figure title / Alt text (e.g. Figure 1: ECG graph)" style="padding:0.5rem 0.75rem;font-size:0.85rem;" /></div>'+
+              '<div class="form-group"><input type="text" id="intextDesc' + slotIndex + '" class="form-input" placeholder="Clinical description / caption" style="padding:0.5rem 0.75rem;font-size:0.85rem;" /></div>'+
             '</div>'+
           '</div>'+
-          '<div id="intextUrlDisplay' + slotIndex + '" style="display:none;margin-top:0.75rem;padding:0.5rem 0.75rem;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:6px;font-size:0.8rem;word-break:break-all;">'+
-            '<span style="color:#10b981;font-weight:700;">Uploaded URL:</span> <code id="intextUrl' + slotIndex + '" style="color:var(--accent);"></code>'+
-            '<button type="button" style="margin-left:0.5rem;padding:0.15rem 0.5rem;font-size:0.75rem;cursor:pointer;border-radius:4px;border:1px solid var(--accent);background:transparent;color:var(--accent);" onclick="copyIntextUrl(' + slotIndex + ')">Copy</button>'+
+          '<div id="intextSnippetBox' + slotIndex + '" class="intext-snippet-box" style="display:none;">'+
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;flex-wrap:wrap;gap:0.4rem;">'+
+              '<span style="font-weight:700;color:var(--accent);font-size:0.82rem;">📋 Ready-to-Embed Markdown Tag:</span>'+
+              '<div style="display:flex;gap:0.4rem;">'+
+                '<button type="button" class="btn-copy-tag" onclick="copyIntextMarkdownTag(' + slotIndex + ')">📋 Copy Markdown Tag</button>'+
+                '<button type="button" class="btn-insert-cursor" onclick="insertIntextTagAtCursor(' + slotIndex + ')">↵ Insert at Cursor</button>'+
+              '</div>'+
+            '</div>'+
+            '<div class="intext-code-preview"><code id="intextMarkdownCode' + slotIndex + '"></code></div>'+
+            '<div style="font-size:0.75rem;color:var(--muted);margin-top:0.3rem;">👉 Paste this markdown tag directly into your <strong>Article Content</strong> where you want the figure to appear.</div>'+
           '</div>';
 
         document.getElementById('intextImageSlots').appendChild(slot);
         setupSlotUploadListeners(slotIndex);
+
+        // Input listeners to update markdown snippet live
+        ['intextName', 'intextDesc'].forEach(function(prefix) {
+          var input = document.getElementById(prefix + slotIndex);
+          if (input) {
+            input.addEventListener('input', function() { updateIntextMarkdownSnippet(slotIndex); });
+          }
+        });
       }
 
       function removeImageSlot(slotIndex) {
         var slotEl = document.getElementById('intextSlot' + slotIndex);
         if (slotEl) slotEl.remove();
         intextSlots = intextSlots.filter(function(s) { return s.id !== slotIndex; });
-      }
-
-      function copyIntextUrl(slotIndex) {
-        var urlEl = document.getElementById('intextUrl' + slotIndex);
-        if (!urlEl) return;
-        var url = urlEl.textContent;
-        if (!url) return;
-        navigator.clipboard.writeText(url).then(function() {
-          showAlert('URL copied! Paste into your markdown: ![description](' + url + ')', 'success');
-        }).catch(function() {
-          // Fallback: select the text
-          var range = document.createRange();
-          range.selectNodeContents(urlEl);
-          var sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
-          showAlert('URL selected. Press Ctrl+C to copy.', 'success');
-        });
       }
 
       function setupSlotUploadListeners(slotIndex) {
@@ -1215,22 +1364,29 @@ import exams from '../../data/exams.json';
           fileInput.value = '';
           previewImg.src = '';
           previewContainer.style.display = 'none';
-          document.getElementById('intextUrlDisplay' + slotIndex).style.display = 'none';
-          // Remove from slots
+          var snip = document.getElementById('intextSnippetBox' + slotIndex);
+          if (snip) snip.style.display = 'none';
           intextSlots = intextSlots.filter(function(s) { return s.id !== slotIndex; });
         });
       }
 
       function handleIntextFile(slotIndex, file) {
         if (!file.type.startsWith('image/')) { showAlert('Only image files are allowed!', 'error'); return; }
-        openImageCropper(file, { type: 'intext', maxDim: 1000 }, function(dataUrl, sizeBytes) {
+        openImageCropper(file, { type: 'intext', maxDim: 1000 }, async function(dataUrl, sizeBytes) {
           document.getElementById('intextPreviewImg' + slotIndex).src = dataUrl;
           document.getElementById('intextPreview' + slotIndex).style.display = 'flex';
-          var name = document.getElementById('intextName' + slotIndex).value.trim() || 'image-' + (slotIndex + 1);
-          var desc = document.getElementById('intextDesc' + slotIndex).value.trim() || '';
+          var name = (document.getElementById('intextName' + slotIndex) && document.getElementById('intextName' + slotIndex).value.trim()) || ('Figure ' + (slotIndex + 1));
+          var desc = (document.getElementById('intextDesc' + slotIndex) && document.getElementById('intextDesc' + slotIndex).value.trim()) || '';
+          
+          showToast('Uploading figure link to cloud storage...', 'info');
+          var upRes = await uploadImageToR2(dataUrl, 'figure-' + (slotIndex + 1) + '-' + (user && user.username || 'contributor'), desc, 'inline');
+          var permanentUrl = (upRes && upRes.success && upRes.url) ? upRes.url : dataUrl;
+
           intextSlots = intextSlots.filter(function(s) { return s.id !== slotIndex; });
-          intextSlots.push({ id: slotIndex, file: file, name: name, description: desc, dataUrl: dataUrl });
-          showAlert('Image cropped & optimized (' + (sizeBytes / 1024).toFixed(1) + ' KB)!', 'success');
+          intextSlots.push({ id: slotIndex, file: file, name: name, description: desc, dataUrl: dataUrl, uploadedUrl: permanentUrl });
+
+          updateIntextMarkdownSnippet(slotIndex);
+          showModalAlert('Figure Uploaded & Ready', 'Your figure has been uploaded and optimized (' + (sizeBytes / 1024).toFixed(1) + ' KB)!\n\nClick "Copy Markdown Tag" or "Insert at Cursor" in the slot to place this figure directly into your article content.', 'success');
         });
       }
 
@@ -1482,6 +1638,144 @@ import exams from '../../data/exams.json';
           submitBtn.textContent = 'Submit Article for Review';
         }
       });
+
+      // --- Live Webpage Article Preview ---
+      function openArticlePreview() {
+        var title = document.getElementById('artTitle').value.trim();
+        var desc = document.getElementById('artDesc').value.trim();
+        var content = document.getElementById('artContent').value.trim();
+        var author = document.getElementById('artAuthor').value.trim() || (user && user.full_name) || (user && user.username) || 'Contributing Author';
+        var audience = document.getElementById('artAudience') ? document.getElementById('artAudience').value : 'all';
+
+        if (!title) {
+          showAlert('Please enter an Article Title to preview.', 'error');
+          document.getElementById('artTitle').focus();
+          return;
+        }
+        if (!content) {
+          showAlert('Please write some Article Content to preview.', 'error');
+          document.getElementById('artContent').focus();
+          return;
+        }
+
+        // Title
+        document.getElementById('prevTitle').textContent = title;
+
+        // Executive Summary Callout
+        var descBox = document.getElementById('prevDescriptionBox');
+        if (desc) {
+          descBox.textContent = desc;
+          descBox.style.display = 'block';
+        } else {
+          descBox.style.display = 'none';
+        }
+
+        // Breadcrumbs & Subjects
+        var breadcrumbSubj = document.getElementById('prevBreadcrumbSubjects');
+        if (selectedSubjects && selectedSubjects.length > 0) {
+          breadcrumbSubj.textContent = selectedSubjects.join(', ');
+        } else {
+          breadcrumbSubj.textContent = 'General Medicine';
+        }
+
+        // Audience Pill
+        var audienceNames = {
+          'all': '🩺 All Medical Professionals',
+          'medical-students': '🎓 Medical Students & USMLE Prep',
+          'residents': '🏥 Residents & Fellows',
+          'physicians': '👨‍⚕️ Board-Certified Physicians',
+          'nursing': '🩺 Nursing & Allied Health',
+          'researchers': '🔬 Clinical & Translational Researchers'
+        };
+        var audBadge = document.getElementById('prevAudienceBadge');
+        if (audBadge) audBadge.textContent = audienceNames[audience] || '🩺 All Medical Professionals';
+
+        // Read time & Word count
+        var words = content.split(/\s+/).filter(Boolean).length;
+        var readMins = Math.max(1, Math.ceil(words / 200));
+        var customReadTime = document.getElementById('artReadTime') ? document.getElementById('artReadTime').value.trim() : '';
+        document.getElementById('prevReadTimeVal').textContent = (customReadTime || readMins) + ' min read (' + words + ' words)';
+
+        // Author byline & avatar
+        document.getElementById('prevAuthorName').textContent = author;
+        var authorAvatar = document.getElementById('prevAuthorAvatar');
+        var userAvatarUrl = (currentAvatarUrl || (user && user.avatar_url) || '');
+        if (userAvatarUrl) {
+          authorAvatar.innerHTML = '<img src="' + escapeHTML(userAvatarUrl) + '" alt="Author" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent=\'' + author.charAt(0).toUpperCase() + '\'" />';
+        } else {
+          authorAvatar.textContent = author.charAt(0).toUpperCase();
+        }
+
+        // Cover Image Banner
+        var coverUrl = (coverPreview && coverPreview.src && coverPreviewContainer && coverPreviewContainer.style.display !== 'none' && !coverPreview.src.startsWith('data:'))
+          ? coverPreview.src
+          : (coverImageUrlInput && coverImageUrlInput.value.trim() ? coverImageUrlInput.value.trim() : (coverFileData ? coverFileData.dataUrl : ''));
+        
+        var coverContainer = document.getElementById('prevCoverContainer');
+        var coverImg = document.getElementById('prevCoverImg');
+        var coverCaption = document.getElementById('prevCoverCaption');
+        var coverDesc = document.getElementById('coverImageDesc') ? document.getElementById('coverImageDesc').value.trim() : '';
+
+        if (coverUrl) {
+          coverImg.src = coverUrl;
+          coverCaption.textContent = coverDesc || '';
+          coverContainer.style.display = 'block';
+        } else {
+          coverContainer.style.display = 'none';
+        }
+
+        // Exam Badges
+        var examsRow = document.getElementById('prevExamsRow');
+        var examChips = document.getElementById('prevExamChips');
+        if (selectedExams && selectedExams.length > 0) {
+          examChips.innerHTML = selectedExams.map(function(e) {
+            return '<span class="badge badge-published" style="background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);font-size:0.78rem;">🎯 ' + escapeHTML(e) + '</span>';
+          }).join(' ');
+          examsRow.style.display = 'block';
+        } else {
+          examsRow.style.display = 'none';
+        }
+
+        // Parse Markdown Content
+        var parsedHtml = '';
+        if (typeof window.marked !== 'undefined' && typeof window.marked.parse === 'function') {
+          parsedHtml = window.marked.parse(content, { gfm: true, breaks: false });
+        } else {
+          parsedHtml = escapeHTML(content).replace(/\n/g, '<br>');
+        }
+        document.getElementById('prevArticleBody').innerHTML = parsedHtml;
+
+        // Show Modal
+        var prevModal = document.getElementById('articlePreviewModalOverlay');
+        if (prevModal) prevModal.style.display = 'flex';
+      }
+
+      function closeArticlePreviewModal() {
+        var prevModal = document.getElementById('articlePreviewModalOverlay');
+        if (prevModal) prevModal.style.display = 'none';
+      }
+
+      function submitArticleFromPreview() {
+        closeArticlePreviewModal();
+        var submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+          submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          submitBtn.click();
+        }
+      }
+
+      // Close preview modal on backdrop click
+      var articlePreviewModalOverlay = document.getElementById('articlePreviewModalOverlay');
+      if (articlePreviewModalOverlay) {
+        articlePreviewModalOverlay.addEventListener('click', function(e) {
+          if (e.target === this) closeArticlePreviewModal();
+        });
+      }
+
+      var previewArticleBtn = document.getElementById('previewArticleBtn');
+      if (previewArticleBtn) {
+        previewArticleBtn.addEventListener('click', openArticlePreview);
+      }
 
       // --- View, Edit, Delete ---
       var editingSubmissionId = null;
