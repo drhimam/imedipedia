@@ -30,6 +30,7 @@
 20. [Weekly Newsletter & Digest Generation Workflow](#20-weekly-newsletter--digest-generation-workflow)
 21. [Custom Domain & Cover Image Alignment Architecture](#21-custom-domain--cover-image-alignment-architecture)
 22. [Peer Review Board & Multi-Reviewer Evaluation Architecture](#22-peer-review-board--multi-reviewer-evaluation-architecture)
+23. [Contributor Portal & Author Dashboard Enhancements](#23-contributor-portal--author-dashboard-enhancements)
 
 ---
 
@@ -1749,9 +1750,89 @@ CREATE TABLE IF NOT EXISTS peer_reviews (
 
 ---
 
+---
+
+## 23. Contributor Portal & Author Dashboard Enhancements
+
+### 23.1 Landing Page Harmonization (`/contributors` & `/reviewers`)
+- **Visual & Structural Alignment:** Synchronized `src/pages/contributors.astro` with `src/pages/reviewers.astro` using a high-yield medical editorial layout.
+- **Hero & Right Navigation Panel:**
+  - **Contributor Portal:** Quick-nav links for *Join as Contributor*, *Contributor Login*, and *Our Contributors*.
+  - **Reviewer Portal:** Quick-nav links for *Join as Peer Reviewer*, *Peer Reviewer Login*, and *Our Review Board*.
+- **3-Pillar Academic Framework:** Clear presentation of editorial rigor, global reach, and academic recognition for contributing authors and clinician reviewers.
+
+---
+
+### 23.2 Native Dashboard Settings Integration
+- **Unified Single-Page Dashboard Architecture (`/contributors/dashboard`):**
+  - Integrated Account Settings directly into `src/pages/contributors/dashboard.astro` as a native tab panel (`#settingsPanel`).
+  - Seamless tab switching across **📊 Overview**, **✍️ Submit Article**, **🗂️ My Submissions**, and **⚙️ Settings** with persistent side navigation.
+- **Deprecation & Redirect of Legacy Settings Page:**
+  - `src/pages/contributors/settings.astro` now seamlessly redirects users to `/contributors/dashboard?tab=settings`.
+
+---
+
+### 23.3 Contributor Avatar Upload & Live Synchronization
+- **Profile Picture Management:**
+  - Added dedicated Avatar Management inside Account Settings with circular preview, fallback capital initial, file upload button, and direct URL input.
+  - Live synchronization updates the sidebar profile picture and name in real-time upon saving.
+- **Remove Photo Option:** One-click reset restores the contributor's default themed initial badge.
+
+---
+
+### 23.4 Strict 100 KB Limit & Client-Side Canvas Cropper
+- **100 KB Global Upload Limit:**
+  - Server-side validation in `src/pages/api/images/upload.js` strictly limits all image uploads (avatars, covers, in-text figures) to **100 KB** (`MAX_SIZE = 100 * 1024`).
+- **Client-Side HTML5 Canvas Cropper (`#cropperModalOverlay`):**
+  - In-browser interactive image cropping with drag/pan and zoom slider.
+  - **Aspect-Ratio Locking:** `1:1` circular/square for Avatars, `16:9` widescreen for Cover Images, and custom aspect-ratio for In-Text Figures.
+  - **Format Selector:** Supports WebP, JPEG, and PNG output formats.
+  - **Auto-Fit Engine ("⚡ Auto-Fit under 100KB"):** Automatically steps down resolution and adjusts compression quality until the image size drops under 100 KB with zero server roundtrips.
+- **Open-Source Optimization Guidance:** Built-in guidance boxes linking to open-source converters (Squoosh by Google Chrome Labs, TinyPNG, CloudConvert).
+
+---
+
+### 23.5 Live Webpage Article Preview (`#articlePreviewModalOverlay`)
+- **"👁️ Preview Article" Tool:** Added directly beside the "Submit Article for Review" button in the manuscript submission form.
+- **Exact Webpage Rendering:** Renders a production-grade live preview matching `src/pages/blog/[...slug].astro`:
+  - Subject breadcrumbs (`🏠 iMedipedia > Articles > [Subjects]`)
+  - Target audience badge & auto-calculated read time / word count
+  - Article title & author byline card with avatar, degrees, and academic affiliations
+  - Executive summary callout box
+  - Cover image banner with caption
+  - Board review & CME exam badges (USMLE, FRCR, ARDMS, etc.)
+  - Full Markdown content parsed via `marked` with GitHub Flavored Markdown (GFM) support, tables, callouts, and inline figures.
+- **One-Click Actions:** Authors can toggle `✏️ Back to Editor` or submit directly from the preview with `🚀 Submit for Review`.
+
+---
+
+### 23.6 In-Text Figures & Ready-to-Embed Markdown Tag System
+- **Immediate Cloud URL Generation:** Uploading or cropping an in-text figure automatically uploads it to R2 and generates its permanent public URL.
+- **Ready-to-Embed Markdown Tag Box:**
+  - Real-time snippet generation based on figure title and caption:
+    ```markdown
+    ![Figure 1: ECG trace showing ST elevation](https://pub-xxx.r2.dev/inline/2026/08/fig1.webp)
+    ```
+  - **📋 "Copy Markdown Tag" Button:** Copies the complete markdown snippet to the clipboard with confirmation.
+  - **↵ "Insert at Cursor" Button:** Directly injects the markdown figure tag at the author's active cursor position in the article markdown textarea.
+- **Visual Workflow Instructions:** Step-by-step guidance box in the submission form guiding authors on embedding and positioning figures.
+
+---
+
+### 23.7 Unified High-Contrast Alert System
+- **Centered Popup Modal Window (`#alertModalOverlay`):**
+  - Replaces hidden off-screen alert text with a focused, glassmorphic modal dialog in the center of the screen for profile saves, password changes, 2FA activations, and form validation errors (e.g., missing title, content, or subject).
+- **100% Solid Floating Toast Notifications (`#toastContainer`):**
+  - Positioned safely below the sticky navbar at `top: 5.5rem; right: 1.5rem; z-index: 99999` to avoid header overlap.
+  - Rendered with **100% opaque solid background** (`#1e293b` in dark mode, `#ffffff` in light mode) and high-contrast text for complete readability.
+- **Cleanup of Legacy In-Page Banners:** Completely removed old redundant `#alertBox` and `#settingsAlertBox` DOM elements.
+
+---
+
 > **Document maintained by:** Google Antigravity  
 > **Repository:** https://github.com/drhimam/imedipedia  
 > **Production:** https://imedipedia.com (or https://imedipedia.pages.dev)
+
 
 
 
