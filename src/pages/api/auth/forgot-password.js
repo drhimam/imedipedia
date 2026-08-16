@@ -26,8 +26,8 @@ export async function POST({ request, locals }) {
     });
   }
 
-  const { username, identifier } = body;
-  const lookupValue = username || identifier;
+  const { username, identifier, email } = body;
+  const lookupValue = username || identifier || email;
   if (!lookupValue) {
     return new Response(JSON.stringify({ error: "Username or Email is required." }), {
       status: 400,
@@ -90,6 +90,7 @@ export async function POST({ request, locals }) {
     // Build branded HTML email
     const htmlBody = buildPasswordResetEmail({
       name: user.full_name || user.username,
+      resetUrl: resetLink,
       resetLink,
     });
 

@@ -266,7 +266,8 @@ export function buildSubmissionRejectedEmail({ name, title, notes, dashboardUrl 
   });
 }
 
-export function buildPasswordResetEmail({ name, resetUrl }) {
+export function buildPasswordResetEmail({ name, resetUrl, resetLink }) {
+  const url = resetUrl || resetLink || '';
   const content = `
     <h2 style="margin:0 0 8px;color:${TEXT_COLOR};font-size:22px;">Reset Your Password</h2>
     <p style="margin:0 0 16px;color:${MUTED_COLOR};font-size:15px;line-height:1.6;">
@@ -275,9 +276,14 @@ export function buildPasswordResetEmail({ name, resetUrl }) {
       Click the button below to set a new password.
     </p>
 
-    ${buildButton('Reset Password', resetUrl)}
+    ${buildButton('Reset Password', url)}
 
-    ${buildInfoBox('<strong>This link expires in 1 hour.</strong> If you did not request a password reset, you can safely ignore this email.', 'warning')}
+    ${buildInfoBox('<strong>This link expires in 15 minutes.</strong> If you did not request a password reset, you can safely ignore this email.', 'warning')}
+
+    <p style="margin:20px 0 0;font-size:13px;color:${MUTED_COLOR};line-height:1.5;word-break:break-all;">
+      If the button above does not work, copy and paste this link into your browser:<br>
+      <a href="${escapeHTML(url)}" style="color:${BRAND_COLOR};text-decoration:underline;">${escapeHTML(url)}</a>
+    </p>
 
     <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
       <strong>— The iMedipedia Team</strong>
@@ -285,7 +291,7 @@ export function buildPasswordResetEmail({ name, resetUrl }) {
   `;
   return buildEmail({
     subject: 'Reset Your iMedipedia Password',
-    preview: 'Click the link to reset your iMedipedia account password. Link expires in 1 hour.',
+    preview: 'Click the link to reset your iMedipedia account password. Link expires in 15 minutes.',
     content,
   });
 }

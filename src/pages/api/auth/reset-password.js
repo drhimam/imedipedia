@@ -56,8 +56,9 @@ export async function POST({ request, locals }) {
     });
   }
 
-  const { token, newPassword } = body;
-  if (!token || !newPassword) {
+  const { token, newPassword, password } = body;
+  const targetPassword = newPassword || password;
+  if (!token || !targetPassword) {
     return new Response(JSON.stringify({ error: "Token and new password are required." }), {
       status: 400,
       headers: { "Content-Type": "application/json" }
@@ -80,7 +81,7 @@ export async function POST({ request, locals }) {
     const userId = resetTokenRow.user_id;
 
     // Hash the new password
-    const newHash = await hashPassword(newPassword);
+    const newHash = await hashPassword(targetPassword);
 
     // D1 Transactions / Sequential Execution: update password & purge sessions & delete token
     await db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").bind(newHash, userId).run();
