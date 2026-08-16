@@ -140,21 +140,57 @@ if (Astro.request) {
 
       <!-- MFA -->
       <section class="drawer-section">
-        <h3 class="drawer-section-title">Two-Factor Authentication</h3>
-        <p id="mfaStatusText" style="color:var(--muted);font-size:0.9rem;margin:0 0 0.5rem;">Checking...</p>
-        <div id="mfaDisabled" style="display:none;">
-          <button class="btn btn-sm btn-secondary" onclick="setupMFA()">Set Up MFA</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+          <h3 class="drawer-section-title" style="margin:0;">Two-Factor Authentication</h3>
+          <span id="mfaActiveBadge" style="display:none;font-size:0.75rem;font-weight:700;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);padding:0.2rem 0.5rem;border-radius:12px;">✅ Active</span>
         </div>
-        <div id="mfaSetupArea" style="display:none;">
-          <p style="color:var(--muted);font-size:0.85rem;margin:0 0 0.5rem;">Enter this key in your authenticator app:</p>
-          <div id="mfaSecretDisplay" style="background:rgba(0,0,0,0.1);padding:0.75rem;border-radius:8px;font-family:monospace;font-size:1rem;text-align:center;word-break:break-all;margin-bottom:0.75rem;"></div>
+        <p id="mfaStatusText" style="color:var(--muted);font-size:0.85rem;margin:0 0 0.75rem;line-height:1.4;">Checking MFA status...</p>
+        
+        <div id="mfaDisabled" style="display:none;">
+          <button class="btn btn-sm btn-secondary" onclick="setupMFA()" style="width:100%;">🛡️ Set Up 2FA</button>
+        </div>
+
+        <div id="mfaActiveControls" style="display:none;">
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn btn-sm btn-secondary" onclick="setupMFA()" style="flex:1;">🔄 Re-configure</button>
+            <button class="btn btn-sm" onclick="disableMFA()" style="flex:1;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);">Disable 2FA</button>
+          </div>
+        </div>
+
+        <div id="mfaSetupArea" style="display:none;margin-top:1rem;background:rgba(0,0,0,0.12);padding:1rem;border-radius:10px;border:1px solid var(--accent);">
+          <div style="text-align:center;margin-bottom:0.75rem;">
+            <div style="font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:0.25rem;">Scan QR Barcode</div>
+            <p style="color:var(--muted);font-size:0.75rem;margin:0;">Scan with Google Authenticator, Microsoft Authenticator, Authy, Apple Passwords:</p>
+          </div>
+
+          <!-- QR Code Container -->
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:1rem;">
+            <div class="qr-scan-box" style="width:170px;height:170px;min-width:170px;min-height:170px;">
+              <div id="mfaQrCode" style="width:142px;height:142px;display:flex;align-items:center;justify-content:center;">
+                <span style="color:#64748b;font-size:0.75rem;">Generating...</span>
+              </div>
+              <div class="qr-scan-line"></div>
+            </div>
+            <span style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem;">📷 Point phone camera to scan</span>
+          </div>
+
+          <!-- Manual Key -->
+          <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:0.75rem;margin-bottom:1rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+              <span style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--muted);">Or Manual Key</span>
+              <button type="button" id="adminCopySecretBtn" onclick="copyAdminSecret()" style="background:transparent;border:none;color:var(--accent);font-size:0.75rem;font-weight:700;cursor:pointer;">📋 Copy</button>
+            </div>
+            <div id="mfaSecretDisplay" style="font-family:monospace;font-size:0.95rem;text-align:center;word-break:break-all;color:var(--accent);font-weight:700;letter-spacing:1px;user-select:all;"></div>
+          </div>
+
           <div class="form-group">
-            <label class="form-label">Verification Code</label>
+            <label class="form-label">6-Digit Verification Code</label>
             <div style="display:flex;gap:0.5rem;">
-              <input class="form-input" type="text" id="mfaCode" placeholder="6-digit code" maxlength="6" style="flex:1;">
-              <button class="btn btn-sm" onclick="verifyMFA()">Verify</button>
+              <input class="form-input" type="text" id="mfaCode" placeholder="000000" maxlength="6" inputmode="numeric" style="flex:1;text-align:center;font-size:1.2rem;letter-spacing:4px;font-weight:700;font-family:monospace;">
+              <button class="btn btn-sm" id="adminVerifyMfaBtn" onclick="verifyMFA()">Verify</button>
             </div>
           </div>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="cancelAdminMfaSetup()" style="width:100%;margin-top:0.5rem;">Cancel</button>
         </div>
         <div id="mfaMsg" class="alert" style="display:none;margin-top:0.75rem;"></div>
       </section>
@@ -749,6 +785,9 @@ if (Astro.request) {
   .drawer-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
   .drawer-section { border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
   .drawer-section-title { font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 700; margin: 0 0 1rem; }
+  @keyframes scanBarAnim { 0% { top: 6px; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { top: calc(100% - 8px); opacity: 0; } }
+  .qr-scan-box { position: relative; background: #ffffff; padding: 14px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.18); display: inline-flex; align-items: center; justify-content: center; border: 2px solid rgba(255,255,255,0.9); overflow: hidden; }
+  .qr-scan-line { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, transparent, #6366f1, #a855f7, transparent); box-shadow: 0 0 10px #6366f1; border-radius: 2px; animation: scanBarAnim 2.6s ease-in-out infinite; pointer-events: none; }
 
   /* Forms */
   .form-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }
@@ -956,9 +995,7 @@ if (Astro.request) {
         renderAdminChips('specialty');
         renderAdminChips('experience');
         // MFA status
-        const mfaEnabled = data.profile.mfa_enabled;
-        document.getElementById('mfaStatusText').textContent = mfaEnabled ? '✅ MFA is enabled' : '⚠️ MFA is not set up';
-        document.getElementById('mfaDisabled').style.display = mfaEnabled ? 'none' : 'block';
+        updateAdminMfaUI(data.profile.mfa_enabled);
       }
     } catch (e) {
       document.getElementById('topbarUserName').textContent = 'Admin';
@@ -1038,21 +1075,118 @@ if (Astro.request) {
     }
   }
 
-  // MFA Setup
+  // MFA Setup & Functions
+  function updateAdminMfaUI(mfaEnabled) {
+    const isEnabled = !!mfaEnabled;
+    const statusText = document.getElementById('mfaStatusText');
+    const badge = document.getElementById('mfaActiveBadge');
+    const disabledBox = document.getElementById('mfaDisabled');
+    const activeControls = document.getElementById('mfaActiveControls');
+    const setupArea = document.getElementById('mfaSetupArea');
+
+    if (setupArea) setupArea.style.display = 'none';
+
+    if (isEnabled) {
+      if (statusText) statusText.textContent = 'Two-Factor Authentication is active and protecting this administrator account.';
+      if (badge) badge.style.display = 'inline-flex';
+      if (disabledBox) disabledBox.style.display = 'none';
+      if (activeControls) activeControls.style.display = 'block';
+    } else {
+      if (statusText) statusText.textContent = 'Two-Factor Authentication is not set up. Protect administrative operations by requiring an authenticator code on login.';
+      if (badge) badge.style.display = 'none';
+      if (disabledBox) disabledBox.style.display = 'block';
+      if (activeControls) activeControls.style.display = 'none';
+    }
+  }
+
+  function cancelAdminMfaSetup() {
+    const setupArea = document.getElementById('mfaSetupArea');
+    if (setupArea) setupArea.style.display = 'none';
+  }
+
+  function copyAdminSecret() {
+    const secretEl = document.getElementById('mfaSecretDisplay');
+    const secret = secretEl ? secretEl.textContent.trim() : '';
+    if (!secret) return;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(secret).then(() => {
+        const btn = document.getElementById('adminCopySecretBtn');
+        if (btn) {
+          const old = btn.textContent;
+          btn.textContent = '✓ Copied!';
+          setTimeout(() => { btn.textContent = old; }, 2000);
+        }
+      });
+    }
+  }
+
   async function setupMFA() {
+    const setupArea = document.getElementById('mfaSetupArea');
+    const qrContainer = document.getElementById('mfaQrCode');
+    const secretDisplay = document.getElementById('mfaSecretDisplay');
+    const codeInput = document.getElementById('mfaCode');
+    const msg = document.getElementById('mfaMsg');
+
+    if (msg) msg.style.display = 'none';
+    if (codeInput) codeInput.value = '';
+    if (qrContainer) qrContainer.innerHTML = '<span style="color:#64748b;font-size:0.75rem;">Generating...</span>';
+    if (setupArea) setupArea.style.display = 'block';
+
     try {
       const resp = await fetch('/api/auth/setup-totp', { method: 'POST' });
       const data = await resp.json();
       if (data.success) {
-        document.getElementById('mfaSecretDisplay').textContent = data.secret;
-        document.getElementById('mfaSetupArea').style.display = 'block';
-        document.getElementById('mfaDisabled').style.display = 'none';
+        if (secretDisplay) secretDisplay.textContent = data.secret;
+        if (qrContainer) {
+          if (data.qrCodeSvg) {
+            qrContainer.innerHTML = data.qrCodeSvg;
+            const svg = qrContainer.querySelector('svg');
+            if (svg) {
+              svg.setAttribute('width', '100%');
+              svg.setAttribute('height', '100%');
+              svg.style.display = 'block';
+            }
+          } else if (data.otpauthUrl) {
+            const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=142x142&margin=4&data=' + encodeURIComponent(data.otpauthUrl);
+            qrContainer.innerHTML = '<img src="' + qrUrl + '" alt="2FA QR Code" width="142" height="142" style="display:block;border-radius:4px;" />';
+          }
+        }
+        if (codeInput) codeInput.focus();
+      } else {
+        if (msg) {
+          msg.textContent = data.error || 'Failed to initialize MFA setup.';
+          msg.className = 'alert alert-error';
+          msg.style.display = 'block';
+        }
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      if (msg) {
+        msg.textContent = 'Network error: ' + e.message;
+        msg.className = 'alert alert-error';
+        msg.style.display = 'block';
+      }
+    }
   }
+
   async function verifyMFA() {
-    const code = document.getElementById('mfaCode').value;
+    const codeInput = document.getElementById('mfaCode');
+    const code = codeInput ? codeInput.value.trim() : '';
     const msg = document.getElementById('mfaMsg');
+    const btn = document.getElementById('adminVerifyMfaBtn');
+
+    if (!code || code.length !== 6) {
+      if (msg) {
+        msg.textContent = 'Please enter a 6-digit code.';
+        msg.className = 'alert alert-error';
+        msg.style.display = 'block';
+      }
+      if (codeInput) codeInput.focus();
+      return;
+    }
+
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
     try {
       const resp = await fetch('/api/auth/verify-totp', {
         method: 'POST', headers: {'Content-Type':'application/json'},
@@ -1060,20 +1194,59 @@ if (Astro.request) {
       });
       const data = await resp.json();
       if (data.success) {
-        msg.textContent = 'MFA enabled!';
-        msg.className = 'alert alert-success';
-        document.getElementById('mfaSetupArea').style.display = 'none';
-        document.getElementById('mfaStatusText').textContent = '✅ MFA is enabled';
-        document.getElementById('mfaDisabled').style.display = 'none';
+        if (msg) {
+          msg.textContent = '✅ Two-Factor Authentication is now enabled!';
+          msg.className = 'alert alert-success';
+          msg.style.display = 'block';
+        }
+        updateAdminMfaUI(true);
       } else {
-        msg.textContent = data.error || 'Invalid code';
-        msg.className = 'alert alert-error';
+        if (msg) {
+          msg.textContent = data.error || 'Invalid code. Check your app time sync.';
+          msg.className = 'alert alert-error';
+          msg.style.display = 'block';
+        }
       }
-      msg.style.display = 'block';
     } catch (e) {
-      msg.textContent = 'Error verifying';
-      msg.className = 'alert alert-error';
-      msg.style.display = 'block';
+      if (msg) {
+        msg.textContent = 'Error verifying: ' + e.message;
+        msg.className = 'alert alert-error';
+        msg.style.display = 'block';
+      }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Verify'; }
+    }
+  }
+
+  async function disableMFA() {
+    if (!confirm('Are you sure you want to disable 2FA for this administrator account?')) {
+      return;
+    }
+
+    const msg = document.getElementById('mfaMsg');
+    try {
+      const resp = await fetch('/api/auth/disable-totp', { method: 'POST' });
+      const data = await resp.json();
+      if (data.success) {
+        if (msg) {
+          msg.textContent = 'Two-Factor Authentication disabled.';
+          msg.className = 'alert alert-info';
+          msg.style.display = 'block';
+        }
+        updateAdminMfaUI(false);
+      } else {
+        if (msg) {
+          msg.textContent = data.error || 'Failed to disable 2FA.';
+          msg.className = 'alert alert-error';
+          msg.style.display = 'block';
+        }
+      }
+    } catch (e) {
+      if (msg) {
+        msg.textContent = 'Network error: ' + e.message;
+        msg.className = 'alert alert-error';
+        msg.style.display = 'block';
+      }
     }
   }
 

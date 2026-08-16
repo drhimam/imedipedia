@@ -25,6 +25,9 @@ import exams from '../../data/exams.json';
       .tab-panel { display: none; }
       .tab-panel.active { display: block; animation: fadeIn2 0.3s ease-out; }
       @keyframes fadeIn2 { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes scanBarAnim { 0% { top: 6px; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { top: calc(100% - 8px); opacity: 0; } }
+      .qr-scan-box { position: relative; background: #ffffff; padding: 14px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.18); display: inline-flex; align-items: center; justify-content: center; border: 2px solid rgba(255,255,255,0.9); overflow: hidden; }
+      .qr-scan-line { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, transparent, #6366f1, #a855f7, transparent); box-shadow: 0 0 10px #6366f1; border-radius: 2px; animation: scanBarAnim 2.6s ease-in-out infinite; pointer-events: none; }
       .panel-title { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 800; margin-top: 0; margin-bottom: 0.5rem; letter-spacing: -0.5px; }
       .panel-desc { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
       .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2.5rem; }
@@ -503,21 +506,90 @@ import exams from '../../data/exams.json';
         </section>
 
         <!-- Two-Factor Authentication (MFA) Section -->
-        <section class="settings-section" style="margin-top:2rem;">
-          <h3 class="settings-section-title">Two-Factor Authentication (2FA / MFA)</h3>
-          <p id="mfaStatus" style="color:var(--muted);margin:0 0 1rem 0;font-size:0.95rem;">Checking MFA status...</p>
-          
-          <div id="mfaSetup" style="display:none;background:rgba(0,0,0,0.1);padding:1.5rem;border-radius:12px;border:1px solid var(--border);margin-bottom:1rem;">
-            <p style="color:var(--text);margin:0 0 0.75rem 0;font-size:0.9rem;line-height:1.5;">Use an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, etc.) to scan the setup secret key or enter it manually:</p>
-            <div id="mfaSecret" style="background:var(--card-bg);border:1px solid var(--border);padding:0.85rem 1rem;border-radius:8px;font-family:monospace;font-size:1.1rem;text-align:center;margin-bottom:1.25rem;word-break:break-all;color:var(--accent);font-weight:700;"></div>
-            <div class="form-group" style="max-width:300px;margin-bottom:1rem;">
-              <label class="form-label" for="totpCode">6-Digit Verification Code</label>
-              <input class="form-input" type="text" id="totpCode" placeholder="000000" maxlength="6" pattern="[0-9]*" inputmode="numeric" autocomplete="one-time-code" />
+        <section class="settings-section" style="margin-top:2.5rem;padding-top:2rem;border-top:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;">
+            <div>
+              <h3 class="settings-section-title" style="margin:0 0 0.25rem 0;display:flex;align-items:center;gap:0.5rem;">
+                <span>🛡️ Two-Factor Authentication (2FA)</span>
+              </h3>
+              <p style="color:var(--muted);font-size:0.9rem;margin:0;">Add an extra layer of protection to your contributor account using an authenticator app.</p>
             </div>
-            <button type="button" class="btn" onclick="verifyTOTP()">Verify &amp; Enable 2FA</button>
+            <div id="mfaActiveBadge" style="display:none;">
+              <span style="display:inline-flex;align-items:center;gap:0.4rem;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);padding:0.35rem 0.85rem;border-radius:20px;font-size:0.85rem;font-weight:700;">
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;"></span>
+                2FA Active
+              </span>
+            </div>
           </div>
 
-          <button id="setupMfaBtn" type="button" class="btn btn-secondary" onclick="setupTOTP()" style="display:none;">🛡️ Set Up Two-Factor Authentication</button>
+          <div id="mfaStatusCard" style="background:rgba(0,0,0,0.1);border:1px solid var(--border);border-radius:14px;padding:1.5rem;margin-bottom:1.5rem;">
+            <div id="mfaInactiveState">
+              <p id="mfaStatus" style="color:var(--muted);margin:0 0 1.25rem 0;font-size:0.92rem;line-height:1.6;">
+                Two-Factor Authentication is currently not configured. When enabled, signing in will require a 6-digit verification code from your authenticator app.
+              </p>
+              <button id="setupMfaBtn" type="button" class="btn btn-secondary" onclick="setupTOTP()" style="display:inline-flex;align-items:center;gap:0.5rem;">
+                <span>🛡️ Set Up Two-Factor Authentication</span>
+              </button>
+            </div>
+
+            <div id="mfaActiveState" style="display:none;">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+                <div>
+                  <p style="color:var(--text);font-weight:700;margin:0 0 0.25rem 0;font-size:0.95rem;">✅ Two-Factor Authentication is active</p>
+                  <p style="color:var(--muted);font-size:0.85rem;margin:0;">Your account is protected. Verification codes are required upon sign-in.</p>
+                </div>
+                <div style="display:flex;gap:0.75rem;">
+                  <button type="button" class="btn btn-secondary" onclick="setupTOTP()" style="font-size:0.85rem;padding:0.5rem 1rem;">🔄 Re-configure</button>
+                  <button type="button" class="btn" onclick="disableTOTP()" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:0.85rem;padding:0.5rem 1rem;">Disable 2FA</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MFA Interactive Setup Box (QR Code Scan Bar + Manual Secret Key) -->
+          <div id="mfaSetup" style="display:none;background:rgba(0,0,0,0.15);padding:2rem;border-radius:16px;border:1px solid var(--accent);box-shadow:0 10px 30px rgba(0,0,0,0.25);margin-bottom:1.5rem;">
+            <div style="text-align:center;margin-bottom:1.5rem;">
+              <div style="display:inline-flex;align-items:center;gap:0.5rem;background:rgba(99,102,241,0.15);color:var(--accent);padding:0.3rem 0.85rem;border-radius:20px;font-size:0.8rem;font-weight:700;margin-bottom:0.6rem;text-transform:uppercase;letter-spacing:0.5px;">
+                <span>Two-Factor Setup</span>
+              </div>
+              <h4 style="font-family:'Outfit',sans-serif;font-size:1.35rem;margin:0 0 0.5rem 0;color:var(--text);">Scan QR Code with Authenticator App</h4>
+              <p style="color:var(--muted);font-size:0.88rem;max-width:550px;margin:0 auto;line-height:1.5;">Open Google Authenticator, Microsoft Authenticator, Apple Passwords, Authy, or 1Password, and point your camera at the scan barcode below:</p>
+            </div>
+
+            <!-- QR Code Scan Barcode Card -->
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:1.5rem;">
+              <div class="qr-scan-box" style="width:200px;height:200px;min-width:200px;min-height:200px;">
+                <div id="mfaQrCode" style="width:172px;height:172px;display:flex;align-items:center;justify-content:center;">
+                  <span style="color:#64748b;font-size:0.85rem;">Generating QR Code...</span>
+                </div>
+                <div class="qr-scan-line"></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.4rem;color:var(--muted);font-size:0.8rem;margin-top:0.75rem;">
+                <span>📷 Scan with Authenticator Camera Bar</span>
+              </div>
+            </div>
+
+            <!-- Manual Key Fallback -->
+            <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1.25rem;max-width:520px;margin:0 auto 1.5rem auto;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:0.5px;">Or Enter Secret Key Manually</span>
+                <button type="button" id="copySecretBtn" onclick="copyMfaSecret('mfaSecret', 'copySecretBtn')" style="background:transparent;border:none;color:var(--accent);font-size:0.82rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:0.3rem;">
+                  <span>📋 Copy Key</span>
+                </button>
+              </div>
+              <div id="mfaSecret" style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:1.1rem;letter-spacing:2px;text-align:center;word-break:break-all;color:var(--accent);font-weight:800;background:rgba(0,0,0,0.15);padding:0.75rem;border-radius:8px;user-select:all;"></div>
+            </div>
+
+            <!-- Verification Code Step -->
+            <div style="max-width:360px;margin:0 auto;text-align:center;">
+              <label class="form-label" for="totpCode" style="display:block;margin-bottom:0.5rem;font-size:0.88rem;font-weight:700;color:var(--text);">Enter 6-Digit Code from App</label>
+              <input class="form-input" type="text" id="totpCode" placeholder="000000" maxlength="6" pattern="[0-9]*" inputmode="numeric" autocomplete="one-time-code" style="text-align:center;font-size:1.5rem;letter-spacing:8px;font-weight:800;padding:0.75rem;border-radius:10px;margin-bottom:1rem;font-family:monospace;" />
+              <div style="display:flex;gap:0.75rem;justify-content:center;">
+                <button type="button" class="btn btn-secondary" onclick="cancelMfaSetup()" style="flex:1;">Cancel</button>
+                <button type="button" class="btn" id="verifyMfaBtn" onclick="verifyTOTP()" style="flex:2;">Verify &amp; Enable</button>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
 
@@ -2626,19 +2698,7 @@ import exams from '../../data/exams.json';
             renderChips('experience');
 
             // MFA status
-            var mfaStatusEl = document.getElementById('mfaStatus');
-            var setupMfaBtn = document.getElementById('setupMfaBtn');
-            var mfaSetup = document.getElementById('mfaSetup');
-
-            if (p.mfa_enabled) {
-              if (mfaStatusEl) mfaStatusEl.innerHTML = '<span style="color:var(--success);font-weight:700;">✅ Two-Factor Authentication is currently active on your account.</span>';
-              if (setupMfaBtn) setupMfaBtn.style.display = 'none';
-              if (mfaSetup) mfaSetup.style.display = 'none';
-            } else {
-              if (mfaStatusEl) mfaStatusEl.textContent = 'Two-Factor Authentication is not yet configured. Add an extra layer of security to your author account.';
-              if (setupMfaBtn) setupMfaBtn.style.display = 'inline-flex';
-              if (mfaSetup) mfaSetup.style.display = 'none';
-            }
+            updateMfaUIState(!!p.mfa_enabled);
           }
         } catch(err) {
           console.warn('Could not load profile settings:', err);
@@ -2739,25 +2799,104 @@ import exams from '../../data/exams.json';
         });
       }
 
-      // MFA Setup & Verify
+      // --- MFA Setup, Verify, Disable & Copy Helpers ---
+      function updateMfaUIState(isActive) {
+        var mfaActiveState = document.getElementById('mfaActiveState');
+        var mfaInactiveState = document.getElementById('mfaInactiveState');
+        var mfaActiveBadge = document.getElementById('mfaActiveBadge');
+        var mfaSetup = document.getElementById('mfaSetup');
+        if (mfaSetup) mfaSetup.style.display = 'none';
+
+        if (isActive) {
+          if (mfaActiveState) mfaActiveState.style.display = 'block';
+          if (mfaInactiveState) mfaInactiveState.style.display = 'none';
+          if (mfaActiveBadge) mfaActiveBadge.style.display = 'inline-flex';
+        } else {
+          if (mfaActiveState) mfaActiveState.style.display = 'none';
+          if (mfaInactiveState) mfaInactiveState.style.display = 'block';
+          if (mfaActiveBadge) mfaActiveBadge.style.display = 'none';
+        }
+      }
+
+      function cancelMfaSetup() {
+        var mfaSetup = document.getElementById('mfaSetup');
+        if (mfaSetup) mfaSetup.style.display = 'none';
+      }
+
+      function copyMfaSecret(targetElementId, buttonElementId) {
+        var secretText = document.getElementById(targetElementId) ? document.getElementById(targetElementId).textContent.trim() : '';
+        if (!secretText) return;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(secretText).then(function() {
+            var btn = document.getElementById(buttonElementId);
+            if (btn) {
+              var oldHtml = btn.innerHTML;
+              btn.innerHTML = '<span style="color:#10b981;">✓ Copied!</span>';
+              setTimeout(function() { btn.innerHTML = oldHtml; }, 2500);
+            }
+            showToast('Secret key copied to clipboard!', 'success');
+          }).catch(function() {
+            showToast('Failed to copy. Please select and copy manually.', 'error');
+          });
+        }
+      }
+
       async function setupTOTP() {
+        var setupBox = document.getElementById('mfaSetup');
+        var qrCodeContainer = document.getElementById('mfaQrCode');
+        var secretEl = document.getElementById('mfaSecret');
+        var codeInput = document.getElementById('totpCode');
+
+        if (codeInput) codeInput.value = '';
+        if (qrCodeContainer) qrCodeContainer.innerHTML = '<span style="color:#64748b;font-size:0.85rem;">Generating QR Code...</span>';
+        if (setupBox) setupBox.style.display = 'block';
+
         try {
           var resp = await fetch('/api/auth/setup-totp', { method: 'POST' });
           var data = await resp.json();
           if (data.success) {
-            document.getElementById('mfaSecret').textContent = data.secret;
-            document.getElementById('mfaSetup').style.display = 'block';
-            document.getElementById('setupMfaBtn').style.display = 'none';
+            if (secretEl) secretEl.textContent = data.secret;
+            if (qrCodeContainer) {
+              if (data.qrCodeSvg) {
+                qrCodeContainer.innerHTML = data.qrCodeSvg;
+                var svg = qrCodeContainer.querySelector('svg');
+                if (svg) {
+                  svg.setAttribute('width', '100%');
+                  svg.setAttribute('height', '100%');
+                  svg.style.display = 'block';
+                }
+              } else if (data.otpauthUrl) {
+                var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=' + encodeURIComponent(data.otpauthUrl);
+                qrCodeContainer.innerHTML = '<img src="' + qrUrl + '" alt="2FA QR Code" width="180" height="180" style="display:block;border-radius:4px;" />';
+              }
+            }
+            if (codeInput) codeInput.focus();
+          } else {
+            showModalAlert('Setup Error', data.error || 'Failed to initialize 2FA setup.', 'error');
+            showToast(data.error || 'Failed to initialize 2FA.', 'error');
           }
-        } catch(err) {}
+        } catch(err) {
+          showModalAlert('Network Error', 'Failed to connect to server: ' + err.message, 'error');
+          showToast('Network error: ' + err.message, 'error');
+        }
       }
 
       async function verifyTOTP() {
-        var code = document.getElementById('totpCode').value.trim();
+        var codeInput = document.getElementById('totpCode');
+        var code = codeInput ? codeInput.value.trim() : '';
+        var verifyBtn = document.getElementById('verifyMfaBtn');
+
         if (!code || code.length !== 6) {
           showModalAlert('Invalid Code', 'Please enter the 6-digit verification code from your authenticator app.', 'error');
           showToast('Please enter the 6-digit verification code.', 'error');
+          if (codeInput) codeInput.focus();
           return;
+        }
+
+        if (verifyBtn) {
+          verifyBtn.disabled = true;
+          verifyBtn.textContent = 'Verifying...';
         }
 
         try {
@@ -2768,16 +2907,40 @@ import exams from '../../data/exams.json';
           });
           var data = await resp.json();
           if (data.success) {
-            showModalAlert('2FA Activated', 'Two-Factor Authentication is now active on your author account!', 'success');
-            showToast('Two-Factor Authentication activated!', 'success');
-            document.getElementById('mfaSetup').style.display = 'none';
-            document.getElementById('mfaStatus').innerHTML = '<span style="color:var(--success);font-weight:700;">✅ Two-Factor Authentication is currently active on your account.</span>';
+            showModalAlert('2FA Activated', 'Two-Factor Authentication is now active on your author account! Future logins will require an authenticator code.', 'success');
+            showToast('Two-Factor Authentication successfully activated!', 'success');
+            updateMfaUIState(true);
           } else {
-            showModalAlert('Verification Failed', data.error || 'Invalid verification code.', 'error');
+            showModalAlert('Verification Failed', data.error || 'Invalid verification code. Please make sure your authenticator app time is synced.', 'error');
             showToast(data.error || 'Invalid verification code.', 'error');
           }
         } catch(err) {
           showModalAlert('Network Error', err.message, 'error');
+          showToast('Network error: ' + err.message, 'error');
+        } finally {
+          if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Verify & Enable';
+          }
+        }
+      }
+
+      async function disableTOTP() {
+        if (!confirm('Are you sure you want to disable Two-Factor Authentication? Your account will only be protected by your password.')) {
+          return;
+        }
+
+        try {
+          var resp = await fetch('/api/auth/disable-totp', { method: 'POST' });
+          var data = await resp.json();
+          if (data.success) {
+            showToast('Two-Factor Authentication disabled.', 'info');
+            showModalAlert('2FA Disabled', 'Two-Factor Authentication has been removed from your account.', 'info');
+            updateMfaUIState(false);
+          } else {
+            showToast(data.error || 'Failed to disable 2FA.', 'error');
+          }
+        } catch(err) {
           showToast('Network error: ' + err.message, 'error');
         }
       }

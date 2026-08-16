@@ -1,3 +1,5 @@
+import QRCode from "qrcode";
+
 export const prerender = false;
 
 async function getSessionUser(db, request) {
@@ -58,11 +60,30 @@ export async function POST({ request, locals }) {
   const label = encodeURIComponent(`${issuer}:${user.email || user.username}`);
   const otpauthUrl = `otpauth://totp/${label}?secret=${secret}&issuer=${encodeURIComponent(issuer)}`;
 
+  let qrCodeSvg = '';
+  try {
+    qrCodeSvg = await QRCode.toString(otpauthUrl, {
+      type: 'svg',
+      margin: 2,
+      errorCorrectionLevel: 'M',
+      color: {
+        dark: '#000000',
+        light: '#ffffff'
+      }
+    });
+  } catch (qrErr) {
+    console.error("QR Code generation error:", qrErr);
+  }
+
+  const qrCodeDataUrl = qrCodeSvg ? `data:image/svg+xml;utf8,${encodeURIComponent(qrCodeSvg)}` : '';
+
   return new Response(JSON.stringify({
     success: true,
     secret,
     otpauthUrl,
-    message: "Scan the QR code with your authenticator app, then verify with the code.",
+    qrCodeSvg,
+    qrCodeDataUrl,
+    message: "Scan the QR code with your authenticator app, or enter the secret key manually, then verify with the 6-digit code.",
   }), {
     status: 200, headers: { "Content-Type": "application/json" }
   });

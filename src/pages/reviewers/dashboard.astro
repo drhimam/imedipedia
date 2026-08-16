@@ -277,6 +277,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
         border-color: var(--accent);
         color: var(--accent);
       }
+      @keyframes scanBarAnim { 0% { top: 6px; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { top: calc(100% - 8px); opacity: 0; } }
+      .qr-scan-box { position: relative; background: #ffffff; padding: 14px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.18); display: inline-flex; align-items: center; justify-content: center; border: 2px solid rgba(255,255,255,0.9); overflow: hidden; }
+      .qr-scan-line { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, transparent, #0d9488, #0ea5e9, transparent); box-shadow: 0 0 10px #0d9488; border-radius: 2px; animation: scanBarAnim 2.6s ease-in-out infinite; pointer-events: none; }
 
       /* Review Modal */
       .modal-overlay {
@@ -747,6 +750,94 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
             <button type="submit" class="btn-action" id="savePwBtn" style="padding:0.75rem 1.5rem;font-size:0.95rem;margin-top:0.5rem;">Update Password</button>
           </form>
         </div>
+
+        <!-- Two-Factor Authentication (2FA) Section for Reviewers -->
+        <div style="margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--border);max-width:650px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;">
+            <div>
+              <h3 style="font-family:'Outfit',sans-serif;margin:0 0 0.25rem 0;display:flex;align-items:center;gap:0.5rem;">
+                <span>🛡️ Two-Factor Authentication (2FA)</span>
+              </h3>
+              <p style="color:var(--muted);font-size:0.88rem;margin:0;">Enhance your reviewer account security with standard TOTP 6-digit verification codes on sign-in.</p>
+            </div>
+            <div id="revMfaActiveBadge" style="display:none;">
+              <span style="display:inline-flex;align-items:center;gap:0.4rem;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);padding:0.35rem 0.85rem;border-radius:20px;font-size:0.85rem;font-weight:700;">
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;"></span>
+                2FA Active
+              </span>
+            </div>
+          </div>
+
+          <div id="revMfaStatusCard" style="background:rgba(0,0,0,0.15);border:1px solid var(--border);border-radius:14px;padding:1.5rem;margin-bottom:1.5rem;">
+            <div id="revMfaInactiveState">
+              <p style="color:var(--muted);margin:0 0 1.25rem 0;font-size:0.9rem;line-height:1.6;">
+                Two-Factor Authentication is currently not enabled. Protecting your peer review account ensures confidential manuscripts and evaluations remain secure.
+              </p>
+              <button id="revSetupMfaBtn" type="button" class="btn-action" onclick="setupReviewerTOTP()" style="padding:0.75rem 1.5rem;font-size:0.92rem;display:inline-flex;align-items:center;gap:0.5rem;">
+                <span>🛡️ Set Up Two-Factor Authentication</span>
+              </button>
+            </div>
+
+            <div id="revMfaActiveState" style="display:none;">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+                <div>
+                  <p style="color:var(--text);font-weight:700;margin:0 0 0.25rem 0;font-size:0.95rem;">✅ Two-Factor Authentication is active</p>
+                  <p style="color:var(--muted);font-size:0.85rem;margin:0;">Your reviewer account is secured with authenticator verification.</p>
+                </div>
+                <div style="display:flex;gap:0.75rem;">
+                  <button type="button" class="btn-action btn-action-view" onclick="setupReviewerTOTP()" style="font-size:0.85rem;padding:0.5rem 1rem;">🔄 Re-configure</button>
+                  <button type="button" class="btn-action" onclick="disableReviewerTOTP()" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:0.85rem;padding:0.5rem 1rem;">Disable 2FA</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reviewer MFA Interactive Setup Box (QR Code Scan Bar + Manual Key) -->
+          <div id="revMfaSetup" style="display:none;background:rgba(0,0,0,0.15);padding:1.75rem;border-radius:16px;border:1px solid var(--accent);box-shadow:0 10px 30px rgba(0,0,0,0.25);margin-bottom:1.5rem;">
+            <div style="text-align:center;margin-bottom:1.25rem;">
+              <div style="display:inline-flex;align-items:center;gap:0.5rem;background:rgba(13,148,136,0.15);color:var(--accent);padding:0.3rem 0.85rem;border-radius:20px;font-size:0.8rem;font-weight:700;margin-bottom:0.6rem;text-transform:uppercase;letter-spacing:0.5px;">
+                <span>Reviewer 2FA Setup</span>
+              </div>
+              <h4 style="font-family:'Outfit',sans-serif;font-size:1.3rem;margin:0 0 0.35rem 0;color:var(--text);">Scan QR Code with Authenticator App</h4>
+              <p style="color:var(--muted);font-size:0.85rem;margin:0 auto;line-height:1.5;">Scan with Google Authenticator, Microsoft Authenticator, Apple Passwords, Authy, or 1Password:</p>
+            </div>
+
+            <!-- QR Code Scan Barcode Card -->
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:1.5rem;">
+              <div class="qr-scan-box" style="width:190px;height:190px;min-width:190px;min-height:190px;">
+                <div id="revMfaQrCode" style="width:162px;height:162px;display:flex;align-items:center;justify-content:center;">
+                  <span style="color:#64748b;font-size:0.85rem;">Generating QR Code...</span>
+                </div>
+                <div class="qr-scan-line"></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.4rem;color:var(--muted);font-size:0.8rem;margin-top:0.65rem;">
+                <span>📷 Scan with Authenticator Camera Bar</span>
+              </div>
+            </div>
+
+            <!-- Manual Key Fallback -->
+            <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1.15rem;margin-bottom:1.5rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
+                <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:0.5px;">Or Enter Secret Key Manually</span>
+                <button type="button" id="revCopySecretBtn" onclick="copyReviewerMfaSecret()" style="background:transparent;border:none;color:var(--accent);font-size:0.82rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:0.3rem;">
+                  <span>📋 Copy Key</span>
+                </button>
+              </div>
+              <div id="revMfaSecret" style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:1.05rem;letter-spacing:2px;text-align:center;word-break:break-all;color:var(--accent);font-weight:800;background:rgba(0,0,0,0.15);padding:0.65rem;border-radius:8px;user-select:all;"></div>
+            </div>
+
+            <!-- Verification Code Step -->
+            <div id="revMfaAlert" class="alert" style="display:none;"></div>
+            <div style="max-width:340px;margin:0 auto;text-align:center;">
+              <label class="form-label" for="revTotpCode" style="display:block;margin-bottom:0.5rem;font-size:0.85rem;font-weight:700;color:var(--text);">Enter 6-Digit Code from App</label>
+              <input class="form-input" type="text" id="revTotpCode" placeholder="000000" maxlength="6" pattern="[0-9]*" inputmode="numeric" autocomplete="one-time-code" style="text-align:center;font-size:1.5rem;letter-spacing:8px;font-weight:800;padding:0.75rem;border-radius:10px;margin-bottom:1rem;font-family:monospace;" />
+              <div style="display:flex;gap:0.75rem;justify-content:center;">
+                <button type="button" class="btn-action btn-action-view" onclick="cancelReviewerMfaSetup()" style="flex:1;justify-content:center;">Cancel</button>
+                <button type="button" class="btn-action" id="revVerifyMfaBtn" onclick="verifyReviewerTOTP()" style="flex:2;justify-content:center;">Verify &amp; Enable</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -935,6 +1026,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
           document.getElementById('profAffiliation').value = Array.isArray(prof.affiliation) ? prof.affiliation.join(', ') : (prof.affiliation || '');
           document.getElementById('profSpecialty').value = Array.isArray(prof.specialty) ? prof.specialty.join(', ') : (prof.specialty || '');
           document.getElementById('profBio').value = prof.bio || '';
+
+          // Initialize 2FA State
+          updateReviewerMfaUIState(!!prof.mfa_enabled);
 
           // Load Assignments
           await loadAssignments();
@@ -1201,6 +1295,165 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
           btn.textContent = 'Update Password';
         }
       });
+
+      // --- Reviewer MFA Functions ---
+      function updateReviewerMfaUIState(isActive) {
+        var activeState = document.getElementById('revMfaActiveState');
+        var inactiveState = document.getElementById('revMfaInactiveState');
+        var activeBadge = document.getElementById('revMfaActiveBadge');
+        var setupBox = document.getElementById('revMfaSetup');
+        if (setupBox) setupBox.style.display = 'none';
+
+        if (isActive) {
+          if (activeState) activeState.style.display = 'block';
+          if (inactiveState) inactiveState.style.display = 'none';
+          if (activeBadge) activeBadge.style.display = 'inline-flex';
+        } else {
+          if (activeState) activeState.style.display = 'none';
+          if (inactiveState) inactiveState.style.display = 'block';
+          if (activeBadge) activeBadge.style.display = 'none';
+        }
+      }
+
+      function cancelReviewerMfaSetup() {
+        var setupBox = document.getElementById('revMfaSetup');
+        if (setupBox) setupBox.style.display = 'none';
+      }
+
+      function copyReviewerMfaSecret() {
+        var secretEl = document.getElementById('revMfaSecret');
+        var secretText = secretEl ? secretEl.textContent.trim() : '';
+        if (!secretText) return;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(secretText).then(function() {
+            var btn = document.getElementById('revCopySecretBtn');
+            if (btn) {
+              var oldHtml = btn.innerHTML;
+              btn.innerHTML = '<span style="color:#10b981;">✓ Copied!</span>';
+              setTimeout(function() { btn.innerHTML = oldHtml; }, 2500);
+            }
+          });
+        }
+      }
+
+      async function setupReviewerTOTP() {
+        var setupBox = document.getElementById('revMfaSetup');
+        var qrCodeContainer = document.getElementById('revMfaQrCode');
+        var secretEl = document.getElementById('revMfaSecret');
+        var codeInput = document.getElementById('revTotpCode');
+        var alertEl = document.getElementById('revMfaAlert');
+
+        if (alertEl) alertEl.style.display = 'none';
+        if (codeInput) codeInput.value = '';
+        if (qrCodeContainer) qrCodeContainer.innerHTML = '<span style="color:#64748b;font-size:0.85rem;">Generating QR Code...</span>';
+        if (setupBox) setupBox.style.display = 'block';
+
+        try {
+          var resp = await fetch('/api/auth/setup-totp', { method: 'POST' });
+          var data = await resp.json();
+          if (data.success) {
+            if (secretEl) secretEl.textContent = data.secret;
+            if (qrCodeContainer) {
+              if (data.qrCodeSvg) {
+                qrCodeContainer.innerHTML = data.qrCodeSvg;
+                var svg = qrCodeContainer.querySelector('svg');
+                if (svg) {
+                  svg.setAttribute('width', '100%');
+                  svg.setAttribute('height', '100%');
+                  svg.style.display = 'block';
+                }
+              } else if (data.otpauthUrl) {
+                var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=162x162&margin=4&data=' + encodeURIComponent(data.otpauthUrl);
+                qrCodeContainer.innerHTML = '<img src="' + qrUrl + '" alt="2FA QR Code" width="162" height="162" style="display:block;border-radius:4px;" />';
+              }
+            }
+            if (codeInput) codeInput.focus();
+          } else {
+            if (alertEl) {
+              alertEl.className = 'alert alert-error';
+              alertEl.textContent = data.error || 'Failed to initialize 2FA setup.';
+              alertEl.style.display = 'block';
+            }
+          }
+        } catch(err) {
+          if (alertEl) {
+            alertEl.className = 'alert alert-error';
+            alertEl.textContent = 'Network error: ' + err.message;
+            alertEl.style.display = 'block';
+          }
+        }
+      }
+
+      async function verifyReviewerTOTP() {
+        var codeInput = document.getElementById('revTotpCode');
+        var code = codeInput ? codeInput.value.trim() : '';
+        var verifyBtn = document.getElementById('revVerifyMfaBtn');
+        var alertEl = document.getElementById('revMfaAlert');
+
+        if (!code || code.length !== 6) {
+          if (alertEl) {
+            alertEl.className = 'alert alert-error';
+            alertEl.textContent = 'Please enter the 6-digit verification code from your authenticator app.';
+            alertEl.style.display = 'block';
+          }
+          if (codeInput) codeInput.focus();
+          return;
+        }
+
+        if (verifyBtn) {
+          verifyBtn.disabled = true;
+          verifyBtn.textContent = 'Verifying...';
+        }
+
+        try {
+          var resp = await fetch('/api/auth/verify-totp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code })
+          });
+          var data = await resp.json();
+          if (data.success) {
+            if (alertEl) alertEl.style.display = 'none';
+            updateReviewerMfaUIState(true);
+          } else {
+            if (alertEl) {
+              alertEl.className = 'alert alert-error';
+              alertEl.textContent = data.error || 'Invalid verification code. Check your app time synchronization.';
+              alertEl.style.display = 'block';
+            }
+          }
+        } catch(err) {
+          if (alertEl) {
+            alertEl.className = 'alert alert-error';
+            alertEl.textContent = 'Network error: ' + err.message;
+            alertEl.style.display = 'block';
+          }
+        } finally {
+          if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Verify & Enable';
+          }
+        }
+      }
+
+      async function disableReviewerTOTP() {
+        if (!confirm('Are you sure you want to disable Two-Factor Authentication for your reviewer account?')) {
+          return;
+        }
+
+        try {
+          var resp = await fetch('/api/auth/disable-totp', { method: 'POST' });
+          var data = await resp.json();
+          if (data.success) {
+            updateReviewerMfaUIState(false);
+          } else {
+            alert(data.error || 'Failed to disable 2FA.');
+          }
+        } catch(err) {
+          alert('Network error: ' + err.message);
+        }
+      }
 
       // --- Sign Out Handler ---
       document.getElementById('logoutBtn').addEventListener('click', async function(e) {
