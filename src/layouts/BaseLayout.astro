@@ -186,63 +186,94 @@ const { title, description, currentPage } = Astro.props;
         transition: all 0.3s ease;
       }
 
-      /* ---- Three-dot overflow menu (desktop) ---- */
-      :global(.overflow-btn) {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 38px;
-        height: 38px;
+      /* ---- Dropdown Menus ---- */
+      :global(.nav-dropdown) {
+        position: relative;
+      }
+      
+      :global(.nav-dropdown-btn) {
+        background: none;
+        border: none;
+        color: var(--text);
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding: 0.5rem 1rem;
         border-radius: 8px;
         cursor: pointer;
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: var(--text);
-        background: var(--card-bg);
-        border: 1px solid var(--border);
-        transition: all 0.2s;
-        user-select: none;
-        letter-spacing: 1px;
-        line-height: 1;
+        transition: all 0.2s ease;
+        font-family: inherit;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
       }
-
-      :global(.overflow-btn:hover) {
-        border-color: #0d9488;
+      
+      :global(.nav-dropdown-btn::after) {
+        content: '▾';
+        font-size: 0.85em;
+        transition: transform 0.2s;
+      }
+      
+      :global(.nav-dropdown:hover .nav-dropdown-btn) {
         color: #0d9488;
       }
-
-      :global(.nav-overflow) {
-        display: none;
+      
+      :global(.nav-dropdown:hover .nav-dropdown-btn::after) {
+        transform: rotate(180deg);
       }
-
-      :global(#overflow-toggle:checked ~ .nav-overflow) {
-        display: flex;
-        flex-direction: column;
+      
+      :global(.nav-dropdown-content) {
         position: absolute;
         top: 100%;
-        right: 0;
+        left: 0;
         background: var(--navbar-bg);
         backdrop-filter: blur(16px);
         border: 1px solid var(--border);
         border-radius: 12px;
-        padding: 0.75rem;
-        gap: 0.35rem;
-        z-index: 50;
-        min-width: 180px;
+        padding: 0.5rem;
+        min-width: 220px;
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(10px);
+        transition: all 0.2s ease;
+        z-index: 60;
       }
-
-      :global(#overflow-toggle:checked ~ .nav-overflow .btn-contributors:any-link) {
-        display: block;
-        text-align: center;
+      
+      :global(.nav-dropdown:hover .nav-dropdown-content) {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+      
+      :global(.nav-dropdown-content a) {
+        color: var(--text);
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.9rem;
         padding: 0.6rem 1rem;
         border-radius: 8px;
-        font-size: 0.9rem;
+        transition: all 0.2s ease;
       }
-
-      :global(#overflow-toggle:checked ~ .nav-overflow .btn-contact),
-      :global(#overflow-toggle:checked ~ .nav-overflow .theme-btn) {
-        align-self: center;
+      
+      :global(.nav-dropdown-content a:hover) {
+        background: rgba(13, 148, 136, 0.1);
+        color: #0d9488;
+      }
+      
+      :global(.nav-actions) {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      
+      /* Display contents on desktop so space-between still works */
+      @media (min-width: 769px) {
+        :global(.mobile-nav-drawer) {
+          display: contents;
+        }
       }
 
       /* :any-link bumps specificity to beat browser's a:link / a:visited defaults */
@@ -356,122 +387,91 @@ const { title, description, currentPage } = Astro.props;
         :global(.hamburger) {
           display: flex;
         }
-
-        :global(.overflow-btn) {
-          display: none;
+        
+        :global(#nav-toggle:checked ~ .hamburger span:nth-child(1)) {
+          transform: translateY(7.5px) rotate(45deg);
+        }
+        
+        :global(#nav-toggle:checked ~ .hamburger span:nth-child(2)) {
+          opacity: 0;
+        }
+        
+        :global(#nav-toggle:checked ~ .hamburger span:nth-child(3)) {
+          transform: translateY(-7.5px) rotate(-45deg);
         }
 
-        /* Hide all link groups until checkbox is checked */
-        :global(#nav-toggle:not(:checked) ~ .nav-links),
-        :global(#nav-toggle:not(:checked) ~ .nav-overflow) {
-          display: none;
-        }
 
-        /* Dropdown when hamburger is clicked — both groups */
-        :global(#nav-toggle:checked ~ .nav-links),
-        :global(#nav-toggle:checked ~ .nav-overflow) {
+
+        /* Dropdown when hamburger is clicked */
+        :global(.mobile-nav-drawer) {
+          position: fixed;
+          top: 0;
+          right: -300px;
+          width: 300px;
+          height: 100vh;
+          height: 100dvh;
+          box-sizing: border-box;
+          background: var(--navbar-bg);
+          backdrop-filter: blur(24px);
+          border-left: 1px solid var(--border);
+          transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+          z-index: 100;
           display: flex;
           flex-direction: column;
-          background: var(--navbar-bg);
-          backdrop-filter: blur(16px);
+          padding-top: 5rem;
+          padding-bottom: 2rem;
+          box-shadow: -10px 0 40px rgba(0, 0, 0, 0.2);
+          overflow-y: auto;
+        }
+
+        :global(#nav-toggle:checked ~ .mobile-nav-drawer) {
+          transform: translateX(-300px);
+        }
+
+        :global(.nav-links) {
+          flex-direction: column;
+          gap: 0;
           padding: 0 1.5rem;
-          gap: 0.35rem;
+          display: flex;
         }
 
-        :global(#nav-toggle:checked ~ .nav-links) {
-          position: absolute;
-          top: 100%;
-          left: 0;
-          right: 0;
-          border-bottom: 1px solid var(--border);
-          padding-top: 1rem;
-          padding-bottom: 0.75rem;
-          z-index: 50;
+        :global(.nav-actions) {
+          display: flex;
+          flex-wrap: wrap;
+          padding: 1.5rem;
+          margin-top: auto;
+          border-top: 1px solid var(--border);
+          justify-content: center;
+          gap: 1rem;
         }
-
-        :global(#nav-toggle:checked ~ .nav-overflow) {
-          padding-bottom: 1rem;
-          border-bottom: 1px solid var(--border);
-        }
-
-        :global(#nav-toggle:checked ~ .nav-links .nav-link:any-link) {
-          display: block;
-          text-align: center;
-          padding: 0.75rem 1rem;
+        
+        :global(.nav-dropdown-content) {
+          position: static;
+          box-shadow: none;
+          background: rgba(0, 0, 0, 0.03);
+          border: none;
+          padding: 0.5rem;
+          margin-top: 0.25rem;
           border-radius: 8px;
+          display: none;
+          opacity: 1;
+          visibility: visible;
+          transform: none;
         }
-
-        :global(#nav-toggle:checked ~ .nav-overflow .btn-contributors:any-link) {
-          display: block;
-          text-align: center;
+        
+        :global(.nav-dropdown:hover .nav-dropdown-content),
+        :global(.nav-dropdown:active .nav-dropdown-content) {
+          display: flex;
+        }
+        
+        :global(.nav-dropdown-btn) {
+          width: 100%;
+          justify-content: space-between;
           padding: 0.75rem 1rem;
-          border-radius: 8px;
-        }
-
-        :global(#nav-toggle:checked ~ .nav-overflow .btn-contact),
-        :global(#nav-toggle:checked ~ .nav-overflow .theme-btn) {
-          align-self: center;
         }
       }
 
-      /* ============================================================
-         CONTACT MODAL
-         ============================================================ */
-      :global(.contact-modal) {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(3, 7, 18, 0.6);
-        backdrop-filter: blur(8px);
-        z-index: 1000;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-      }
 
-      :global(.contact-modal.active) {
-        display: flex;
-        opacity: 1;
-      }
-
-      :global(.contact-modal-content) {
-        background: var(--bg);
-        border: 1px solid var(--border);
-        border-radius: 20px;
-        max-width: 500px;
-        width: 90%;
-        padding: 2.5rem;
-        position: relative;
-        transform: scale(0.9);
-        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-        text-align: left;
-      }
-
-      :global(.contact-modal.active .contact-modal-content) {
-        transform: scale(1);
-      }
-
-      :global(.contact-modal-close) {
-        position: absolute;
-        top: 1.25rem;
-        right: 1.25rem;
-        background: transparent;
-        border: none;
-        color: var(--muted);
-        font-size: 1.5rem;
-        cursor: pointer;
-        transition: color 0.2s;
-        line-height: 1;
-      }
-
-      :global(.contact-modal-close:hover) {
-        color: var(--text);
-      }
 
       /* ============================================================
          FOOTER
@@ -490,7 +490,7 @@ const { title, description, currentPage } = Astro.props;
         max-width: 1200px;
         margin: 0 auto;
         display: grid;
-        grid-template-columns: 2fr 1fr 1fr 1.5fr;
+        grid-template-columns: 2fr 1.5fr 1.5fr;
         gap: 4rem;
         margin-bottom: 4rem;
       }
@@ -672,26 +672,51 @@ const { title, description, currentPage } = Astro.props;
       <div class="nav-container">
         <a href="/" class="logo-link"><div class="logo">iMedipedia</div></a>
         <input type="checkbox" id="nav-toggle" class="nav-toggle-hidden" />
-        <label for="nav-toggle" class="hamburger" aria-label="Toggle navigation">
+        <label for="nav-toggle" class="hamburger" aria-label="Toggle navigation" style="z-index: 101;">
           <span></span><span></span><span></span>
         </label>
-        <div class="nav-links">
-          <a href="/general" class:list={["nav-link", { active: currentPage === 'general' }]}>Research Digest</a>
-          <a href="/clinical-guidelines" class:list={["nav-link", { active: currentPage === 'clinical-guidelines' }]}>Clinical Guidelines</a>
-          <a href="/cases" class:list={["nav-link", { active: currentPage === 'cases' }]}>Case Reports</a>
-          <a href="/education" class:list={["nav-link", { active: currentPage === 'education' }]}>CME &amp; Learning</a>
-          <a href="/reviewers" class:list={["nav-link", { active: currentPage === 'reviewers' }]}>Peer Review</a>
-        </div>
+        
+        <div class="mobile-nav-drawer">
+          <div class="nav-links">
+            <div class="nav-dropdown">
+              <button class="nav-dropdown-btn">Browse</button>
+              <div class="nav-dropdown-content">
+                <a href="/general">Research Digest</a>
+                <a href="/clinical-guidelines">Clinical Guidelines</a>
+                <a href="/cases">Case Reports</a>
+                <a href="/education">Board Review</a>
+                <a href="/research-articles">Research Articles</a>
+              </div>
+            </div>
+            
+            <div class="nav-dropdown">
+              <button class="nav-dropdown-btn">Get Involved</button>
+              <div class="nav-dropdown-content">
+                <a href="/contributors">Contributor</a>
+                <a href="/reviewers">Peer Review</a>
+                <a href="/manuscript-submission">Manuscript Submission</a>
+                <a href="/subscribe">Subscribe</a>
+                <a href="/volunteer">Volunteer</a>
+                <a href="/donate">Donate</a>
+              </div>
+            </div>
 
-        <!-- Desktop overflow (three-dot) menu -->
-        <input type="checkbox" id="overflow-toggle" class="nav-toggle-hidden" />
-        <label for="overflow-toggle" class="overflow-btn" aria-label="More options">⋮</label>
-        <div class="nav-overflow">
-          <a href="/contributors" class:list={["btn-contributors", { active: currentPage === 'contributors' }]}>Authors</a>
-          <a href="/reviewers/login" class:list={["btn-contributors", { active: currentPage === 'reviewers' }]}>Reviewer Login</a>
-          <a href="/admin" class:list={["btn-contributors", { active: currentPage === 'admin' }]} id="adminNavLink" style="display:none;">Admin</a>
-          <button class="btn-contact" id="contactNavBtn">Contact</button>
-          <button id="themeToggle" class="theme-btn">☀️</button>
+            <div class="nav-dropdown">
+              <button class="nav-dropdown-btn">Resources</button>
+              <div class="nav-dropdown-content">
+                <a href="/journals">Journals</a>
+                <a href="/tools">Tools</a>
+                <a href="/dissertation">Dissertation</a>
+                <a href="/publications">Publications</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="nav-actions">
+            <a href="/admin" class="btn-contributors" id="adminNavLink" style="display:none;">Admin</a>
+            <a href="/contact" class="btn-contact" id="contactNavBtn">Contact</a>
+            <button id="themeToggle" class="theme-btn">☀️</button>
+          </div>
         </div>
       </div>
     </nav>
@@ -701,46 +726,7 @@ const { title, description, currentPage } = Astro.props;
     ============================================================ -->
     <slot />
 
-    <!-- ============================================================
-    CONTACT MODAL
-    ============================================================ -->
-    <div id="contactModal" class="contact-modal">
-      <div class="contact-modal-content">
-        <button id="closeContactModal" class="contact-modal-close" aria-label="Close">&times;</button>
 
-        <div id="contactFormContainer">
-          <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 700; margin-top: 0; margin-bottom: 0.5rem;">Contact iMedipedia</h2>
-          <p style="color: var(--muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Have questions, feedback, or a submission inquiry? Reach out and our team will get back to you.</p>
-
-          <form id="contactForm" style="display: flex; flex-direction: column; gap: 1rem;">
-            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
-              <label for="contactName" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--muted);">Full Name</label>
-              <input type="text" id="contactName" required style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.1); color: var(--text); font-size: 0.95rem;" />
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
-              <label for="contactEmail" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--muted);">Email Address</label>
-              <input type="email" id="contactEmail" required style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.1); color: var(--text); font-size: 0.95rem;" />
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
-              <label for="contactSubject" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--muted);">Subject</label>
-              <input type="text" id="contactSubject" required style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.1); color: var(--text); font-size: 0.95rem;" />
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
-              <label for="contactMessage" style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--muted);">Message</label>
-              <textarea id="contactMessage" required style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.1); color: var(--text); font-size: 0.95rem; min-height: 100px; resize: vertical; font-family: inherit;"></textarea>
-            </div>
-            <button type="submit" style="background: #0d9488; color: white; border: none; padding: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem;">Send Message &rarr;</button>
-          </form>
-        </div>
-
-        <div id="contactSuccessState" style="display: none; flex-direction: column; align-items: center; text-align: center; padding: 2rem 0;">
-          <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1.5rem; border: 2px solid #10b981;">&#10003;</div>
-          <h3 style="font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 700; margin-bottom: 0.75rem;">Message Sent</h3>
-          <p style="color: var(--muted); font-size: 1rem; line-height: 1.6; max-width: 400px;">Thank you for contacting iMedipedia. Our editorial board or support team will respond to your inquiry shortly.</p>
-          <button id="contactSuccessCloseBtn" style="background: transparent; border: 1px solid var(--border); color: var(--text); padding: 0.6rem 1.5rem; font-weight: 600; border-radius: 8px; cursor: pointer; margin-top: 1.5rem;">Close Window</button>
-        </div>
-      </div>
-    </div>
 
     <!-- ============================================================
     FOOTER
@@ -778,56 +764,7 @@ const { title, description, currentPage } = Astro.props;
           </div>
         </div>
 
-        <div>
-          <h4 class="footer-heading">Subscribe to Digest</h4>
-          <p class="footer-text" style="font-size: 0.85rem;">Get weekly clinical summaries and board questions straight to your inbox.</p>
-          <form class="footer-subscribe-form" onsubmit="handleFooterSubscribe(event)">
-            <input type="email" id="footerEmailInput" placeholder="professional@email.com" class="footer-input" required style="outline: none;" />
-            <button type="submit" id="footerSubscribeBtn" class="footer-btn">Join</button>
-          </form>
-          <p id="footerSubscribeStatus" style="display:none;font-size:0.8rem;margin-top:0.5rem;"></p>
-          <script is:inline>
-            async function handleFooterSubscribe(e) {
-              e.preventDefault();
-              const input = document.getElementById('footerEmailInput');
-              const btn = document.getElementById('footerSubscribeBtn');
-              const status = document.getElementById('footerSubscribeStatus');
-              const email = input ? input.value.trim() : '';
-              if (!email) return;
 
-              if (btn) { btn.disabled = true; btn.textContent = '...'; }
-              if (status) status.style.display = 'none';
-
-              try {
-                const resp = await fetch('/api/subscribe', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ email })
-                });
-                const data = await resp.json();
-                if (status) {
-                  status.style.display = 'block';
-                  if (data.success) {
-                    status.style.color = '#10b981';
-                    status.textContent = '✅ ' + (data.message || 'Subscribed successfully!');
-                    if (input) input.value = '';
-                  } else {
-                    status.style.color = '#ef4444';
-                    status.textContent = '❌ ' + (data.error || 'Failed to subscribe.');
-                  }
-                }
-              } catch(err) {
-                if (status) {
-                  status.style.display = 'block';
-                  status.style.color = '#ef4444';
-                  status.textContent = '❌ Error submitting subscription.';
-                }
-              } finally {
-                if (btn) { btn.disabled = false; btn.textContent = 'Join'; }
-              }
-            }
-          </script>
-        </div>
       </div>
 
       <div class="footer-bottom">
@@ -879,48 +816,7 @@ const { title, description, currentPage } = Astro.props;
         });
       }
 
-      // Contact Modal
-      (function(){
-        var contactNavBtn = document.getElementById('contactNavBtn');
-        var contactModal = document.getElementById('contactModal');
-        var closeContactModal = document.getElementById('closeContactModal');
-        var contactForm = document.getElementById('contactForm');
-        var contactFormContainer = document.getElementById('contactFormContainer');
-        var contactSuccessState = document.getElementById('contactSuccessState');
-        var contactSuccessCloseBtn = document.getElementById('contactSuccessCloseBtn');
 
-        if (contactNavBtn && contactModal) {
-          contactNavBtn.addEventListener('click', function () {
-            contactModal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-          });
-
-          var closeDialog = function () {
-            contactModal.classList.remove('active');
-            document.body.style.overflow = '';
-            setTimeout(function () {
-              if (contactForm) contactForm.reset();
-              if (contactFormContainer) contactFormContainer.style.display = 'block';
-              if (contactSuccessState) contactSuccessState.style.display = 'none';
-            }, 300);
-          };
-
-          if (closeContactModal) closeContactModal.addEventListener('click', closeDialog);
-          if (contactSuccessCloseBtn) contactSuccessCloseBtn.addEventListener('click', closeDialog);
-
-          contactModal.addEventListener('click', function (e) {
-            if (e.target === contactModal) closeDialog();
-          });
-
-          if (contactForm) {
-            contactForm.addEventListener('submit', function (e) {
-              e.preventDefault();
-              if (contactFormContainer) contactFormContainer.style.display = 'none';
-              if (contactSuccessState) contactSuccessState.style.display = 'flex';
-            });
-          }
-        }
-      })();
     </script>
 
     <!-- Page-specific scripts -->
