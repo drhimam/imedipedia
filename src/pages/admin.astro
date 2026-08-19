@@ -313,7 +313,7 @@ if (Astro.request) {
         <div style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:flex-end;">
           <div><label style="font-size:0.8rem;display:block;margin-bottom:0.25rem;">Name</label><input type="text" id="adminImageName" placeholder="Image name" style="padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);min-width:150px;"></div>
           <div><label style="font-size:0.8rem;display:block;margin-bottom:0.25rem;">Folder</label><select id="adminImageFolder" style="padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);"><option value="uploads">Uploads</option><option value="covers">Covers</option><option value="inline">Inline</option></select></div>
-          <div><label style="font-size:0.8rem;display:block;margin-bottom:0.25rem;">File (max 1MB)</label><input type="file" id="adminImageFile" accept="image/*" style="padding:0.5rem;"></div>
+          <div><label style="font-size:0.8rem;display:block;margin-bottom:0.25rem;">File</label><input type="file" id="adminImageFile" accept="image/*" style="padding:0.5rem;"></div>
           <button class="btn" onclick="uploadAdminImage()" style="padding:0.5rem 1rem;font-size:0.9rem;">Upload</button>
         </div>
       </details>
@@ -2012,21 +2012,50 @@ if (Astro.request) {
     }
 
     const file = fileInput.files[0];
-    if (file.size > 1024 * 1024) {
-      status.textContent = 'File too large. Maximum is 1MB.';
+    if (!file.type.startsWith('image/')) {
+      status.textContent = 'Please select a valid image file.';
       status.className = 'alert alert-error';
       status.style.display = 'block';
       return;
     }
 
-    const base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
+    status.textContent = 'Processing image...';
+    status.className = 'alert alert-info';
+    status.style.display = 'block';
 
     try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function() {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            let w = img.width;
+            let h = img.height;
+            const maxDim = 1920;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) {
+                h = Math.round(h * (maxDim / w));
+                w = maxDim;
+              } else {
+                w = Math.round(w * (maxDim / h));
+                h = maxDim;
+              }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/webp', 0.85));
+          };
+          img.onerror = () => reject(new Error('Invalid image data'));
+          img.src = reader.result;
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+
+      status.textContent = 'Uploading...';
       const resp = await fetch('/api/images/upload', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
