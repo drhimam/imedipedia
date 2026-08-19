@@ -1,13 +1,13 @@
 ---
 title: "Doppler Shift – Detailed Study Notes (Echocardiography)"
-pubDate: 2026-08-15
+pubDate: 2026-08-19
 description: "The Doppler shift is the change in ultrasound frequency caused by reflection from moving blood cells, which echocardiography uses to calculate flow velocity. Its accuracy is critically dependent on the angle between the ultrasound beam and blood flow, with angles over 30° causing significant underestimation. Clinically, this principle allows the assessment of valve function, pressure gradients, and cardiac output."
 author: "iMedipedia Desk"
 type: "education"
 subjects: ["Ultrasound Physics"]
 topic: "Doppler Shift"
 exams: ["ARDMS SPI"]
-image: "https://pub-de453f39846f4eaaad0901e220a5894f.r2.dev/covers/2026/08/01d85243bbdda575-doppler-shift.avif"
+image: "https://pub-de453f39846f4eaaad0901e220a5894f.r2.dev/uploads/2026/08/6226fb1723c2fcb1-artistly-design-01a017c8-af85-71ed-9417-6d1a3cfdfd16-png.webp"
 ---
 
 Based on your attached document: **Doppler Shift | Echocardiography**
