@@ -1,12 +1,13 @@
 ---
 title: "Cellular Adaptation in Pathology: Board Review of Atrophy, Hypertrophy, Hyperplasia, Metaplasia, and Dysplasia"
-pubDate: 2026-08-13
+pubDate: 2026-08-19
 description: "Cellular adaptation refers to reversible structural and functional changes cells undergo in response to environmental stressors, with key types including atrophy, hypertrophy, hyperplasia, and metaplasia. These adaptations help cells survive, but some, like metaplasia, can progress to dysplasia, a pre-neoplastic condition that may lead to carcinoma. Understanding these processes is fundamental for pathology and medical board exams."
 author: "iMedipedia Desk"
 type: "education"
 subjects: ["General Pathology"]
 topic: "Cellular Adaptation"
 exams: ["USMLE Step 1", "AMC MCQ"]
+image: "https://pub-de453f39846f4eaaad0901e220a5894f.r2.dev/covers/2026/08/412de2be39a05328-artistly-design-01a017df-017a-7254-92f8-d8b4b1e4e808.webp"
 ---
 
 # CME & Learning (Board Review) Article: Cellular Adaptation
