@@ -1723,6 +1723,7 @@ if (Astro.request) {
                 <button onclick="window.open('${esc(img.url)}', '_blank')">👁 View Image</button>
                 <button onclick="copyImageUrl('${esc(img.url).replace(/'/g, "\\'")}')">🔗 Copy URL</button>
                 <button onclick="copyImageUrl('![${esc(img.name).replace(/'/g, "\\'")}](${esc(img.url).replace(/'/g, "\\'")})')">📝 Copy MD Inline</button>
+                <button onclick="renameImage(${img.id}, '${esc(img.name).replace(/'/g, "\\'")}')">✏️ Rename</button>
                 <button onclick="deleteImage(${img.id},'${esc(img.key).replace(/'/g, "\\'")}')" style="color:#ef4444;">🗑 Delete</button>
               </div>
             </div>
@@ -1756,6 +1757,23 @@ if (Astro.request) {
     }).catch(() => {
       prompt('Copy this URL:', url);
     });
+  }
+
+  async function renameImage(id, oldName) {
+    const newName = prompt('Enter new name for image:', oldName);
+    if (!newName || newName === oldName) return;
+    try {
+      const resp = await fetch('/api/admin/images', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name: newName })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Failed to rename');
+      loadImages();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
   }
 
   async function deleteImage(id, key) {

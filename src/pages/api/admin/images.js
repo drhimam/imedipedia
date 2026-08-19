@@ -213,3 +213,64 @@ export async function DELETE({ request, locals }) {
     });
   }
 }
+
+/**
+ * PATCH /api/admin/images
+ * Body: { id, name }
+ * Renames an image in D1.
+ */
+export async function PATCH({ request, locals }) {
+  const db = locals.runtime?.env?.D1_DB || locals.runtime?.env?.DB;
+  if (!db) {
+    return new Response(JSON.stringify({ error: "D1 database connection binding is missing." }), {
+      status: 500, headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const user = await getSessionUser(db, request);
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized." }), {
+      status: 401, headers: { "Content-Type": "application/json" }
+    });
+  }
+  if (!isAdmin(user)) {
+    return new Response(JSON.stringify({ error: "Forbidden." }), {
+      status: 403, headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400, headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const { id, name } = body;
+  if (!id || !name) {
+    return new Response(JSON.stringify({ error: "id and name are required." }), {
+      status: 400, headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  try {
+    const result = await db.prepare("UPDATE images SET name = ? WHERE id = ?").bind(name, id).run();
+    
+    // Cloudflare D1 returns meta.changes for number of rows affected
+    if (!result.success && !result.meta?.changes) {
+      return new Response(JSON.stringify({ error: "Image not found or update failed." }), {
+        status: 404, headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true, message: "Image renamed successfully." }), {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: `Rename failed: ${err.message}` }), {
+      status: 500, headers: { "Content-Type": "application/json" }
+    });
+  }
+}
