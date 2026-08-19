@@ -1,12 +1,13 @@
 ---
 title: "Hyperuricemia and Cardiometabolic Risk: Pathogenesis and Updated Clinical Strategies"
-pubDate: 2026-08-15
+pubDate: 2026-08-19
 description: "Hyperuricemia is strongly associated with increased cardiometabolic risk, with emerging research supporting its potential pathogenic roles through mechanisms like inflammation and arterial stiffening. While xanthine oxidase inhibitors show benefits in reducing cardiorenal risks, their routine use for asymptomatic hyperuricemia to prevent cardiovascular disease is not yet recommended. Management remains centered on comprehensive lifestyle modifications, and abrupt discontinuation of therapy is advised against due to associated mortality risk."
 author: "iMedipedia Desk"
 type: "general"
 subjects: ["Evidence-Based Medicine"]
 topic: "hyperuricemia"
 exams: []
+image: "https://pub-de453f39846f4eaaad0901e220a5894f.r2.dev/uploads/2026/08/91480f5764b0f33e-artistly-design-01a017bf-2202-70f7-be49-c0bc1720616e-avif.avif"
 ---
 
 ## Background
