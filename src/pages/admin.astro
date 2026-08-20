@@ -2057,36 +2057,50 @@ if (Astro.request) {
     status.style.display = 'block';
 
     try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = function() {
-          const img = new Image();
-          img.onload = function() {
-            const canvas = document.createElement('canvas');
-            let w = img.width;
-            let h = img.height;
-            const maxDim = 1920;
-            if (w > maxDim || h > maxDim) {
-              if (w > h) {
-                h = Math.round(h * (maxDim / w));
-                w = maxDim;
-              } else {
-                w = Math.round(w * (maxDim / h));
-                h = maxDim;
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+      let base64;
+
+      if (file.size <= 100 * 1024 && allowedTypes.includes(file.type)) {
+        // Upload directly without re-encoding to preserve format (AVIF/WebP) and original small file size
+        base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+      } else {
+        // Rescale and re-encode to WebP for optimization if file is large
+        base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = function() {
+            const img = new Image();
+            img.onload = function() {
+              const canvas = document.createElement('canvas');
+              let w = img.width;
+              let h = img.height;
+              const maxDim = 1920;
+              if (w > maxDim || h > maxDim) {
+                if (w > h) {
+                  h = Math.round(h * (maxDim / w));
+                  w = maxDim;
+                } else {
+                  w = Math.round(w * (maxDim / h));
+                  h = maxDim;
+                }
               }
-            }
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, w, h);
-            resolve(canvas.toDataURL('image/webp', 0.85));
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, w, h);
+              resolve(canvas.toDataURL('image/webp', 0.85));
+            };
+            img.onerror = () => reject(new Error('Invalid image data'));
+            img.src = reader.result;
           };
-          img.onerror = () => reject(new Error('Invalid image data'));
-          img.src = reader.result;
-        };
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
-      });
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+      }
 
       status.textContent = 'Uploading...';
       const resp = await fetch('/api/images/upload', {
