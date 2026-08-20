@@ -2,6 +2,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
+export const prerender = false;
+
 const posts = await getCollection('blog');
 const sortedPosts = posts.sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
 
@@ -33,7 +35,7 @@ sortedPosts.forEach(post => {
 // Fetch admin slides
 let adminSlides = [];
 try {
-  const db = Astro.locals.runtime?.env?.DB;
+  const db = Astro.locals.runtime?.env?.D1_DB || Astro.locals.runtime?.env?.DB;
   if (db) {
     const { results } = await db.prepare("SELECT * FROM admin_slides WHERE is_active = 1 ORDER BY display_order ASC").all();
     adminSlides = results || [];
