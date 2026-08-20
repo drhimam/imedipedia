@@ -430,9 +430,10 @@ if (Astro.request) {
       <div id="slidesStatus" class="alert alert-info" style="margin-bottom:1rem;display:none;"></div>
       
       <!-- Slide management form -->
-      <details style="margin-bottom:1.5rem;border:1px solid var(--border);border-radius:8px;padding:1rem;">
-        <summary style="cursor:pointer;font-weight:600;">Add New Slide</summary>
+      <details id="adminSlideFormDetails" style="margin-bottom:1.5rem;border:1px solid var(--border);border-radius:8px;padding:1rem;">
+        <summary style="cursor:pointer;font-weight:600;"><span id="adminSlideFormTitle">Add New Slide</span></summary>
         <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.75rem;max-width:500px;">
+          <input type="hidden" id="adminSlideId" value="-1">
           <div class="form-group">
             <label class="form-label">Title (Optional)</label>
             <input class="form-input" type="text" id="adminSlideTitle" placeholder="e.g. Featured Research Update">
@@ -449,7 +450,10 @@ if (Astro.request) {
             <label class="form-label">Display Order</label>
             <input class="form-input" type="number" id="adminSlideOrder" value="0">
           </div>
-          <button class="btn btn-sm" onclick="addAdminSlide()">Add Slide</button>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn btn-sm" id="adminSlideSubmitBtn" onclick="addAdminSlide()">Add Slide</button>
+            <button class="btn btn-sm btn-secondary" id="adminSlideCancelBtn" onclick="cancelSlideEdit()" style="display:none;">Cancel</button>
+          </div>
         </div>
       </details>
 
@@ -2407,6 +2411,7 @@ if (Astro.request) {
 
   // ========== SLIDE MANAGEMENT ==========
   async function loadSlides() {
+    window._loadedSlides = {};
     const container = document.getElementById('slidesTable');
     container.innerHTML = '<p style="color:var(--muted);">Loading slides...</p>';
     
@@ -2429,6 +2434,7 @@ if (Astro.request) {
       </tr></thead><tbody>`;
       
       data.slides.forEach(s => {
+        window._loadedSlides[s.id] = s;
         html += `
         <tr>
           <td>
@@ -2446,6 +2452,7 @@ if (Astro.request) {
             <div class="dropdown">
               <button onclick="toggleDropdown('slide-drop-${s.id}')" class="dropdown-btn">⋮</button>
               <div id="slide-drop-${s.id}" class="dropdown-content">
+                <button onclick="editAdminSlide(${s.id})">✏️ Edit</button>
                 <button onclick="toggleSlideActive(${s.id}, ${s.is_active ? 0 : 1}, '${esc(s.image_url).replace(/'/g, "\\'")}', '${esc(s.link_url).replace(/'/g, "\\'")}', '${esc(s.title || '').replace(/'/g, "\\'")}', ${s.display_order})">
                   ${s.is_active ? '⏸ Deactivate' : '▶️ Activate'}
                 </button>
@@ -2463,6 +2470,7 @@ if (Astro.request) {
   }
 
   window.addAdminSlide = async function() {
+    const id = document.getElementById('adminSlideId').value;
     const title = document.getElementById('adminSlideTitle').value.trim();
     const image_url = document.getElementById('adminSlideImageUrl').value.trim();
     const link_url = document.getElementById('adminSlideLinkUrl').value.trim();
@@ -2479,27 +2487,31 @@ if (Astro.request) {
     statusEl.style.display = 'none';
     
     try {
+      const isEdit = id !== '-1';
+      const method = isEdit ? 'PUT' : 'POST';
+      const body = { title, image_url, link_url, display_order };
+      if (isEdit) {
+        body.id = parseInt(id);
+        const s = window._loadedSlides[id];
+        body.is_active = s ? s.is_active : 1;
+      }
+
       const resp = await fetch('/api/admin/slides', {
-        method: 'POST',
+        method: method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, image_url, link_url, display_order })
+        body: JSON.stringify(body)
       });
       
       const data = await resp.json();
       if (resp.ok && data.success) {
-        statusEl.textContent = data.message || 'Slide added successfully!';
+        statusEl.textContent = data.message || (isEdit ? 'Slide updated successfully!' : 'Slide added successfully!');
         statusEl.className = 'alert alert-success';
         statusEl.style.display = 'block';
         
-        // Clear inputs
-        document.getElementById('adminSlideTitle').value = '';
-        document.getElementById('adminSlideImageUrl').value = '';
-        document.getElementById('adminSlideLinkUrl').value = '';
-        document.getElementById('adminSlideOrder').value = '0';
-        
+        cancelSlideEdit();
         loadSlides();
       } else {
-        statusEl.textContent = data.error || 'Failed to add slide.';
+        statusEl.textContent = data.error || (isEdit ? 'Failed to update slide.' : 'Failed to add slide.');
         statusEl.className = 'alert alert-error';
         statusEl.style.display = 'block';
       }
@@ -2508,6 +2520,36 @@ if (Astro.request) {
       statusEl.className = 'alert alert-error';
       statusEl.style.display = 'block';
     }
+  };
+
+  window.editAdminSlide = function(id) {
+    const s = window._loadedSlides[id];
+    if (!s) return;
+
+    document.getElementById('adminSlideId').value = s.id;
+    document.getElementById('adminSlideTitle').value = s.title || '';
+    document.getElementById('adminSlideImageUrl').value = s.image_url || '';
+    document.getElementById('adminSlideLinkUrl').value = s.link_url || '';
+    document.getElementById('adminSlideOrder').value = s.display_order || 0;
+
+    document.getElementById('adminSlideFormDetails').open = true;
+    document.getElementById('adminSlideFormTitle').textContent = 'Edit Slide';
+    document.getElementById('adminSlideSubmitBtn').textContent = 'Save Changes';
+    document.getElementById('adminSlideCancelBtn').style.display = 'inline-block';
+
+    document.getElementById('adminSlideFormDetails').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  window.cancelSlideEdit = function() {
+    document.getElementById('adminSlideId').value = '-1';
+    document.getElementById('adminSlideTitle').value = '';
+    document.getElementById('adminSlideImageUrl').value = '';
+    document.getElementById('adminSlideLinkUrl').value = '';
+    document.getElementById('adminSlideOrder').value = '0';
+
+    document.getElementById('adminSlideFormTitle').textContent = 'Add New Slide';
+    document.getElementById('adminSlideSubmitBtn').textContent = 'Add Slide';
+    document.getElementById('adminSlideCancelBtn').style.display = 'none';
   };
 
   window.toggleSlideActive = async function(id, nextActive, image_url, link_url, title, display_order) {
