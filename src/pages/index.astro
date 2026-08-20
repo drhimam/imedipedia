@@ -5,93 +5,217 @@ import { getCollection } from 'astro:content';
 const posts = await getCollection('blog');
 const sortedPosts = posts.sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
 
-// Build subjects list from all posts, handling both old and new formats
-function parsePostSubjects(post) {
-  if (post.data.subjects && Array.isArray(post.data.subjects)) return post.data.subjects;
-  if (post.data.subject && typeof post.data.subject === 'string' && post.data.subject.trim()) return [post.data.subject.trim()];
-  if (post.data.tag && typeof post.data.tag === 'string') {
-    // Old format: comma-separated string like "Radiology, Echocardiography"
-    return post.data.tag.split(',').map(s => s.trim()).filter(Boolean);
+// Target categories mapped to post.data.type
+const TARGET_CATEGORIES = [
+  { id: 'general', label: 'Research Digest' },
+  { id: 'update', label: 'Clinical Guideline' },
+  { id: 'case', label: 'Case Report' },
+  { id: 'education', label: 'Board Review' }
+];
+
+// Group posts by category
+const categorizedPosts = {};
+TARGET_CATEGORIES.forEach(cat => {
+  categorizedPosts[cat.id] = [];
+});
+
+sortedPosts.forEach(post => {
+  // Map type to target category (defaulting to general)
+  const type = post.data.type || 'general';
+  if (categorizedPosts[type]) {
+    categorizedPosts[type].push(post);
+  } else {
+    // If some posts have type 'general' but are not caught, or have unknown types, group as general
+    categorizedPosts['general'].push(post);
   }
-  return [];
+});
+
+// Fetch admin slides
+let adminSlides = [];
+try {
+  const db = Astro.locals.runtime?.env?.DB;
+  if (db) {
+    const { results } = await db.prepare("SELECT * FROM admin_slides WHERE is_active = 1 ORDER BY display_order ASC").all();
+    adminSlides = results || [];
+  }
+} catch (e) {
+  console.error("Failed to fetch admin slides", e);
 }
-const allSubjects = Array.from(new Set(
-  posts.flatMap(p => parsePostSubjects(p)).map(s => s.toLowerCase())
-)).sort();
-// Build display mapping: lowercase -> original casing (use first occurrence)
-const subjectDisplayMap = {};
-posts.flatMap(p => parsePostSubjects(p)).forEach(s => {
-  const key = s.toLowerCase();
-  if (!subjectDisplayMap[key]) subjectDisplayMap[key] = s;
+
+// Build slider items (Admin slides + latest 3 of each target category)
+const sliderItems = [
+  ...adminSlides.map(slide => ({ type: 'admin', data: slide }))
+];
+
+TARGET_CATEGORIES.forEach(cat => {
+  const latestPosts = categorizedPosts[cat.id].slice(0, 3);
+  latestPosts.forEach(post => {
+    sliderItems.push({ type: 'post', data: post, categoryLabel: cat.label });
+  });
 });
 ---
 
-<BaseLayout
-  title="iMedipedia - Advanced Medical News & Scientific Research Compilation"
->
+<BaseLayout title="iMedipedia - Advanced Medical News & Scientific Research Compilation">
   <slot name="head">
+    <!-- Swiper CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <style>
-      .hero {
-        text-align: center;
-        max-width: 800px;
-        margin: 4rem auto 2rem auto;
+      :root {
+        --slider-height: 500px;
+      }
+      
+      /* Slider Styles */
+      .hero-slider-section {
+        margin-top: 2rem;
+        margin-bottom: 4rem;
         padding: 0 1.5rem;
       }
-      .hero h1 {
-        font-family: 'Outfit', sans-serif;
-        font-weight: 800;
-        font-size: 3.5rem;
-        line-height: 1.1;
-        margin-bottom: 1rem;
-        letter-spacing: -1px;
-      }
-      .controls {
+      
+      .swiper {
+        width: 100%;
         max-width: 1200px;
-        margin: 2rem auto;
-        padding: 0 1.5rem;
+        height: var(--slider-height);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      }
+      
+      .swiper-slide {
+        position: relative;
         display: flex;
-        flex-wrap: wrap;
-        gap: 1.5rem;
-        justify-content: space-between;
+        align-items: flex-end;
+        justify-content: flex-start;
+        background-color: #090d16;
+      }
+      
+      .slide-img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 1;
+      }
+      
+      .slide-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to top, rgba(9, 13, 22, 0.9) 0%, rgba(9, 13, 22, 0.4) 50%, rgba(9, 13, 22, 0.1) 100%);
+        z-index: 2;
+      }
+      
+      .slide-content {
+        position: relative;
+        z-index: 3;
+        padding: 3rem;
+        max-width: 800px;
+        color: white;
+      }
+      
+      .slide-badge {
+        display: inline-block;
+        background: var(--accent);
+        color: white;
+        padding: 0.4rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        border-radius: 30px;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      
+      .slide-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 2.5rem;
+        font-weight: 800;
+        line-height: 1.2;
+        margin-bottom: 1rem;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      }
+      
+      .slide-title a {
+        color: white;
+        text-decoration: none;
+      }
+      
+      .slide-title a:hover {
+        text-decoration: underline;
+      }
+      
+      .slide-meta {
+        font-size: 1rem;
+        opacity: 0.9;
+        display: flex;
+        gap: 1rem;
         align-items: center;
       }
-      .search-box {
-        flex-grow: 1;
-        max-width: 400px;
-        position: relative;
+      
+      .swiper-button-next, .swiper-button-prev {
+        color: white;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        transition: all 0.3s ease;
       }
-      .search-input {
-        width: 100%;
-        padding: 0.75rem 1.25rem;
-        border-radius: 30px;
-        border: 1px solid var(--border);
-        background: var(--card-bg);
-        color: var(--text);
-        box-sizing: border-box;
-        font-size: 0.95rem;
-        transition: border-color 0.2s;
+      
+      .swiper-button-next:hover, .swiper-button-prev:hover {
+        background: var(--accent);
       }
-      .search-input:focus { outline: none; border-color: var(--accent); }
-      .filters-group { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-      .filter-chip {
-        background: var(--card-bg);
-        border: 1px solid var(--border);
-        color: var(--text);
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        cursor: pointer;
-        font-size: 0.85rem;
-        transition: all 0.2s;
+      
+      .swiper-button-next::after, .swiper-button-prev::after {
+        font-size: 1.2rem;
+        font-weight: bold;
       }
-      .filter-chip.active, .filter-chip:hover { background: var(--accent); color: white; border-color: var(--accent); }
-      .grid {
+      
+      .swiper-pagination-bullet {
+        background: rgba(255, 255, 255, 0.5);
+        opacity: 1;
+      }
+      
+      .swiper-pagination-bullet-active {
+        background: var(--accent);
+        width: 24px;
+        border-radius: 10px;
+      }
+
+      /* Category Section Styles */
+      .category-section {
         max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 1.5rem 8rem 1.5rem;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 2.5rem;
+        margin: 0 auto 5rem auto;
+        padding: 0 1.5rem;
       }
+      
+      .category-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid var(--border);
+        padding-bottom: 1rem;
+      }
+      
+      .category-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+        color: var(--text);
+      }
+      
+      .category-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+      }
+      
       .card {
         background: var(--card-bg);
         border: 1px solid var(--border);
@@ -100,139 +224,336 @@ posts.flatMap(p => parsePostSubjects(p)).forEach(s => {
         display: flex;
         flex-direction: column;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
       }
-      .card:hover { transform: translateY(-8px); border-color: var(--accent); box-shadow: 0 12px 40px var(--accent-glow); }
-      .card-img-container { height: 220px; position: relative; overflow: hidden; background: #090d16; }
-      .card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+      
+      .card:hover { 
+        transform: translateY(-8px); 
+        border-color: var(--accent); 
+        box-shadow: 0 12px 30px var(--accent-glow); 
+      }
+      
+      .card-img-container { 
+        height: 200px; 
+        position: relative; 
+        overflow: hidden; 
+        background: #090d16; 
+      }
+      
+      .card-img { 
+        width: 100%; 
+        height: 100%; 
+        object-fit: cover; 
+        transition: transform 0.5s ease; 
+      }
+      
       .card:hover .card-img { transform: scale(1.05); }
-      .card-content { padding: 2rem; display: flex; flex-direction: column; flex-grow: 1; }
-      .card-tag {
-        align-self: flex-start;
-        background: rgba(99, 102, 241, 0.1);
-        color: var(--accent);
-        padding: 0.25rem 0.75rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        border-radius: 20px;
-        margin-bottom: 1rem;
-        text-transform: uppercase;
+      
+      .card-content { 
+        padding: 1.5rem; 
+        display: flex; 
+        flex-direction: column; 
+        flex-grow: 1; 
       }
-      .card-title { font-family: 'Outfit', sans-serif; font-size: 1.5rem; margin: 0 0 0.75rem 0; line-height: 1.3; }
-      .card-title a { color: var(--text); text-decoration: none; transition: color 0.2s; }
+      
+      .card-title { 
+        font-family: 'Outfit', sans-serif; 
+        font-size: 1.25rem; 
+        margin: 0 0 0.75rem 0; 
+        line-height: 1.4; 
+      }
+      
+      .card-title a { 
+        color: var(--text); 
+        text-decoration: none; 
+        transition: color 0.2s; 
+      }
+      
       .card-title a:hover { color: #38bdf8; }
-      .card-desc { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; flex-grow: 1; }
-      .card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 1.25rem; font-size: 0.85rem; color: var(--muted); }
-      .author { font-weight: 500; }
-      @media (max-width: 768px) {
-        .hero h1 { font-size: 2.2rem; }
-        .grid { grid-template-columns: 1fr; }
+      
+      .card-desc { 
+        color: var(--muted); 
+        font-size: 0.9rem; 
+        margin-bottom: 1.5rem; 
+        flex-grow: 1; 
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
-      @media (max-width: 480px) {
-        .hero { margin: 2rem auto 1.5rem auto; }
-        .hero h1 { font-size: 1.9rem; }
-        .controls { padding: 0 1rem; }
-        .grid { gap: 1.5rem; padding: 0 1rem 4rem 1rem; }
-        .card-content { padding: 1.25rem; }
-        .card-img-container { height: 180px; }
-        .card-title { font-size: 1.25rem; }
+      
+      .card-footer { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        border-top: 1px solid var(--border); 
+        padding-top: 1rem; 
+        font-size: 0.8rem; 
+        color: var(--muted); 
+      }
+      
+      .author { font-weight: 500; }
+      
+      /* Pagination Styles */
+      .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      
+      .page-btn {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+      }
+      
+      .page-btn:hover:not(:disabled) {
+        background: rgba(56, 189, 248, 0.1);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      
+      .page-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+      }
+      
+      .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* Utility to hide elements */
+      .hidden {
+        display: none !important;
+      }
+
+      @media (max-width: 768px) {
+        :root { --slider-height: 400px; }
+        .slide-title { font-size: 1.8rem; }
+        .slide-content { padding: 1.5rem; }
+        .category-grid { grid-template-columns: 1fr; }
       }
     </style>
   </slot>
 
-  <header class="hero">
-    <h1>Medical News & Clinical Research</h1>
-    <p>A production-ready platform compiling scientific breakthroughs and critical healthcare studies with zero friction.</p>
-  </header>
-
-  <section class="controls">
-    <div class="search-box">
-      <input type="text" id="searchInput" class="search-input" placeholder="Search articles or authors..." />
-    </div>
-    <div class="filters-group">
-      <button class="filter-chip active" data-tag="all">All Specialties</button>
-      {allSubjects.map(subj => <button class="filter-chip" data-tag={subj}>{subjectDisplayMap[subj] || subj}</button>)}
-      <button class="filter-chip" id="sortOrderBtn" data-order="desc">📅 Newest First</button>
-    </div>
-  </section>
-
-  <main class="grid" id="articlesGrid">
-    {sortedPosts.map(post => (
-      <article class="card" data-title={post.data.title.toLowerCase()} data-author={post.data.author.toLowerCase()} data-desc={post.data.description.toLowerCase()} data-tag={parsePostSubjects(post).map(s => s.toLowerCase()).join(',')} data-date={post.data.pubDate.getTime()}>
-        <div class="card-img-container">
-          {post.data.image ? (
-            <img src={post.data.image} class="card-img" alt={post.data.title} />
-          ) : (
-            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#64748b; font-weight:bold; font-size:1.2rem;">IMEDIPEDIA RESEARCH</div>
-          )}
+  <!-- Dynamic Slider Area -->
+  {sliderItems.length > 0 && (
+    <section class="hero-slider-section">
+      <div class="swiper mySwiper">
+        <div class="swiper-wrapper">
+          {sliderItems.map((item) => {
+            if (item.type === 'admin') {
+              return (
+                <div class="swiper-slide">
+                  <img src={item.data.image_url} class="slide-img" alt={item.data.title || "Admin Slide"} />
+                  <div class="slide-overlay"></div>
+                  <div class="slide-content">
+                    <span class="slide-badge">Featured</span>
+                    <h2 class="slide-title">
+                      <a href={item.data.link_url}>{item.data.title || 'Featured Content'}</a>
+                    </h2>
+                  </div>
+                </div>
+              );
+            } else {
+              const post = item.data;
+              return (
+                <div class="swiper-slide">
+                  {post.data.image ? (
+                    <img src={post.data.image} class="slide-img" alt={post.data.title} />
+                  ) : (
+                    <div class="slide-img" style="background: #1e293b; display:flex; align-items:center; justify-content:center; color:#64748b; font-size:2rem; font-weight:bold;">IMEDIPEDIA</div>
+                  )}
+                  <div class="slide-overlay"></div>
+                  <div class="slide-content">
+                    <span class="slide-badge">{item.categoryLabel}</span>
+                    <h2 class="slide-title">
+                      <a href={`/blog/${post.id.replace(/\.md$/, '')}`}>{post.data.title}</a>
+                    </h2>
+                    <div class="slide-meta">
+                      <span>By {post.data.author}</span>
+                      <span>•</span>
+                      <span>{post.data.pubDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+          })}
         </div>
-        <div class="card-content">
-          {parsePostSubjects(post).length > 0 && <span class="card-tag">{parsePostSubjects(post)[0]}</span>}
-          <h2 class="card-title"><a href={`/blog/${post.id.replace(/\.md$/, '')}`}>{post.data.title}</a></h2>
-          <p class="card-desc">{post.data.description}</p>
-          <div class="card-footer">
-            <span>By <span class="author">{post.data.author}</span></span>
-            <span>{post.data.pubDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+        <div class="swiper-button-next"></div>
+        <div class="swiper-button-prev"></div>
+        <div class="swiper-pagination"></div>
+      </div>
+    </section>
+  )}
+
+  <!-- Categories Sections -->
+  {TARGET_CATEGORIES.map(cat => {
+    const postsInCat = categorizedPosts[cat.id];
+    if (!postsInCat || postsInCat.length === 0) return null;
+    
+    return (
+      <section class="category-section" data-category={cat.id}>
+        <div class="category-header">
+          <h2 class="category-title">{cat.label}</h2>
+        </div>
+        
+        <div class="category-grid" id={`grid-${cat.id.replace(/\s+/g, '-')}`}>
+          {postsInCat.map((post, index) => (
+            <article class="card" data-index={index}>
+              <div class="card-img-container">
+                {post.data.image ? (
+                  <img src={post.data.image} class="card-img" alt={post.data.title} />
+                ) : (
+                  <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#64748b; font-weight:bold; background:#1e293b;">RESEARCH</div>
+                )}
+              </div>
+              <div class="card-content">
+                <h3 class="card-title"><a href={`/blog/${post.id.replace(/\.md$/, '')}`}>{post.data.title}</a></h3>
+                <p class="card-desc">{post.data.description}</p>
+                <div class="card-footer">
+                  <span>By <span class="author">{post.data.author}</span></span>
+                  <span>{post.data.pubDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+        
+        <!-- Pagination Controls -->
+        {postsInCat.length > 6 && (
+          <div class="pagination" id={`pagination-${cat.id.replace(/\s+/g, '-')}`}>
+            <button class="page-btn prev-btn" data-target={cat.id.replace(/\s+/g, '-')} disabled>&laquo;</button>
+            <div class="page-numbers" data-target={cat.id.replace(/\s+/g, '-')}>
+              <!-- Numbers populated via JS -->
+            </div>
+            <button class="page-btn next-btn" data-target={cat.id.replace(/\s+/g, '-')}>&raquo;</button>
           </div>
-        </div>
-      </article>
-    ))}
-  </main>
+        )}
+      </section>
+    );
+  })}
 
   <slot name="scripts">
+    <!-- Swiper JS -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" is:inline></script>
     <script is:inline>
-      var searchInput = document.getElementById('searchInput');
-      var filterChips = document.querySelectorAll('.filter-chip[data-tag]');
-      var sortOrderBtn = document.getElementById('sortOrderBtn');
-      var articlesGrid = document.getElementById('articlesGrid');
-      var cards = Array.from(document.querySelectorAll('.card'));
-      var urlParams = new URLSearchParams(window.location.search);
-      var searchQuery = (urlParams.get('search') || '').toLowerCase();
-      var activeTag = 'all';
-      if (searchQuery) { searchInput.value = searchQuery; }
+      // Initialize Swiper Slider
+      document.addEventListener('DOMContentLoaded', function() {
+        if (document.querySelector('.mySwiper')) {
+          const swiper = new Swiper('.mySwiper', {
+            slidesPerView: 1,
+            spaceBetween: 0,
+            loop: true,
+            autoplay: {
+              delay: 5000,
+              disableOnInteraction: false,
+            },
+            effect: 'fade',
+            fadeEffect: {
+              crossFade: true
+            },
+            pagination: {
+              el: '.swiper-pagination',
+              clickable: true,
+            },
+            navigation: {
+              nextEl: '.swiper-button-next',
+              prevEl: '.swiper-button-prev',
+            },
+          });
+        }
 
-      function filterArticles() {
-        cards.forEach(function(card) {
-          var title = card.getAttribute('data-title');
-          var author = card.getAttribute('data-author');
-          var desc = card.getAttribute('data-desc');
-          var tag = card.getAttribute('data-tag').toLowerCase();
-          var dateStr = card.getAttribute('data-date');
-          var year = new Date(parseInt(dateStr)).getFullYear().toString();
-          var matchesSearch = title.includes(searchQuery) || author.includes(searchQuery) || desc.includes(searchQuery) || tag.includes(searchQuery) || year.includes(searchQuery);
-          // Per-subject matching: article's tag attribute is comma-separated subjects
-          var articleSubjects = tag.split(',').filter(Boolean);
-          var matchesTag = activeTag === 'all' || articleSubjects.indexOf(activeTag.toLowerCase()) !== -1;
-          card.style.display = (matchesSearch && matchesTag) ? 'flex' : 'none';
+        // Pagination Logic for Categories
+        const itemsPerPage = 6;
+        const categorySections = document.querySelectorAll('.category-section');
+
+        categorySections.forEach(section => {
+          const grid = section.querySelector('.category-grid');
+          if (!grid) return;
+          const paginationContainer = section.querySelector('.pagination');
+          const cards = section.querySelectorAll('.card');
+          
+          if (!paginationContainer || cards.length <= itemsPerPage) {
+            // No pagination needed
+            cards.forEach(card => card.classList.remove('hidden'));
+            return;
+          }
+
+          const totalPages = Math.ceil(cards.length / itemsPerPage);
+          let currentPage = 1;
+
+          const prevBtn = paginationContainer.querySelector('.prev-btn');
+          const nextBtn = paginationContainer.querySelector('.next-btn');
+          const numbersContainer = paginationContainer.querySelector('.page-numbers');
+
+          // Build Number buttons
+          numbersContainer.innerHTML = '';
+          for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement('button');
+            btn.className = `page-btn num-btn ${i === 1 ? 'active' : ''}`;
+            btn.textContent = i;
+            btn.addEventListener('click', () => goToPage(i));
+            numbersContainer.appendChild(btn);
+          }
+
+          function renderPage() {
+            // Show/Hide cards
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            
+            cards.forEach((card, index) => {
+              if (index >= startIndex && index < endIndex) {
+                card.classList.remove('hidden');
+              } else {
+                card.classList.add('hidden');
+              }
+            });
+
+            // Update buttons
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
+
+            // Update active number
+            numbersContainer.querySelectorAll('.num-btn').forEach((btn, index) => {
+              if (index + 1 === currentPage) {
+                btn.classList.add('active');
+              } else {
+                btn.classList.remove('active');
+              }
+            });
+          }
+
+          function goToPage(page) {
+            currentPage = page;
+            renderPage();
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+
+          prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) goToPage(currentPage - 1);
+          });
+
+          nextBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) goToPage(currentPage + 1);
+          });
+
+          // Initial render
+          renderPage();
         });
-      }
-      filterArticles();
-
-      searchInput.addEventListener('input', function(e) {
-        searchQuery = e.target.value.toLowerCase();
-        filterArticles();
-      });
-
-      filterChips.forEach(function(chip) {
-        chip.addEventListener('click', function() {
-          filterChips.forEach(function(c) { c.classList.remove('active'); });
-          chip.classList.add('active');
-          activeTag = chip.getAttribute('data-tag');
-          filterArticles();
-        });
-      });
-
-      sortOrderBtn.addEventListener('click', function() {
-        var currentOrder = sortOrderBtn.getAttribute('data-order');
-        var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
-        sortOrderBtn.setAttribute('data-order', nextOrder);
-        sortOrderBtn.textContent = nextOrder === 'desc' ? '📅 Newest First' : '📅 Oldest First';
-        var sorted = cards.sort(function(a, b) {
-          var dateA = parseInt(a.getAttribute('data-date'));
-          var dateB = parseInt(b.getAttribute('data-date'));
-          return nextOrder === 'desc' ? dateB - dateA : dateA - dateB;
-        });
-        sorted.forEach(function(card) { articlesGrid.appendChild(card); });
       });
     </script>
   </slot>

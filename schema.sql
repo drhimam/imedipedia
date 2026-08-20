@@ -188,3 +188,13 @@ CREATE TABLE IF NOT EXISTS peer_reviews (
     FOREIGN KEY (reviewer_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Admin Controls for Landing Page Slider
+CREATE TABLE IF NOT EXISTS admin_slides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    image_url TEXT NOT NULL,
+    link_url TEXT NOT NULL,
+    title TEXT DEFAULT '',
+    is_active INTEGER DEFAULT 1,
+    display_order INTEGER DEFAULT 0,
+    created_at INTEGER NOT NULL
+);
