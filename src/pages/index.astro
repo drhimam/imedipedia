@@ -100,6 +100,10 @@ TARGET_CATEGORIES.forEach(cat => {
         z-index: 1;
       }
       
+      .admin-slide-img {
+        object-fit: contain;
+      }
+      
       .slide-overlay {
         position: absolute;
         top: 0;
@@ -359,14 +363,16 @@ TARGET_CATEGORIES.forEach(cat => {
             if (item.type === 'admin') {
               return (
                 <div class="swiper-slide">
-                  <img src={item.data.image_url} class="slide-img" alt={item.data.title || "Admin Slide"} />
+                  <img src={item.data.image_url} class="slide-img admin-slide-img" alt={item.data.title || "Admin Slide"} />
                   <div class="slide-overlay"></div>
-                  <div class="slide-content">
-                    <span class="slide-badge">Featured</span>
-                    <h2 class="slide-title">
-                      <a href={item.data.link_url}>{item.data.title || 'Featured Content'}</a>
-                    </h2>
-                  </div>
+                  {item.data.title && (
+                    <div class="slide-content">
+                      <span class="slide-badge">Featured</span>
+                      <h2 class="slide-title">
+                        <a href={item.data.link_url}>{item.data.title}</a>
+                      </h2>
+                    </div>
+                  )}
                 </div>
               );
             } else {
