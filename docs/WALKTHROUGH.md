@@ -31,6 +31,7 @@
 21. [Custom Domain & Cover Image Alignment Architecture](#21-custom-domain--cover-image-alignment-architecture)
 22. [Peer Review Board & Multi-Reviewer Evaluation Architecture](#22-peer-review-board--multi-reviewer-evaluation-architecture)
 23. [Contributor Portal & Author Dashboard Enhancements](#23-contributor-portal--author-dashboard-enhancements)
+24. [Landing Page Redesign & Admin Slide Management](#24-landing-page-redesign--admin-slide-management)
 
 ---
 
@@ -1829,10 +1830,53 @@ CREATE TABLE IF NOT EXISTS peer_reviews (
 
 ---
 
+## 24. Landing Page Redesign & Admin Slide Management
+
+In this update, the homepage layout was restructured to feature a dynamic slider at the top and four distinct, cleanly paginated sections below. Concurrently, a slide management interface was added to the Admin Dashboard.
+
+### 24.1 Database Schema (D1)
+Added the `admin_slides` table to store custom admin-controlled banner slides:
+```sql
+CREATE TABLE IF NOT EXISTS admin_slides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    image_url TEXT NOT NULL,
+    link_url TEXT NOT NULL,
+    title TEXT DEFAULT '',
+    is_active INTEGER DEFAULT 1,
+    display_order INTEGER DEFAULT 0,
+    created_at INTEGER NOT NULL
+);
+```
+
+### 24.2 Dynamic Landing Page Slider & Categorized Grid Layout
+- **Dynamic Swiper.js Slider:** Integrated a highly polished Swiper.js carousel at the top of [`src/pages/index.astro`](file:///d:/antigravity/Medblog/src/pages/index.astro). The carousel dynamically combines:
+  - Active admin-controlled custom slides from the database.
+  - The 3 latest published articles from each of the 4 primary categories.
+  - Admin slides are rendered with `object-fit: contain` to preserve their original design, and their text overlays are displayed conditionally only when a title is defined.
+- **SSR Re-rendering:** Configured `index.astro` for SSR (`export const prerender = false;`) and integrated `D1_DB` / `DB` fallback checks to fetch slides and articles in real-time.
+- **Categorized Grid Sections:** Rewrote the layout below the slider to split articles into 4 distinct category grid sections based on their type:
+  - **Research Digest** (`type: "general"`)
+  - **Clinical Guideline** (`type: "update"`)
+  - **Case Report** (`type: "case"`)
+  - **Board Review** (`type: "education"`)
+- **Client-Side Pagination:** Each category section displays exactly 6 articles at a time (in a 3x2 grid) and uses client-side JavaScript to handle seamless Next/Prev and numbered pagination buttons without reloading the page.
+
+### 24.3 Slide Management API Endpoint
+Created the backend slide controller at [`src/pages/api/admin/slides.js`](file:///d:/antigravity/Medblog/src/pages/api/admin/slides.js):
+- **`GET`**: Lists slides ordered by `display_order` then creation date.
+- **`POST`**: Inserts a new slide (requires `image_url` and `link_url`).
+- **`PUT`**: Updates slide properties (title, image, link, order, and active/inactive status).
+- **`DELETE`**: Removes a slide from the database.
+
+### 24.4 Admin Dashboard Integration
+Updated [`src/pages/admin.astro`](file:///d:/antigravity/Medblog/src/pages/admin.astro):
+- **New Tab:** Added the **"🛝 Slides"** button to the main navigation menu.
+- **Slide Panel & Form:** Added a collapsible Details element with inputs for Title, Image URL, Link URL, and Display Order.
+- **Autopopulate & Edit:** Clicking **"✏️ Edit"** on any slide in the management table loads its details into the form, expands the panel, changes the buttons to "Save Changes" / "Cancel", and scrolls it into view.
+- **Direct Image Uploads:** Optimized the general image uploader in the dashboard to bypass canvas WebP re-encoding for files under 100KB, allowing users to upload original optimized WebP/AVIF files directly.
+
+---
+
 > **Document maintained by:** Google Antigravity  
 > **Repository:** https://github.com/drhimam/imedipedia  
 > **Production:** https://imedipedia.com (or https://imedipedia.pages.dev)
-
-
-
-
