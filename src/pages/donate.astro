@@ -518,21 +518,49 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   <script is:inline>
     document.addEventListener('DOMContentLoaded', () => {
       const options = document.querySelectorAll('.amount-option');
-      options.forEach(opt => {
-        opt.addEventListener('click', () => {
-          options.forEach(o => o.classList.remove('active'));
-          opt.classList.add('active');
-        });
-      });
-
-      // Inject dynamic notify_url parameter for PayPal IPN webhook
       const form = document.getElementById('paypalDonateForm');
+      
       if (form) {
+        // Inject dynamic notify_url parameter for PayPal IPN webhook
         const notifyInput = document.createElement('input');
         notifyInput.type = 'hidden';
         notifyInput.name = 'notify_url';
         notifyInput.value = `${window.location.origin}/api/donate/ipn`;
         form.appendChild(notifyInput);
+
+        // Inject dynamic amount parameter
+        const amountInput = document.createElement('input');
+        amountInput.type = 'hidden';
+        amountInput.name = 'amount';
+        form.appendChild(amountInput);
+
+        // Function to update the form's amount field
+        const updateAmount = () => {
+          const activeOption = document.querySelector('.amount-option.active');
+          if (activeOption) {
+            amountInput.value = activeOption.getAttribute('data-amount');
+          }
+        };
+
+        // Set initial amount value
+        updateAmount();
+
+        // Listen for changes
+        options.forEach(opt => {
+          opt.addEventListener('click', () => {
+            options.forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+            updateAmount();
+          });
+        });
+      } else {
+        // Fallback option switching if form isn't rendered
+        options.forEach(opt => {
+          opt.addEventListener('click', () => {
+            options.forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+          });
+        });
       }
     });
   </script>
