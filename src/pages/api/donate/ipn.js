@@ -5,10 +5,13 @@ import { buildDonationThankYouEmail, formatSenderAddress } from "../_email-templ
 
 export async function POST({ request, locals }) {
   try {
-    // Parse form data from PayPal IPN POST
-    const formData = await request.formData();
+    // Read the raw request body as text to preserve exact parameter order and encoding
+    const rawBody = await request.text();
+    
+    // Parse parameters from raw urlencoded text
+    const searchParams = new URLSearchParams(rawBody);
     const params = {};
-    for (const [key, value] of formData.entries()) {
+    for (const [key, value] of searchParams.entries()) {
       params[key] = value;
     }
 
@@ -23,12 +26,8 @@ export async function POST({ request, locals }) {
       test_ipn
     } = params;
 
-    // Validate IPN message authenticity by posting back to PayPal
-    const bodyParams = new URLSearchParams();
-    bodyParams.append('cmd', '_notify-validate');
-    for (const [key, value] of formData.entries()) {
-      bodyParams.append(key, value);
-    }
+    // Validate IPN message authenticity by posting the exact raw body back to PayPal
+    const verifyBody = 'cmd=_notify-validate&' + rawBody;
 
     const paypalUrl = test_ipn === '1' 
       ? 'https://ipnpb.sandbox.paypal.com/cgi-bin/webscr' 
@@ -38,7 +37,7 @@ export async function POST({ request, locals }) {
     try {
       const verifyResp = await fetch(paypalUrl, {
         method: 'POST',
-        body: bodyParams,
+        body: verifyBody,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'User-Agent': 'iMedipedia-IPN-Handler'
@@ -90,7 +89,7 @@ export async function POST({ request, locals }) {
       const awsAccessKey = locals.runtime?.env?.AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
       const awsSecretKey = locals.runtime?.env?.AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
       const awsRegion = locals.runtime?.env?.AWS_REGION || process.env.AWS_REGION || "us-east-1";
-      const fromEmail = locals.runtime?.env?.SES_FROM_EMAIL || process.env.SES_FROM_EMAIL || "donations@imedipedia.org";
+      const fromEmail = locals.runtime?.env?.SES_FROM_EMAIL || process.env.SES_FROM_EMAIL || "info@imedipedia.com";
       const senderName = locals.runtime?.env?.SES_FROM_NAME || process.env.SES_FROM_NAME || "iMedipedia Support";
 
       if (awsAccessKey && awsSecretKey && payer_email) {

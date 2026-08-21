@@ -77,6 +77,19 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <span class="amount-value">$150</span>
               <span class="amount-desc">Maintains Database for 1 Month</span>
             </div>
+            <div class="amount-option" id="customAmountOption" data-amount="custom">
+              <span class="amount-value">Custom</span>
+              <span class="amount-desc">Enter any amount</span>
+            </div>
+          </div>
+
+          <!-- Custom Amount Input Field -->
+          <div class="custom-amount-container" id="customAmountInputContainer" style="display: none;">
+            <label for="customAmountVal">Enter Amount ($)</label>
+            <div class="custom-input-wrapper">
+              <span class="currency-symbol">$</span>
+              <input type="number" id="customAmountVal" placeholder="2.00" min="1" step="any" />
+            </div>
           </div>
 
           <!-- Form Integration -->
@@ -512,6 +525,66 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         font-size: 2.2rem;
       }
     }
+
+    .custom-amount-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      text-align: left;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .custom-amount-container label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .custom-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .custom-input-wrapper .currency-symbol {
+      position: absolute;
+      left: 1.25rem;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: var(--text);
+    }
+
+    .custom-input-wrapper input {
+      width: 100%;
+      padding: 0.85rem 1rem 0.85rem 2.25rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.03);
+      color: var(--text);
+      font-size: 1.1rem;
+      font-family: inherit;
+      font-weight: 600;
+      outline: none;
+      box-sizing: border-box;
+      transition: all 0.2s ease;
+    }
+
+    :global([data-theme="dark"]) .custom-input-wrapper input {
+      background: rgba(255,255,255,0.02);
+    }
+
+    .custom-input-wrapper input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
   </style>
 
   <!-- Interactive script to select suggested amounts -->
@@ -534,18 +607,32 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         amountInput.name = 'amount';
         form.appendChild(amountInput);
 
+        const customInputContainer = document.getElementById('customAmountInputContainer');
+        const customAmountVal = document.getElementById('customAmountVal');
+
         // Function to update the form's amount field
         const updateAmount = () => {
           const activeOption = document.querySelector('.amount-option.active');
           if (activeOption) {
-            amountInput.value = activeOption.getAttribute('data-amount');
+            const amtType = activeOption.getAttribute('data-amount');
+            if (amtType === 'custom') {
+              if (customInputContainer) customInputContainer.style.display = 'flex';
+              if (customAmountVal) {
+                // Parse value or default to $2.00
+                const rawVal = parseFloat(customAmountVal.value || '2');
+                amountInput.value = isNaN(rawVal) ? '2.00' : rawVal.toFixed(2);
+              }
+            } else {
+              if (customInputContainer) customInputContainer.style.display = 'none';
+              amountInput.value = activeOption.getAttribute('data-amount');
+            }
           }
         };
 
         // Set initial amount value
         updateAmount();
 
-        // Listen for changes
+        // Listen for option selections
         options.forEach(opt => {
           opt.addEventListener('click', () => {
             options.forEach(o => o.classList.remove('active'));
@@ -553,6 +640,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             updateAmount();
           });
         });
+
+        // Listen for typing changes on the custom amount input
+        if (customAmountVal) {
+          customAmountVal.addEventListener('input', () => {
+            updateAmount();
+          });
+        }
       } else {
         // Fallback option switching if form isn't rendered
         options.forEach(opt => {
