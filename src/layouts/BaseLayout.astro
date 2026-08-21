@@ -352,6 +352,51 @@ const { title, description, currentPage } = Astro.props;
         box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
       }
 
+      /* ---- Header Donate Button ---- */
+      :global(.btn-donate-header) {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444 !important;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+      }
+
+      :global(.btn-donate-header:hover) {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: #ef4444;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+      }
+
+      /* ---- Footer Donate Button ---- */
+      :global(.btn-donate-footer) {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444 !important;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        padding: 0.4rem 1rem;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        width: fit-content;
+        margin-top: 1rem;
+      }
+
+      :global(.btn-donate-footer:hover) {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: #ef4444;
+        transform: translateY(-1px);
+      }
+
       /* ---- Theme Toggle ---- */
       :global(.theme-btn) {
         background: var(--card-bg);
@@ -715,6 +760,7 @@ const { title, description, currentPage } = Astro.props;
 
           <div class="nav-actions">
             <a href="/admin" class="btn-contributors" id="adminNavLink" style="display:none;">Admin</a>
+            <a href="/donate" class="btn-donate-header" id="headerDonateBtn">Donate</a>
             <a href="/contact" class="btn-contact" id="contactNavBtn">Contact</a>
             <button id="themeToggle" class="theme-btn">☀️</button>
           </div>
@@ -740,6 +786,12 @@ const { title, description, currentPage } = Astro.props;
           <div class="footer-disclaimer">
             <strong>Disclaimer:</strong> The contents of iMedipedia are for educational and informational purposes only. This platform does not provide professional medical advice, diagnosis, or treatment.
           </div>
+          <a href="/donate" class="btn-donate-footer" id="footerDonateBtn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 6px; vertical-align: middle;">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+            Support iMedipedia
+          </a>
         </div>
 
         <div>

@@ -198,3 +198,15 @@ CREATE TABLE IF NOT EXISTS admin_slides (
     display_order INTEGER DEFAULT 0,
     created_at INTEGER NOT NULL
 );
+
+-- Donations Log Table
+CREATE TABLE IF NOT EXISTS donations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    txn_id TEXT NOT NULL UNIQUE,
+    donor_name TEXT DEFAULT '',
+    donor_email TEXT NOT NULL,
+    amount REAL NOT NULL,
+    currency TEXT DEFAULT 'USD',
+    status TEXT DEFAULT 'Completed',
+    created_at INTEGER NOT NULL
+);

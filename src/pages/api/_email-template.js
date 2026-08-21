@@ -586,6 +586,45 @@ export function formatSenderAddress(fromEmail, defaultName = 'iMedipedia Admin')
   return `"${defaultName}" <${trimmed}>`;
 }
 
+export function buildDonationThankYouEmail({ name, amount, currency }) {
+  const currencySymbol = currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '$';
+  const formattedAmount = `${currencySymbol}${parseFloat(amount).toFixed(2)}`;
+  
+  const content = `
+    <h2 style="margin:0 0 8px;color:${TEXT_COLOR};font-size:22px;">Thank You for Your Support! ❤️</h2>
+    <p style="margin:0 0 16px;color:${MUTED_COLOR};font-size:15px;line-height:1.6;">
+      Dear ${escapeHTML(name || 'Donor')},<br><br>
+      On behalf of the entire iMedipedia team, we would like to express our deepest gratitude for your generous donation of <strong>${formattedAmount} ${escapeHTML(currency)}</strong>.
+    </p>
+
+    ${buildInfoBox(`
+      <strong>Donation Summary</strong><br><br>
+      <strong>Amount:</strong> ${formattedAmount} ${escapeHTML(currency)}<br>
+      <strong>Purpose:</strong> Supporting Open-Access Medical Education &amp; Research<br>
+      <strong>Status:</strong> Completed &amp; Processed
+    `, 'success')}
+
+    <p style="margin:16px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      Your contribution directly funds:
+    </p>
+    <ul style="margin:8px 0;padding-left:20px;font-size:14px;color:${TEXT_COLOR};line-height:1.8;">
+      <li>Standardized expert peer-review of submitted digests</li>
+      <li>Free, global, ad-free access to our clinical databases</li>
+      <li>Hosting, database scalability, and infrastructure maintenance</li>
+    </ul>
+
+    <p style="margin:20px 0 0;font-size:14px;color:${MUTED_COLOR};line-height:1.6;">
+      Thank you for being a vital part of our mission to advance healthcare education globally.<br><br>
+      <strong>— The iMedipedia Team</strong>
+    </p>
+  `;
+  return buildEmail({
+    subject: 'Thank you for your donation to iMedipedia! ❤️',
+    preview: `Thank you for supporting iMedipedia's open-access medical research education.`,
+    content,
+  });
+}
+
 export { escapeHTML };
 
 
