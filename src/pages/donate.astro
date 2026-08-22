@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+const paypalEmail = import.meta.env.PAYPAL_EMAIL || "drhimam@gmail.com";
 ---
 
 <BaseLayout title="Donate & Support Our Mission - iMedipedia" description="Support iMedipedia's mission to provide open-access, peer-reviewed medical research, clinical summaries, and board review preparation. Keep healthcare education free and accessible globally.">
@@ -94,8 +96,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
           <!-- Form Integration -->
           <div class="form-container" id="paypalFormContainer">
-            <form action="https://www.paypal.com/donate" method="post" target="_top" id="paypalDonateForm">
-              <input type="hidden" name="hosted_button_id" value="BWUKW8NA59L6N" />
+            <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top" id="paypalDonateForm">
+              <input type="hidden" name="cmd" value="_donations" />
+              <input type="hidden" name="business" value={paypalEmail} />
+              <input type="hidden" name="currency_code" value="USD" />
+              <input type="hidden" name="item_name" value="Support iMedipedia" />
+              <input type="hidden" name="no_shipping" value="1" />
               
               <!-- Custom Interactive Donate Button -->
               <button type="submit" class="btn-donate-custom" id="customDonateSubmitBtn">
